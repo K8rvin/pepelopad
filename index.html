@@ -2340,38 +2340,38 @@
       createActorSprites(S);
       createStructureSprites(S);
       createItemIcons(ICONS);
-      loadSprite("/assets/effects/campfire.gif", (image) => {
+      loadSprite("./assets/effects/campfire.gif", (image) => {
         S.fire[0] = image;
         S.fire[1] = image;
       });
-      loadSprite("/assets/effects/arrow.gif", (image) => {
+      loadSprite("./assets/effects/arrow.gif", (image) => {
         S.arrowP = image;
       });
       for (const [id, url] of Object.entries({
-        wood: "/assets/sprites/wood.png",
-        scrap: "/assets/sprites/scrap.png",
-        cloth: "/assets/sprites/cloth.png",
-        chem: "/assets/sprites/chem.png",
-        elec: "/assets/sprites/elec.png",
-        can: "/assets/sprites/can.png",
-        bandage: "/assets/sprites/bandage.png",
-        medkit: "/assets/sprites/medkit.png",
-        armor: "/assets/sprites/armor.png",
-        arrow: "/assets/sprites/arrow.png",
-        crossbow: "/assets/sprites/crossbow.png",
-        pistol: "/assets/sprites/pistol.png",
-        rifle: "/assets/sprites/rifle.png",
-        crate: "/assets/sprites/crate.png",
-        rock: "/assets/sprites/rock.png",
-        player: "/assets/sprites/player.png",
-        survivor: "/assets/sprites/survivor.png",
-        walker: "/assets/sprites/walker.png",
-        dog: "/assets/sprites/dog.png",
-        brute: "/assets/sprites/brute.png",
-        spitter: "/assets/sprites/spitter.png",
-        riot: "/assets/sprites/riot.png",
-        howler: "/assets/sprites/howler.png",
-        tree: "/assets/sprites/tree.png",
+        wood: "./assets/sprites/wood.png",
+        scrap: "./assets/sprites/scrap.png",
+        cloth: "./assets/sprites/cloth.png",
+        chem: "./assets/sprites/chem.png",
+        elec: "./assets/sprites/elec.png",
+        can: "./assets/sprites/can.png",
+        bandage: "./assets/sprites/bandage.png",
+        medkit: "./assets/sprites/medkit.png",
+        armor: "./assets/sprites/armor.png",
+        arrow: "./assets/sprites/arrow.png",
+        crossbow: "./assets/sprites/crossbow.png",
+        pistol: "./assets/sprites/pistol.png",
+        rifle: "./assets/sprites/rifle.png",
+        crate: "./assets/sprites/crate.png",
+        rock: "./assets/sprites/rock.png",
+        player: "./assets/sprites/player.png",
+        survivor: "./assets/sprites/survivor.png",
+        walker: "./assets/sprites/walker.png",
+        dog: "./assets/sprites/dog.png",
+        brute: "./assets/sprites/brute.png",
+        spitter: "./assets/sprites/spitter.png",
+        riot: "./assets/sprites/riot.png",
+        howler: "./assets/sprites/howler.png",
+        tree: "./assets/sprites/tree.png",
       })) {
         loadSprite(url, (image) => {
           if (id === "tree") TI[14] = image;
@@ -2406,7 +2406,7 @@
           } else ICONS[id] = image;
         });
       }
-      loadSpriteSheet("/assets/effects/small-explosion.png", (sheet) => {
+      loadSpriteSheet("./assets/effects/small-explosion.png", (sheet) => {
         VFX_ASSETS.explosion = sheet;
       }).catch(() => {});
       const icache = {};

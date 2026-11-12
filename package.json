@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "validate": "node scripts/validate.mjs",
-    "format": "prettier --write index.html playwright.config.js vitest.config.js src scripts tests",
-    "format:check": "prettier --check index.html playwright.config.js vitest.config.js src scripts tests"
+    "format": "prettier --write index.html vite.config.js playwright.config.js vitest.config.js src scripts tests",
+    "format:check": "prettier --check index.html vite.config.js playwright.config.js vitest.config.js src scripts tests"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
