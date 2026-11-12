@@ -1,0 +1,50 @@
+{
+  "campfire": {
+    "type": "gif",
+    "src": "/assets/effects/campfire.gif",
+    "source": "pixelfx fire/campfire",
+    "license": "MIT",
+    "fallback": "procedural S.fire"
+  },
+  "arrow": {
+    "type": "gif",
+    "src": "/assets/effects/arrow.gif",
+    "source": "pixelfx projectiles/arrow",
+    "license": "MIT",
+    "fallback": "procedural S.arrowP"
+  },
+  "explosion": {
+    "type": "spritesheet",
+    "src": "/assets/effects/small-explosion.png",
+    "metadata": "/assets/effects/small-explosion.json",
+    "source": "pixelfx explosions/small-explosion",
+    "license": "MIT",
+    "fallback": "procedural rings and particles"
+  },
+  "atlasSprites": {
+    "wood": { "src": "/assets/sprites/wood.png", "caption": "battered wooden pallet", "license": "CC0-1.0" },
+    "scrap": { "src": "/assets/sprites/scrap.png", "caption": "metal oil drum", "license": "CC0-1.0" },
+    "cloth": { "src": "/assets/sprites/cloth.png", "caption": "worn cloth herb pouch", "license": "CC0-1.0" },
+    "chem": { "src": "/assets/sprites/chem.png", "caption": "glowing emerald green beaker", "license": "CC0-1.0" },
+    "elec": { "src": "/assets/sprites/elec.png", "caption": "circuit board", "license": "CC0-1.0" },
+    "can": { "src": "/assets/sprites/can.png", "caption": "white food storage container with a star sticker", "license": "CC0-1.0" },
+    "bandage": { "src": "/assets/sprites/bandage.png", "caption": "bandage roll", "license": "CC0-1.0" },
+    "medkit": { "src": "/assets/sprites/medkit.png", "caption": "sealed medical kit bag with a blank label", "license": "CC0-1.0" },
+    "armor": { "src": "/assets/sprites/armor.png", "caption": "tribal armor", "license": "CC0-1.0" },
+    "arrow": { "src": "/assets/sprites/arrow.png", "caption": "arrow bundle", "license": "CC0-1.0" },
+    "crossbow": { "src": "/assets/sprites/crossbow.png", "caption": "glowing ebony heavy crossbow", "license": "CC0-1.0" },
+    "pistol": { "src": "/assets/sprites/pistol.png", "caption": "tan service pistol", "license": "CC0-1.0" },
+    "rifle": { "src": "/assets/sprites/rifle.png", "caption": "worn rifle with a camo pattern", "license": "CC0-1.0" },
+    "crate": { "src": "/assets/sprites/crate.png", "caption": "weathered wooden shipping crate", "license": "CC0-1.0" },
+    "rock": { "src": "/assets/sprites/rock.png", "caption": "snowy sandstone rock pile", "license": "CC0-1.0" },
+    "player": { "src": "/assets/sprites/player.png", "caption": "alert gray scout", "license": "CC0-1.0" },
+    "survivor": { "src": "/assets/sprites/survivor.png", "caption": "alert scout with a cloak", "license": "CC0-1.0" },
+    "walker": { "src": "/assets/sprites/walker.png", "caption": "hunched zombie with a dangling jaw", "license": "CC0-1.0" },
+    "dog": { "src": "/assets/sprites/dog.png", "caption": "drooling zombie dog in bright colors", "license": "CC0-1.0" },
+    "brute": { "src": "/assets/sprites/brute.png", "caption": "roaring zombie bear with a gaping wound", "license": "CC0-1.0" },
+    "spitter": { "src": "/assets/sprites/spitter.png", "caption": "side-view mossy brown swamp zombie", "license": "CC0-1.0" },
+    "riot": { "src": "/assets/sprites/riot.png", "caption": "limping zombie soldier in muted colors", "license": "CC0-1.0" },
+    "howler": { "src": "/assets/sprites/howler.png", "caption": "marching brown zombie soldier with sunken eyes", "license": "CC0-1.0" },
+    "tree": { "src": "/assets/sprites/tree.png", "caption": "apple tree", "license": "CC0-1.0" }
+  }
+}
