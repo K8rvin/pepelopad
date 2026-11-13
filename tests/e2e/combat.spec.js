@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("лук попадает по зомби на открытой дороге", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.stack));
-  await page.route("**/src/game.js", async (route) => {
+  await page.route("**/src/game.js*", async (route) => {
     const response = await route.fetch();
     const source = await response.text();
     const marker = "startAttract();\nrequestAnimationFrame(frame);";

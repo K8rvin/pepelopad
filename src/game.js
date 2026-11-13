@@ -458,6 +458,21 @@ loadSprite("./assets/effects/campfire.gif", (image) => {
 loadSprite("./assets/effects/arrow.gif", (image) => {
   S.arrowP = image;
 });
+const ATLAS_SIZES = {
+  player: [12, 14],
+  survivor: [12, 14],
+  walker: [12, 14],
+  dog: [14, 10],
+  brute: [18, 18],
+  spitter: [12, 14],
+  riot: [12, 14],
+  howler: [12, 14],
+  crate: [16, 16],
+  rock: [16, 16],
+  tree: [16, 16],
+  pistol: [10, 6],
+  rifle: [16, 6],
+};
 for (const [id, url] of Object.entries({
   wood: "./assets/sprites/wood.png",
   scrap: "./assets/sprites/scrap.png",
@@ -484,38 +499,42 @@ for (const [id, url] of Object.entries({
   howler: "./assets/sprites/howler.png",
   tree: "./assets/sprites/tree.png",
 })) {
-  loadSprite(url, (image) => {
-    if (id === "tree") TI[14] = image;
-    else if (id === "rock") TI[15] = image;
-    else if (id === "crate") {
-      S.cont_crate = image;
-      S.cont_crate_open = image;
-    } else if (id === "pistol") S.gun_pistol = image;
-    else if (id === "rifle") S.gun_rifle = image;
-    else if (
-      [
-        "player",
-        "survivor",
-        "walker",
-        "dog",
-        "brute",
-        "spitter",
-        "riot",
-        "howler",
-      ].includes(id)
-    ) {
-      S[id] = image;
-      if (id !== "player" && id !== "survivor") {
-        const tinted = cnv(image.width, image.height);
-        const g = tinted.getContext("2d");
-        g.drawImage(image, 0, 0);
-        g.globalCompositeOperation = "source-atop";
-        g.fillStyle = "rgba(166,232,60,.22)";
-        g.fillRect(0, 0, tinted.width, tinted.height);
-        S[id + "_e"] = tinted;
-      }
-    } else ICONS[id] = image;
-  });
+  loadSprite(
+    url,
+    (image) => {
+      if (id === "tree") TI[14] = image;
+      else if (id === "rock") TI[15] = image;
+      else if (id === "crate") {
+        S.cont_crate = image;
+        S.cont_crate_open = image;
+      } else if (id === "pistol") S.gun_pistol = image;
+      else if (id === "rifle") S.gun_rifle = image;
+      else if (
+        [
+          "player",
+          "survivor",
+          "walker",
+          "dog",
+          "brute",
+          "spitter",
+          "riot",
+          "howler",
+        ].includes(id)
+      ) {
+        S[id] = image;
+        if (id !== "player" && id !== "survivor") {
+          const tinted = cnv(image.width, image.height);
+          const g = tinted.getContext("2d");
+          g.drawImage(image, 0, 0);
+          g.globalCompositeOperation = "source-atop";
+          g.fillStyle = "rgba(166,232,60,.22)";
+          g.fillRect(0, 0, tinted.width, tinted.height);
+          S[id + "_e"] = tinted;
+        }
+      } else ICONS[id] = image;
+    },
+    ATLAS_SIZES[id] || [12, 12],
+  );
 }
 loadSpriteSheet("./assets/effects/small-explosion.png", (sheet) => {
   VFX_ASSETS.explosion = sheet;
@@ -1386,13 +1405,14 @@ function enterWorld() {
     P.iframe = 2;
     cam.x = P.x;
     cam.y = P.y;
-    Z = [];
-    PR = [];
-    DR = [];
-    CL = [];
-    TX = [];
-    LG = [];
-    VFX = [];
+    Z.length = 0;
+    PR.length = 0;
+    PT.length = 0;
+    DR.length = 0;
+    CL.length = 0;
+    TX.length = 0;
+    LG.length = 0;
+    VFX.length = 0;
     journalAdd(
       "Тихий вечер",
       "21:47. Артём Вересов, бывший тренер по стрельбе из лука. Вспышка над городом. Лук из шкафа. Двор — крепость.",
@@ -3007,7 +3027,11 @@ function respawn() {
   P.poison = 0;
   P.iframe = 3;
   P.inCar = null;
-  Z = Z.filter((z) => dist(z.x, z.y, BASEX, BASEY) > 30 * 16);
+  Z.splice(
+    0,
+    Z.length,
+    ...Z.filter((z) => dist(z.x, z.y, BASEX, BASEY) > 30 * 16),
+  );
   siege = null;
   $("siegeB").classList.add("hid");
   $("deathOv").classList.add("hid");
@@ -4876,14 +4900,14 @@ function loadGame() {
   P.stDelay = 0;
   P.emptyT = 0;
   P.inCar = null;
-  Z = [];
-  PR = [];
-  PT = [];
-  DR = [];
-  CL = [];
-  TX = [];
-  LG = [];
-  VFX = [];
+  Z.length = 0;
+  PR.length = 0;
+  PT.length = 0;
+  DR.length = 0;
+  CL.length = 0;
+  TX.length = 0;
+  LG.length = 0;
+  VFX.length = 0;
   siege = null;
   searching = null;
   buildSel = null;
@@ -4970,14 +4994,14 @@ function initGame(seed, diffK) {
     EX.add(k);
   cam.x = BASEX;
   cam.y = BASEY;
-  Z = [];
-  PR = [];
-  PT = [];
-  DR = [];
-  CL = [];
-  TX = [];
-  LG = [];
-  VFX = [];
+  Z.length = 0;
+  PR.length = 0;
+  PT.length = 0;
+  DR.length = 0;
+  CL.length = 0;
+  TX.length = 0;
+  LG.length = 0;
+  VFX.length = 0;
   buildSel = null;
   curCamp = null;
   curCar = null;

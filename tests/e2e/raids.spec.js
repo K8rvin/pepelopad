@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 async function installRaidDriver(page) {
-  await page.route("**/src/game.js", async (route) => {
+  await page.route("**/src/game.js*", async (route) => {
     const response = await route.fetch();
     const source = await response.text();
     const marker = "startAttract();\nrequestAnimationFrame(frame);";

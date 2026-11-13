@@ -1,6 +1,54 @@
-export function loadSprite(url, apply) {
+export function normalizeSprite(image, width, height) {
+  const source = document.createElement("canvas");
+  source.width = image.width;
+  source.height = image.height;
+  const sourceContext = source.getContext("2d");
+  sourceContext.drawImage(image, 0, 0);
+  const pixels = sourceContext.getImageData(
+    0,
+    0,
+    source.width,
+    source.height,
+  ).data;
+  let left = source.width,
+    top = source.height,
+    right = -1,
+    bottom = -1;
+  for (let y = 0; y < source.height; y++)
+    for (let x = 0; x < source.width; x++)
+      if (pixels[(x + y * source.width) * 4 + 3] > 0) {
+        left = Math.min(left, x);
+        top = Math.min(top, y);
+        right = Math.max(right, x);
+        bottom = Math.max(bottom, y);
+      }
+  if (right < 0) return image;
+
+  const output = document.createElement("canvas");
+  output.width = width;
+  output.height = height;
+  const context = output.getContext("2d");
+  context.imageSmoothingEnabled = false;
+  context.drawImage(
+    source,
+    left,
+    top,
+    right - left + 1,
+    bottom - top + 1,
+    0,
+    0,
+    width,
+    height,
+  );
+  return output;
+}
+
+export function loadSprite(url, apply, size) {
   const image = new Image();
-  image.addEventListener("load", () => apply(image));
+  image.addEventListener("load", () => {
+    if (size) apply(normalizeSprite(image, size[0], size[1]));
+    else apply(image);
+  });
   image.src = url;
   return image;
 }
