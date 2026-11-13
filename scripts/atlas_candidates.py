@@ -33,7 +33,15 @@ SELECTION = {
     "riot": 436140,
     "howler": 436432,
     "tree": 408,
+    "car_sedan": 623863,
+    "car_blue": 438334,
+    "car_taxi": 452815,
+    "car_police": 438920,
+    "car_ambulance": 545378,
+    "car_truck": 532690,
+    "car_wreck": 496956,
 }
+ROTATE_RIGHT = {name for name in SELECTION if name.startswith("car_")}
 
 with zipfile.ZipFile(ZIP_PATH) as archive:
     captions = json.load(archive.open("captions.json"))
@@ -50,6 +58,8 @@ with zipfile.ZipFile(ZIP_PATH) as archive:
         pixels = tokens[index].reshape(16, 16)
         rgba = np.dstack((palette[pixels], (pixels != 0).astype("uint8") * 255))
         sprite = Image.fromarray(rgba).resize((16 * scale, 16 * scale), Image.Resampling.NEAREST)
+        if name in ROTATE_RIGHT:
+            sprite = sprite.rotate(-90, expand=True)
         x = position % columns * 16 * scale
         y = position // columns * 48
         sheet.paste(sprite, (x, y))

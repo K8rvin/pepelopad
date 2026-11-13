@@ -45,6 +45,13 @@
     "spitter": { "src": "/assets/sprites/spitter.png", "caption": "side-view mossy brown swamp zombie", "license": "CC0-1.0" },
     "riot": { "src": "/assets/sprites/riot.png", "caption": "limping zombie soldier in muted colors", "license": "CC0-1.0" },
     "howler": { "src": "/assets/sprites/howler.png", "caption": "marching brown zombie soldier with sunken eyes", "license": "CC0-1.0" },
-    "tree": { "src": "/assets/sprites/tree.png", "caption": "apple tree", "license": "CC0-1.0" }
+    "tree": { "src": "/assets/sprites/tree.png", "caption": "apple tree", "license": "CC0-1.0" },
+    "car_sedan": { "src": "/assets/sprites/car_sedan.png", "caption": "top-down orange car with round headlamps", "license": "CC0-1.0" },
+    "car_blue": { "src": "/assets/sprites/car_blue.png", "caption": "top-down four-wheeled white armored car with a roof hatch in earthy colors", "license": "CC0-1.0" },
+    "car_taxi": { "src": "/assets/sprites/car_taxi.png", "caption": "top-down convertible car with headrests showing", "license": "CC0-1.0" },
+    "car_police": { "src": "/assets/sprites/car_police.png", "caption": "top-down angled police car with a roof siren bar", "license": "CC0-1.0" },
+    "car_ambulance": { "src": "/assets/sprites/car_ambulance.png", "caption": "top-down vintage ambulance with a high box body in warm colors", "license": "CC0-1.0" },
+    "car_truck": { "src": "/assets/sprites/car_truck.png", "caption": "top-down dump truck with a dirt load", "license": "CC0-1.0" },
+    "car_wreck": { "src": "/assets/sprites/car_wreck.png", "caption": "top-down rusty teal car with a spoiler", "license": "CC0-1.0" }
   }
 }

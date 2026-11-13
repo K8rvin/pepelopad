@@ -472,6 +472,13 @@ const ATLAS_SIZES = {
   tree: [16, 16],
   pistol: [10, 6],
   rifle: [16, 6],
+  car_sedan: [28, 16],
+  car_blue: [28, 16],
+  car_taxi: [28, 16],
+  car_police: [28, 16],
+  car_ambulance: [28, 16],
+  car_truck: [32, 16],
+  car_wreck: [28, 16],
 };
 for (const [id, url] of Object.entries({
   wood: "./assets/sprites/wood.png",
@@ -498,11 +505,19 @@ for (const [id, url] of Object.entries({
   riot: "./assets/sprites/riot.png",
   howler: "./assets/sprites/howler.png",
   tree: "./assets/sprites/tree.png",
+  car_sedan: "./assets/sprites/car_sedan.png",
+  car_blue: "./assets/sprites/car_blue.png",
+  car_taxi: "./assets/sprites/car_taxi.png",
+  car_police: "./assets/sprites/car_police.png",
+  car_ambulance: "./assets/sprites/car_ambulance.png",
+  car_truck: "./assets/sprites/car_truck.png",
+  car_wreck: "./assets/sprites/car_wreck.png",
 })) {
   loadSprite(
     url,
     (image) => {
-      if (id === "tree") TI[14] = image;
+      if (id.startsWith("car_")) S[id] = image;
+      else if (id === "tree") TI[14] = image;
       else if (id === "rock") TI[15] = image;
       else if (id === "crate") {
         S.cont_crate = image;
@@ -3588,6 +3603,8 @@ function updateQuestUI() {
     q.targets && q.targets.length
       ? "◈ " + q.targets[0].label + " · M — карта"
       : "Подготовка на Рубеже";
+  if (q.id === "m2" && Q.prog.bp_crossbow && !Q.prog.craft_crossbow)
+    $("qHint").textContent = "Чертёж найден. Собери арбалет на верстаке [C].";
 }
 function goalLabel(k, n) {
   if (ITEMS[k]) return ITEMS[k].n + " ×" + n;
