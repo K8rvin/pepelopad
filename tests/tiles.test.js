@@ -21,11 +21,12 @@ describe("тайлы чанков", () => {
     expect(tiles[4 + 5 * 16]).toBe(3);
   });
 
-  it("размещает зебру вне перекрёстка", () => {
+  it("размещает зебру на подходе к перекрёстку по направлению дороги", () => {
     const tiles = createTerrainTiles(0, 0, 1);
-    expect(tiles[2 + 12 * 16]).toBe(29);
-    expect(tiles[12 + 2 * 16]).toBe(29);
+    expect(tiles[2 + 6 * 16]).toBe(29);
+    expect(tiles[6 + 2 * 16]).toBe(32);
     expect(tiles[2 + 2 * 16]).toBe(2);
+    expect(tiles[2 + 12 * 16]).not.toBe(29);
   });
 
   it("не заменяет дорогу и тротуар деревьями и камнями", () => {
@@ -41,7 +42,8 @@ describe("тайлы чанков", () => {
     stampProps(tiles, chunk, props);
     expect(tiles[2 + 5 * 16]).toBe(28);
     expect(tiles[4 + 5 * 16]).toBe(3);
-    expect(tiles[2 + 12 * 16]).toBe(29);
+    expect(tiles[2 + 6 * 16]).toBe(29);
+    expect(tiles[6 + 2 * 16]).toBe(32);
   });
 
   it("не оставляет деревья внутри здания", () => {

@@ -4,6 +4,7 @@ import {
   carTileFits,
   cityRadiusAt,
   crosswalkAt,
+  crosswalkOrientationAt,
   districtOf,
   pavedAt,
   roadAt,
@@ -43,11 +44,14 @@ describe("генерация города", () => {
     expect(pavedAt(5, 5)).toBe(false);
   });
 
-  it("размещает зебру только в середине квартала", () => {
-    expect(crosswalkAt(2, 12)).toBe(true);
-    expect(crosswalkAt(12, 2)).toBe(true);
+  it("размещает зебру только на подходе к перекрёстку", () => {
+    expect(crosswalkAt(2, 6)).toBe(true);
+    expect(crosswalkAt(6, 2)).toBe(true);
+    expect(crosswalkAt(2, 12)).toBe(false);
     expect(crosswalkAt(2, 2)).toBe(false);
-    expect(crosswalkAt(-26, -16)).toBe(true);
+    expect(crosswalkAt(-26, -22)).toBe(true);
+    expect(crosswalkOrientationAt(2, 6)).toBe("vertical");
+    expect(crosswalkOrientationAt(6, 2)).toBe("horizontal");
   });
 
   it("не разрешает пересечения зданий с учётом отступа", () => {

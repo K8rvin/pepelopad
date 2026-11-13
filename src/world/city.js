@@ -53,10 +53,16 @@ export function pavedAt(gx, gy) {
   return roadAt(gx, gy) || mx === 4 || my === 4 || mx === 27 || my === 27;
 }
 
-export function crosswalkAt(gx, gy) {
+export function crosswalkOrientationAt(gx, gy) {
   const mx = mod(gx, CELL),
     my = mod(gy, CELL);
-  return (mx === 2 && my === 12) || (mx === 12 && my === 2);
+  if (mx === 2 && my === 6) return "vertical";
+  if (mx === 6 && my === 2) return "horizontal";
+  return null;
+}
+
+export function crosswalkAt(gx, gy) {
+  return crosswalkOrientationAt(gx, gy) !== null;
 }
 
 export function buildingFits(buildings, gx, gy, w, h, margin = 1) {

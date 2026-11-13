@@ -150,5 +150,9 @@ export function createTiles() {
     R(g, 2, 2, 12, 12, "#3a4030");
     R(g, 4, 4, 8, 8, "#565e48");
   });
+  TI[32] = spr(16, 16, (g) => {
+    g.drawImage(TI[2], 0, 0);
+    for (let i = 0; i < 4; i++) R(g, 2, 1 + i * 4, 12, 2, "#d9cba6");
+  });
   return TI;
 }

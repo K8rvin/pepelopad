@@ -1,7 +1,7 @@
 import { mb32, h2 } from "../core/rng.js";
 import { mod } from "../core/math.js";
 import { CELL } from "../core/constants.js";
-import { crosswalkAt } from "./city.js";
+import { crosswalkOrientationAt } from "./city.js";
 import { POI } from "../data/world.js";
 
 export function createTerrainTiles(cx, cy, seed) {
@@ -14,7 +14,8 @@ export function createTerrainTiles(cx, cy, seed) {
     const mx = mod(gx, CELL);
     const my = mod(gy, CELL);
     if (mx < 4 && my < 4) tiles[i] = 2;
-    else if (crosswalkAt(gx, gy)) tiles[i] = 29;
+    else if (crosswalkOrientationAt(gx, gy))
+      tiles[i] = crosswalkOrientationAt(gx, gy) === "vertical" ? 29 : 32;
     else if (mx < 4) tiles[i] = mx === 2 ? 28 : 2;
     else if (my < 4) tiles[i] = my === 2 ? 27 : 2;
     else if (mx === 4 || my === 4 || mx === 27 || my === 27) tiles[i] = 3;

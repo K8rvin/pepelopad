@@ -12,16 +12,11 @@ import {
 } from "/src/core/math.js";
 import { mb32, h2, hashStr } from "/src/core/rng.js";
 import { createEventBus } from "/src/core/events.js";
+import { T, SC, CH, CELL, CITY_R, BASEX, BASEY } from "/src/core/constants.js";
 import {
-  T,
-  SC,
-  CH,
-  CELL,
-  CITY_R,
-  BASEX,
-  BASEY,
-  ROAD_LINE_WIDTH,
-} from "/src/core/constants.js";
+  drawHorizontalRoadLine,
+  drawVerticalRoadLine,
+} from "/src/render/roadMarkings.js";
 import {
   ITEMS,
   WEAPONS,
@@ -1074,11 +1069,11 @@ function paintChunk(c) {
         t = c.t[x + y * 16];
       g.drawImage(TI[t] || TI[0], x * 16, y * 16);
       if (mod(gx, CELL) < 4 && mod(gy, CELL) >= 4 && mod(gx, CELL) === 2)
-        R(g, x * 16 + 7, y * 16, ROAD_LINE_WIDTH, 16, "#b7a23c55");
+        drawVerticalRoadLine(g, x * 16 + 8, y * 16, "#b7a23c55");
       if (mod(gy, CELL) < 4 && mod(gx, CELL) >= 4 && mod(gy, CELL) === 2)
-        R(g, x * 16, y * 16 + 7, 16, ROAD_LINE_WIDTH, "#b7a23c55");
+        drawHorizontalRoadLine(g, x * 16, y * 16 + 8, "#b7a23c55");
       if (mod(gx, CELL) < 4 && mod(gy, CELL) < 4 && mod(gx, CELL) === 0)
-        R(g, x * 16, y * 16, 16, ROAD_LINE_WIDTH, "#d9cba633");
+        drawHorizontalRoadLine(g, x * 16, y * 16 + 8, "#d9cba633");
       if ((t === 6 || t === 7) && y < 15 && !SOLID.has(c.t[x + (y + 1) * 16])) {
         g.fillStyle = "rgba(0,0,0,.25)";
         g.fillRect(x * 16, (y + 1) * 16, 16, 4);
