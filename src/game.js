@@ -2057,7 +2057,7 @@ function ambientSpawn(dt) {
       ) -
       stats.calm +
       (Q.endless ? 2 : 0);
-  if (Z.length >= Math.max(6, cap)) return;
+  if (Z.length >= Math.max(day < 3 ? 4 : 6, cap)) return;
   for (let i = 0; i < 8; i++) {
     const a = rnd() * Math.PI * 2,
       d = (17 + rnd() * 10) * 16,
@@ -2069,7 +2069,8 @@ function ambientSpawn(dt) {
     const r = rnd(),
       th = threat();
     let type = "walker";
-    if (night && day >= 4 && r < 0.07) type = "stalker";
+    if (day < 3) type = "walker";
+    else if (night && day >= 4 && r < 0.07) type = "stalker";
     else if (th > 0.55 && r < 0.05) type = "riot";
     else if (th > 0.5 && r < 0.11) type = "brute";
     else if (th > 0.3 && r < 0.18) type = "bloater";
