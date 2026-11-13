@@ -7,6 +7,7 @@ export { POI, LOOT, BUILDS, PROJ, DIFFS } from "./world.js";
 export { VEHICLES } from "./vehicles.js";
 export { CAMP_UPGRADES } from "./camps.js";
 export { DISTRICTS } from "./districts.js";
+export { RAIDS } from "./raids.js";
 export { CTRLS } from "./controls.js";
 export { MAIN } from "./quests.js";
 export { validateGameData, assertValidGameData } from "./validate.js";

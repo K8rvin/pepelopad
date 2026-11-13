@@ -28,6 +28,7 @@ import {
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   CTRLS,
   MAIN,
   assertValidGameData,
@@ -42,6 +43,7 @@ import {
   districtGuardCount,
   rollDistrictLoot,
 } from "/src/systems/districts.js";
+import { activeRaidId, raidDistrictRules } from "/src/systems/raids.js";
 import {
   advanceVehicle,
   consumeVehicleFuel,
@@ -154,6 +156,7 @@ assertValidGameData({
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   MAIN,
 });
 
@@ -561,6 +564,7 @@ let stats,
     given: {},
     endless: false,
     sideSeq: 0,
+    raids: {},
   },
   baseProj = {
     wall: 0,
@@ -1788,7 +1792,20 @@ function alertNoise(x, y, r) {
     col: "rgba(217,203,166,.25)",
   });
 }
+function currentRaidRules() {
+  return raidDistrictRules(
+    activeRaidId(Q.side),
+    districtOf(
+      Math.floor(P.x / (CELL * 16)),
+      Math.floor(P.y / (CELL * 16)),
+      SEED,
+    ),
+  );
+}
 function spawnZ(type, x, y, o = {}) {
+  const rules = currentRaidRules();
+  if (rules && o.elite === undefined && rnd() < rules.eliteChance)
+    o = { ...o, elite: true };
   Z.push(createZombie(type, x, y, o, DIFF, threat(), rnd));
 }
 function hurtZ(z, d, ang, kb) {
@@ -2030,11 +2047,13 @@ function ambientSpawn(dt) {
         SEED,
       ),
     ),
+    raidDanger = currentRaidRules()?.danger || 1,
     cap =
       Math.round(
         (6 + Math.min(day, 12) * 1.3 + (night ? 6 : 0)) *
           DIFF.cap *
-          district.danger,
+          district.danger *
+          raidDanger,
       ) -
       stats.calm +
       (Q.endless ? 2 : 0);
@@ -3309,6 +3328,7 @@ function handleQuestEvent(type, data) {
       p = isSide ? Q.sideProg[q.id] : Q.prog;
     if (!p) continue;
     if (type === "camp_supply" && q.campId !== data.camp) continue;
+    if (type === "deliver" && q.campId && q.campId !== data.camp) continue;
     applyQuestEvent(p, type, data);
     if (goalsComplete(q, p)) completeQuest(q);
   }
@@ -3338,6 +3358,7 @@ function completeQuest(q) {
     }
     journalAdd(q.title, q.story || "Поручение выполнено.");
     if (q.kind === "side") {
+      if (q.raid) Q.raids[q.raid] = "done";
       Q.side = Q.side.filter((s) => s.id !== q.id);
       delete Q.sideProg[q.id];
       if (Q.tracked === q.id) Q.tracked = "main";
@@ -3355,6 +3376,24 @@ function completeQuest(q) {
   } finally {
     completingQuest = false;
   }
+}
+function startRaid(camp, id) {
+  const def = RAIDS[id];
+  if (
+    !def ||
+    def.campId !== camp.id ||
+    Q.main < def.unlockMain ||
+    Q.raids[id] ||
+    Q.side.some((quest) => quest.raid === id)
+  )
+    return null;
+  const quest = { ...def, kind: "side", raid: id };
+  Q.side.push(quest);
+  Q.sideProg[id] = {};
+  Q.tracked = id;
+  toast(def.title + ". Особые правила указаны на карте.", "quest");
+  buildQuestList();
+  return quest;
 }
 function genSideQuest(src) {
   if (Q.side.length >= 3) return;
@@ -4130,6 +4169,25 @@ function buildCamp() {
     buildCamp();
   };
   acts.appendChild(q);
+  for (const def of Object.values(RAIDS)) {
+    if (
+      def.campId !== c.id ||
+      Q.main < def.unlockMain ||
+      Q.raids[def.id] ||
+      Q.side.some((quest) => quest.raid === def.id)
+    )
+      continue;
+    const raidButton = document.createElement("button");
+    raidButton.className = "btn acid small";
+    raidButton.style.margin = "4px";
+    raidButton.textContent = def.title;
+    raidButton.disabled = Q.side.length >= 3;
+    raidButton.onclick = () => {
+      startRaid(c, def.id);
+      buildCamp();
+    };
+    acts.appendChild(raidButton);
+  }
   if (countItem("cargo")) {
     const d = document.createElement("button");
     d.className = "btn acid small";
@@ -4139,7 +4197,7 @@ function buildCamp() {
       removeItem("cargo", 1);
       c.trust += 4;
       OV.set("CAMP" + c.id, c);
-      qEvent("deliver", {});
+      qEvent("deliver", { camp: c.id });
       toast("Груз доставлен. Доверие +4", "quest");
       buildCamp();
     };
@@ -4637,6 +4695,8 @@ function drawBigmap() {
     district.danger +
     " · добыча: " +
     district.loot.map(([id]) => ITEMS[id].n).join(", ");
+  const raidRules = currentRaidRules();
+  if (raidRules) $("mapDistrict").textContent += " · " + raidRules.label;
   $("seedShow").textContent = SEED;
 }
 function openMap() {
@@ -4800,6 +4860,7 @@ function loadGame() {
   hasSpear = d.hasSpear;
   Q = d.Q;
   Q.sideProg = Q.sideProg || {};
+  Q.raids = Q.raids || {};
   baseProj = d.baseProj;
   stats = d.stats;
   J = d.J || [];
@@ -4887,6 +4948,7 @@ function initGame(seed, diffK) {
     given: {},
     endless: false,
     sideSeq: 0,
+    raids: {},
     forcedSiege: 0,
   };
   J = [];

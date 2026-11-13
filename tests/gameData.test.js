@@ -13,6 +13,7 @@ import {
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   MAIN,
   validateGameData,
 } from "../src/data/index.js";
@@ -31,6 +32,7 @@ const data = {
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   MAIN,
 };
 

@@ -12,6 +12,7 @@ export function validateGameData({
   VEHICLES = {},
   CAMP_UPGRADES = {},
   DISTRICTS = {},
+  RAIDS = {},
   MAIN = [],
 }) {
   const errors = [];
@@ -122,6 +123,16 @@ export function validateGameData({
       if (!Number.isFinite(vehicle[field]) || vehicle[field] <= 0)
         errors.push(`VEHICLES.${id}: invalid ${field}`);
     if (!vehicle.name) errors.push(`VEHICLES.${id}: name is required`);
+  }
+
+  for (const [id, raid] of Object.entries(RAIDS)) {
+    if (raid.id !== id) errors.push(`RAIDS.${id}: id mismatch`);
+    for (const [goal] of raid.goals || [])
+      if (goal !== "deliver" && !Object.hasOwn(ITEMS, goal))
+        errors.push(`RAIDS.${id}: unknown goal "${goal}"`);
+    for (const [item] of raid.grant || []) checkItem(item, `RAIDS.${id}.grant`);
+    for (const [item] of raid.reward?.items || [])
+      checkItem(item, `RAIDS.${id}.reward`);
   }
 
   checkUniqueIds(MAIN, "MAIN");
