@@ -19,6 +19,7 @@ async function installBalanceDriver(page) {
           P.x = (2 * CELL + 12) * 16;
           P.y = 17 * 16;
           for (let step = 0; step < seconds * 20; step++) {
+            Z.length = 0;
             if (state === "dead") {
               deaths++;
               respawn();
