@@ -12,7 +12,16 @@ import {
 } from "/src/core/math.js";
 import { mb32, h2, hashStr } from "/src/core/rng.js";
 import { createEventBus } from "/src/core/events.js";
-import { T, SC, CH, CELL, CITY_R, BASEX, BASEY } from "/src/core/constants.js";
+import {
+  T,
+  SC,
+  CH,
+  CELL,
+  CITY_R,
+  BASEX,
+  BASEY,
+  ROAD_LINE_WIDTH,
+} from "/src/core/constants.js";
 import {
   ITEMS,
   WEAPONS,
@@ -124,7 +133,7 @@ import {
   cityRadiusAt,
   districtOf,
   specialBlock,
-  roadAt,
+  pavedAt,
   buildingFits,
   carTileFits,
 } from "/src/world/city.js";
@@ -517,9 +526,14 @@ for (const [id, url] of Object.entries({
     url,
     (image) => {
       if (id.startsWith("car_")) S[id] = image;
-      else if (id === "tree") TI[14] = image;
-      else if (id === "rock") TI[15] = image;
-      else if (id === "crate") {
+      else if (id === "tree" || id === "rock") {
+        const index = id === "tree" ? 14 : 15,
+          terrain = cnv(16, 16),
+          g = terrain.getContext("2d");
+        g.drawImage(TI[index], 0, 0);
+        g.drawImage(image, 0, 0);
+        TI[index] = terrain;
+      } else if (id === "crate") {
         S.cont_crate = image;
         S.cont_crate_open = image;
       } else if (id === "pistol") S.gun_pistol = image;
@@ -791,7 +805,7 @@ function planBlock(bx, by) {
     buildingFits(p.buildings, gx, gy, w, h, m);
   const carFree = (gx, gy) => carTileFits(p.carTiles, gx, gy);
   const spotFree = (gx, gy) =>
-    !roadAt(gx, gy) && bFree(gx, gy, 1, 1, 1) && carFree(gx, gy);
+    !pavedAt(gx, gy) && bFree(gx, gy, 1, 1, 1) && carFree(gx, gy);
   const addBuilding = (type, x, y, w, h, name) => {
     const b = {
       type,
@@ -1056,11 +1070,11 @@ function paintChunk(c) {
         t = c.t[x + y * 16];
       g.drawImage(TI[t] || TI[0], x * 16, y * 16);
       if (mod(gx, CELL) < 4 && mod(gy, CELL) >= 4 && mod(gx, CELL) === 2)
-        R(g, x * 16 + 7, y * 16, 2, 16, "#b7a23c55");
+        R(g, x * 16 + 7, y * 16, ROAD_LINE_WIDTH, 16, "#b7a23c55");
       if (mod(gy, CELL) < 4 && mod(gx, CELL) >= 4 && mod(gy, CELL) === 2)
-        R(g, x * 16, y * 16 + 7, 16, 2, "#b7a23c55");
+        R(g, x * 16, y * 16 + 7, 16, ROAD_LINE_WIDTH, "#b7a23c55");
       if (mod(gx, CELL) < 4 && mod(gy, CELL) < 4 && mod(gx, CELL) === 0)
-        R(g, x * 16, y * 16, 16, 2, "#d9cba633");
+        R(g, x * 16, y * 16, 16, ROAD_LINE_WIDTH, "#d9cba633");
       if ((t === 6 || t === 7) && y < 15 && !SOLID.has(c.t[x + (y + 1) * 16])) {
         g.fillStyle = "rgba(0,0,0,.25)";
         g.fillRect(x * 16, (y + 1) * 16, 16, 4);

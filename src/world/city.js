@@ -47,6 +47,18 @@ export function roadAt(gx, gy) {
   return mod(gx, CELL) < 4 || mod(gy, CELL) < 4;
 }
 
+export function pavedAt(gx, gy) {
+  const mx = mod(gx, CELL),
+    my = mod(gy, CELL);
+  return roadAt(gx, gy) || mx === 4 || my === 4 || mx === 27 || my === 27;
+}
+
+export function crosswalkAt(gx, gy) {
+  const mx = mod(gx, CELL),
+    my = mod(gy, CELL);
+  return (mx === 2 && my === 12) || (mx === 12 && my === 2);
+}
+
 export function buildingFits(buildings, gx, gy, w, h, margin = 1) {
   for (const b of buildings) {
     if (

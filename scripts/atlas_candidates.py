@@ -36,7 +36,7 @@ SELECTION = {
     "car_sedan": 623863,
     "car_blue": 438334,
     "car_taxi": 452815,
-    "car_police": 438920,
+    "car_police": 461561,
     "car_ambulance": 545378,
     "car_truck": 532690,
     "car_wreck": 496956,

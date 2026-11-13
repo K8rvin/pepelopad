@@ -3,7 +3,9 @@ import {
   buildingFits,
   carTileFits,
   cityRadiusAt,
+  crosswalkAt,
   districtOf,
+  pavedAt,
   roadAt,
   specialBlock,
 } from "../src/world/city.js";
@@ -32,6 +34,20 @@ describe("генерация города", () => {
     expect(roadAt(0, 10)).toBe(true);
     expect(roadAt(-28, -5)).toBe(true);
     expect(roadAt(5, 5)).toBe(false);
+  });
+
+  it("не разрешает объекты на дороге и тротуаре", () => {
+    expect(pavedAt(2, 5)).toBe(true);
+    expect(pavedAt(4, 5)).toBe(true);
+    expect(pavedAt(27, 5)).toBe(true);
+    expect(pavedAt(5, 5)).toBe(false);
+  });
+
+  it("размещает зебру только в середине квартала", () => {
+    expect(crosswalkAt(2, 12)).toBe(true);
+    expect(crosswalkAt(12, 2)).toBe(true);
+    expect(crosswalkAt(2, 2)).toBe(false);
+    expect(crosswalkAt(-26, -16)).toBe(true);
   });
 
   it("не разрешает пересечения зданий с учётом отступа", () => {
