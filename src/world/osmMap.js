@@ -35,7 +35,6 @@ export function createOsmWorld(data, chunkSize = 256) {
     throw new Error("Invalid OSM world data");
   const chunks = new Map();
   for (const way of data.ways) {
-    const category = wayCategory(way.tags);
     for (const [x, y] of way.points) {
       const cx = Math.floor(x / chunkSize),
         cy = Math.floor(y / chunkSize),
@@ -50,6 +49,8 @@ export function createOsmWorld(data, chunkSize = 256) {
     ways: data.ways,
     relations: data.relations,
     bounds: boundsOfWays(data.ways),
+    wayById: new Map(data.ways.map((way) => [way.id, way])),
+    boundsByWay: new Map(data.ways.map((way) => [way.id, boundsOfWays([way])])),
     chunks,
     chunkSize,
   };

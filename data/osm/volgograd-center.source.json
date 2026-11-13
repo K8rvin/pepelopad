@@ -1,0 +1,17 @@
+{
+  "name": "volgograd-center",
+  "bbox": [
+    44.48,
+    48.69,
+    44.56,
+    48.75
+  ],
+  "origin": [
+    48.72,
+    44.519999999999996
+  ],
+  "source": "https://www.openstreetmap.org/copyright",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "retrievedAt": "2026-11-13T20:29:52.367437+00:00"
+}

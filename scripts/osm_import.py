@@ -152,7 +152,7 @@ def write_outputs(document, bbox, output_dir, name):
     public_dir = os.path.join("public/assets/maps")
     os.makedirs(public_dir, exist_ok=True)
     with open(os.path.join(public_dir, name + ".json"), "w", encoding="utf-8") as output:
-        json.dump(normalized, output, ensure_ascii=False, indent=2)
+        json.dump(normalized, output, ensure_ascii=False, separators=(",", ":"))
     return normalized
 
 
