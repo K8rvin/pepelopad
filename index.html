@@ -5277,39 +5277,46 @@
         updateQuestUI();
       }
       const gameEvents = createEventBus();
+      let completingQuest = false;
       gameEvents.on("*", (data, type) => handleQuestEvent(type, data));
       function qEvent(type, data) {
         gameEvents.emit(type, data);
       }
       function completeQuest(q) {
-        SFX.quest();
-        toast("ЗАДАНИЕ ВЫПОЛНЕНО: " + q.title, "quest");
-        if (q.reward) {
-          gainXP(q.reward.xp || 0);
-          if (q.reward.items)
-            for (const [id, n] of q.reward.items) addItem(id, n, true);
-          const rewardCamp = q.campId ? CAMPS.get(q.campId) : curCamp;
-          if (q.reward.trust && rewardCamp) {
-            rewardCamp.trust += q.reward.trust;
-            OV.set("CAMP" + rewardCamp.id, rewardCamp);
+        if (completingQuest) return;
+        completingQuest = true;
+        try {
+          SFX.quest();
+          toast("ЗАДАНИЕ ВЫПОЛНЕНО: " + q.title, "quest");
+          if (q.reward) {
+            gainXP(q.reward.xp || 0);
+            if (q.reward.items)
+              for (const [id, n] of q.reward.items) addItem(id, n, true);
+            const rewardCamp = q.campId ? CAMPS.get(q.campId) : curCamp;
+            if (q.reward.trust && rewardCamp) {
+              rewardCamp.trust += q.reward.trust;
+              OV.set("CAMP" + rewardCamp.id, rewardCamp);
+            }
           }
-        }
-        journalAdd(q.title, q.story || "Поручение выполнено.");
-        if (q.kind === "side") {
-          Q.side = Q.side.filter((s) => s.id !== q.id);
-          delete Q.sideProg[q.id];
-          if (Q.tracked === q.id) Q.tracked = "main";
-          if (Q.endless) genSideQuest("radio");
-        } else {
-          Q.main++;
-          if (Q.main >= MAIN.length) {
-            showEnding();
-            return;
+          journalAdd(q.title, q.story || "Поручение выполнено.");
+          if (q.kind === "side") {
+            Q.side = Q.side.filter((s) => s.id !== q.id);
+            delete Q.sideProg[q.id];
+            if (Q.tracked === q.id) Q.tracked = "main";
+            if (Q.endless) genSideQuest("radio");
+          } else {
+            Q.main++;
+            if (Q.main >= MAIN.length) {
+              showEnding();
+              return;
+            }
+            setupMain();
           }
-          setupMain();
+          buildQuestList();
+          saveGame();
+        } finally {
+          completingQuest = false;
         }
-        buildQuestList();
-        saveGame();
       }
       function genSideQuest(src) {
         if (Q.side.length >= 3) return;
