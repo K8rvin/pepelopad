@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("зомби рисуется на экране с логическим размером спрайта", async ({
+test("зомби и автомобиль рисуются с логическими размерами", async ({
   page,
 }) => {
   const errors = [];
@@ -16,12 +16,25 @@ test("зомби рисуется на экране с логическим ра
         cam.x = P.x;
         cam.y = P.y;
         spawnZ("walker", P.x + 70, P.y);
-        const stats = { draws: 0, sizes: [] };
+        CARS.set("render-car", {
+          id: "render-car",
+          type: "sedan",
+          x: P.x + 120,
+          y: P.y + 50,
+          angle: 0,
+          hp: 100,
+          fuel: 50,
+        });
+        const stats = { draws: 0, sizes: [], carDraws: 0, carSizes: [] };
         const original = CanvasRenderingContext2D.prototype.drawImage;
         CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {
           if (image === S.walker) {
             stats.draws++;
             stats.sizes.push([image.width, image.height]);
+          }
+          if (image === S.car_sedan) {
+            stats.carDraws++;
+            stats.carSizes.push([image.width, image.height]);
           }
           return original.call(this, image, ...args);
         };
@@ -35,9 +48,15 @@ ${marker}`;
   await page.locator("#btnSkip").click();
   await page.waitForFunction(() => document.body.className === "play");
   await page.evaluate(() => window.__zombieRenderCheck());
-  await page.waitForFunction(() => window.__zombieRenderStats.draws > 0);
+  await page.waitForFunction(
+    () =>
+      window.__zombieRenderStats.draws > 0 &&
+      window.__zombieRenderStats.carDraws > 0,
+  );
   const stats = await page.evaluate(() => window.__zombieRenderStats);
   expect(stats.draws).toBeGreaterThan(0);
+  expect(stats.carDraws).toBeGreaterThan(0);
   expect(stats.sizes.every(([w, h]) => w === 12 && h === 14)).toBe(true);
+  expect(stats.carSizes.every(([w, h]) => w === 28 && h === 16)).toBe(true);
   expect(errors).toEqual([]);
 });
