@@ -32,7 +32,7 @@ describe("реальные POI Волгограда", () => {
 
   it("разрешает все привязки кампании к существующим OSM ID", () => {
     const projection = createOsmGameProjection(city);
-    expect(Object.keys(projection.sites)).toHaveLength(14);
+    expect(Object.keys(projection.sites)).toHaveLength(15);
     expect(projection.sites.gunstore.osmName).toBe("Защита");
     expect(projection.blockForSite("base")).toEqual({ bx: 0, by: 0 });
     const targets = projection.campaignTargets();

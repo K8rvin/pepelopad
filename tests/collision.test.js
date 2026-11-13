@@ -47,4 +47,16 @@ describe("столкновения", () => {
     expect(body).toEqual({ x: 8, y: 16, r: 5 });
     expect(circleHit(20, 8, 5, context).kind).toBe("tile");
   });
+
+  it("проверяет круг непосредственно против OSM-полигона", () => {
+    const context = makeContext(),
+      wall = { id: "building" };
+    context.osmSolidAt = (x, y, radius) => (x + radius >= 16 ? wall : null);
+    expect(getSolid(1, 0, context)).toMatchObject({ kind: "tile", o: wall });
+    expect(circleHit(12, 8, 5, context)).toMatchObject({
+      kind: "tile",
+      o: wall,
+    });
+    expect(circleHit(8, 8, 5, context)).toBeNull();
+  });
 });

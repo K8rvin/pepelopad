@@ -4,7 +4,6 @@ import {
   rnd,
   ri,
   pick,
-  pickR,
   mod,
   dist,
   d2,
@@ -12,11 +11,7 @@ import {
 } from "/src/core/math.js";
 import { mb32, h2, hashStr } from "/src/core/rng.js";
 import { createEventBus } from "/src/core/events.js";
-import { T, SC, CH, CELL, CITY_R, BASEX, BASEY } from "/src/core/constants.js";
-import {
-  drawHorizontalRoadLine,
-  drawVerticalRoadLine,
-} from "/src/render/roadMarkings.js";
+import { T, SC, CH, CELL, BASEX, BASEY } from "/src/core/constants.js";
 import {
   ITEMS,
   WEAPONS,
@@ -106,9 +101,13 @@ import { createActorSprites } from "/src/render/proceduralActors.js";
 import { createStructureSprites } from "/src/render/proceduralStructures.js";
 import { createItemIcons } from "/src/render/proceduralItems.js";
 import { renderVfx } from "/src/render/vfx.js";
-import { createQuarryNest, prepareMegaQuest } from "/src/systems/campaign.js";
+import { prepareMegaQuest } from "/src/systems/campaign.js";
 import { collectQuestGrants } from "/src/systems/questGrants.js";
-import { createSaveData, parseSave } from "/src/persistence/saveSchema.js";
+import {
+  CITY_ID,
+  createSaveData,
+  parseSave,
+} from "/src/persistence/saveSchema.js";
 import { resolveLoadMode } from "/src/persistence/loadMode.js";
 import { renderHome as drawHome } from "/src/render/homeRenderer.js";
 import {
@@ -134,27 +133,19 @@ import { createDomUI } from "/src/ui/domUI.js";
 import { createMapController } from "/src/ui/mapController.js";
 import { attachMapInteractions } from "/src/ui/mapInteractions.js";
 import { FLOOR_DEFINITIONS } from "/src/data/floors.js";
-import {
-  cityRadiusAt,
-  districtOf,
-  specialBlock,
-  pavedAt,
-  buildingFits,
-  carTileFits,
-} from "/src/world/city.js";
+import { districtOf } from "/src/world/city.js";
 import {
   spatialKey,
   addToSpatialGrid,
   moveInSpatialGrid,
   nearInSpatialGrid,
 } from "/src/world/spatialGrid.js";
-import {
-  createTerrainTiles,
-  stampBuilding,
-  stampBase,
-  stampProps,
-} from "/src/world/tiles.js";
 import { createChunkManager } from "/src/world/chunkManager.js";
+import { loadOsmWorld } from "/src/world/osmMap.js";
+import { createOsmGameProjection } from "/src/world/osmPois.js";
+import { createOsmCityModel } from "/src/world/osmCity.js";
+import { osmSolidAt } from "/src/world/osmCollision.js";
+import { renderOsmMap } from "/src/render/osmMapRenderer.js";
 
 assertValidGameData({
   ITEMS,
@@ -173,6 +164,13 @@ assertValidGameData({
   RAIDS,
   MAIN,
 });
+
+const OSM_WORLD = await loadOsmWorld(
+  `${import.meta.env.BASE_URL}assets/maps/volgograd-center.json`,
+);
+const OSM_PROJECTION = createOsmGameProjection(OSM_WORLD);
+const OSM_CITY = createOsmCityModel(OSM_WORLD, OSM_PROJECTION);
+const OSM_QUEST_TARGETS = OSM_PROJECTION.campaignTargets();
 
 const $ = (id) => document.getElementById(id);
 $("appVersion").textContent =
@@ -700,6 +698,10 @@ const collisionContext = {
   containers: CMAP,
   solidTiles: SOLID,
   tileAt,
+  osmSolidAt: (x, y, radius) =>
+    currentFloorId === "outdoor" && !inBase(x, y)
+      ? osmSolidAt(x, y, OSM_CITY.gameWorld, radius)
+      : null,
   carsNear,
 };
 const { genChunk, getChunk } = createChunkManager({
@@ -720,6 +722,7 @@ const { genChunk, getChunk } = createChunkManager({
   gainXP,
   toast,
   spawnGuards,
+  stampCityBuildings: false,
 });
 function resetStats() {
   stats = {
@@ -797,256 +800,11 @@ function threat() {
   return threatForDay(day);
 }
 function planBlock(bx, by) {
-  const k = K(bx, by);
-  if (PLAN.has(k)) return PLAN.get(k);
-  const r = mb32((h2(bx, by, SEED) * 1e9) | 0),
-    sp = specialBlock(bx, by),
-    dis = districtOf(bx, by, SEED);
-  const p = {
-    bx,
-    by,
-    k,
-    district: dis,
-    special: sp,
-    buildings: [],
-    containers: [],
-    cars: [],
-    carTiles: [],
-    props: [],
-    camp: null,
-    nest: null,
-    poi: null,
-    name: null,
-  };
-  const ox = bx * CELL,
-    oy = by * CELL;
-  const pick = (a) => pickR(r, a);
-  const bFree = (gx, gy, w, h, m = 1) =>
-    buildingFits(p.buildings, gx, gy, w, h, m);
-  const carFree = (gx, gy) => carTileFits(p.carTiles, gx, gy);
-  const spotFree = (gx, gy) =>
-    !pavedAt(gx, gy) && bFree(gx, gy, 1, 1, 1) && carFree(gx, gy);
-  const addBuilding = (type, x, y, w, h, name) => {
-    const b = {
-      type,
-      x: ox + x,
-      y: oy + y,
-      w,
-      h,
-      name: name || POI[type].name,
-    };
-    p.buildings.push(b);
-    const PD = POI[type],
-      spots = [];
-    for (let xx = 1; xx < w - 1; xx++) {
-      if (xx !== Math.floor(w / 2)) spots.push([xx, h - 2]);
-      spots.push([xx, 1]);
-    }
-    for (let yy = 2; yy < h - 2; yy++) {
-      spots.push([1, yy]);
-      spots.push([w - 2, yy]);
-    }
-    const n = Math.min(
-      spots.length,
-      PD.contN[0] + Math.floor(r() * (PD.contN[1] - PD.contN[0] + 1)),
-    );
-    for (let i = 0; i < n; i++) {
-      if (!spots.length) break;
-      const s = spots.splice(Math.floor(r() * spots.length), 1)[0],
-        ct = PD.contTypes[Math.floor(r() * PD.contTypes.length)];
-      p.containers.push({
-        x: b.x + s[0],
-        y: b.y + s[1],
-        type: ct,
-        id: k + ":b" + p.buildings.length + ":" + i,
-      });
-    }
-    return b;
-  };
-  const addCar = (x, y, type, ang) => {
-    const gx = ox + x,
-      gy = oy + y;
-    if (!bFree(gx, gy, 2, 1, 1) || !carFree(gx, gy)) return;
-    p.carTiles.push([gx, gy]);
-    p.cars.push({
-      id: k + ":car" + p.cars.length,
-      x: gx * 16 + 8,
-      y: gy * 16 + 8,
-      angle: ang || 0,
-      type,
-      locked: r() < 0.3,
-      broken: r() < 0.2,
-      fuel: 25 + r() * 60,
-      hp: 65 + r() * 35,
-    });
-  };
-  const addCamp = (id, name) => {
-    p.camp = { id, name, x: (ox + 14) * 16, y: (oy + 14) * 16, bx, by };
-    p.name = name;
-  };
-  const scatter = (n, x0, y0, w, h) => {
-    for (let i = 0; i < n; i++)
-      for (let t = 0; t < 12; t++) {
-        const gx = ox + x0 + Math.floor(r() * w),
-          gy = oy + y0 + Math.floor(r() * h);
-        if (spotFree(gx, gy)) {
-          p.props.push({
-            type: r() < 0.72 ? "tree" : "rock",
-            x: gx,
-            y: gy,
-          });
-          break;
-        }
-      }
-  };
-  if (sp === "base") {
-    p.name = "Рубеж";
-    p.poi = "base";
-    for (let i = 0; i < 8; i++) {
-      const edge = Math.floor(r() * 4);
-      let gx, gy;
-      if (edge === 0) {
-        gx = 5;
-        gy = 6 + Math.floor(r() * 19);
-      } else if (edge === 1) {
-        gx = 26;
-        gy = 6 + Math.floor(r() * 19);
-      } else if (edge === 2) {
-        gx = 6 + Math.floor(r() * 19);
-        gy = 5;
-      } else {
-        gx = 6 + Math.floor(r() * 19);
-        gy = 26;
-      }
-      p.props.push({ type: "tree", x: ox + gx, y: oy + gy });
-    }
-  } else if (sp === "quarry") {
-    const mega = OV.get("F" + k)?.mega === true;
-    p.nest = createQuarryNest(ox, oy, mega);
-    p.name = mega ? "Логово Матки" : "Карьер";
-    p.poi = "quarry";
-    for (let i = 0; i < 4; i++) {
-      const x = 6 + Math.floor(r() * 16),
-        y = 6 + Math.floor(r() * 16);
-      if (dist(x, y, 14, 14) > 6) addCar(x, y, "truck", r() * 6);
-    }
-  } else if (sp && sp.startsWith("camp_")) {
-    addCamp(
-      sp,
-      sp === "camp_bridge"
-        ? "Лагерь «Мост»"
-        : sp === "camp_farm"
-          ? "Ферма «Рассвет»"
-          : "Депо «Север»",
-    );
-    p.poi = "camp";
-  } else if (sp) {
-    const b = addBuilding(
-      sp,
-      5,
-      5,
-      POI[sp].w,
-      POI[sp].h,
-      {
-        supermarket: "Супермаркет «Калина»",
-        gunstore: "Оружейный «Калибр»",
-        hospital: "Больница «Милосердие»",
-        gas: "АЗС «Факел»",
-        garage: "Автосервис «Поршень»",
-        police: "Участок №13",
-        warehouse: "Склад «Промтовары»",
-      }[sp],
-    );
-    p.poi = sp;
-    p.name = b.name;
-    for (let i = 0; i < 3; i++)
-      addCar(
-        6 + i * 4,
-        Math.min(24, b.y - oy + b.h + 2),
-        sp === "police" ? "police" : sp === "hospital" ? "ambulance" : "sedan",
-        0,
-      );
-    scatter(3, 5, Math.min(22, b.h + 7), 18, 4);
-  } else if (dis === "outskirts") {
-    if (r() < 0.08 && !OV.get("D" + k)) {
-      p.nest = {
-        x: (ox + 14) * 16,
-        y: (oy + 14) * 16,
-        tier: Math.hypot(bx, by) < 8 ? 1 : 2,
-        mega: false,
-        id: k,
-      };
-      p.name = "Рассадник";
-      p.poi = "nest";
-    } else if (r() < 0.05) {
-      addCamp(
-        "camp_" + k,
-        "Лагерь «" +
-          pick(["Тихий", "Сосны", "Овраг", "Ретранслятор", "Платформа"]) +
-          "»",
-      );
-      p.poi = "camp";
-    } else {
-      if (r() < 0.2) addBuilding("house", 8, 8, 7, 6, "Опустевший дом");
-      scatter(18, 4, 4, 22, 22);
-    }
-  } else if (dis === "home") {
-    scatter(6, 5, 5, 21, 21);
-  } else if (dis === "residential" || dis === "suburb") {
-    for (let ly = 0; ly < 2; ly++)
-      for (let lx = 0; lx < 2; lx++) {
-        const x = 5 + lx * 11,
-          y = 5 + ly * 11,
-          type = dis === "suburb" ? "house" : "apartments",
-          b = addBuilding(
-            type,
-            x,
-            y,
-            type === "house" ? 7 : 10,
-            type === "house" ? 6 : 9,
-          );
-        const cy = y + b.h + 1;
-        if (r() < 0.6 && cy <= 26)
-          addCar(x + 1, cy, pick(["sedan", "blue", "taxi"]), Math.PI / 2);
-        scatter(3, x, y, 10, 10);
-      }
-  } else if (dis === "commercial") {
-    const t = pick(["supermarket", "pharmacy", "office", "gunstore"]),
-      b = addBuilding(t, 5, 5, Math.min(POI[t].w, 18), Math.min(POI[t].h, 14));
-    p.poi = t;
-    p.name = b.name;
-    for (let i = 0; i < 4; i++)
-      addCar(
-        6 + i * 4,
-        Math.min(25, b.h + 7),
-        pick(["sedan", "blue", "taxi"]),
-        0,
-      );
-    scatter(2, 5, Math.min(23, b.h + 9), 18, 3);
-  } else if (dis === "civic") {
-    const t = pick(["hospital", "police", "school", "firestation"]),
-      b = addBuilding(t, 5, 5, Math.min(POI[t].w, 18), Math.min(POI[t].h, 14));
-    p.poi = t;
-    p.name = b.name;
-    for (let i = 0; i < 3; i++)
-      addCar(
-        6 + i * 5,
-        Math.min(25, b.h + 7),
-        t === "police" ? "police" : t === "hospital" ? "ambulance" : "sedan",
-        0,
-      );
-    scatter(2, 5, Math.min(23, b.h + 9), 18, 3);
-  } else if (dis === "industrial") {
-    const t = pick(["warehouse", "factory", "garage"]),
-      b = addBuilding(t, 5, 5, Math.min(POI[t].w, 18), Math.min(POI[t].h, 14));
-    p.poi = t;
-    p.name = b.name;
-    for (let i = 0; i < 3; i++)
-      addCar(6 + i * 5, Math.min(25, b.h + 7), i === 0 ? "truck" : "sedan", 0);
-    scatter(2, 5, Math.min(23, b.h + 9), 18, 3);
-  }
-  PLAN.set(k, p);
-  return p;
+  const key = K(bx, by);
+  if (PLAN.has(key)) return PLAN.get(key);
+  const block = OSM_CITY.planBlock(bx, by, SEED, OV);
+  PLAN.set(key, block);
+  return block;
 }
 function ensureCars(p) {
   for (const c of p.cars) {
@@ -1083,23 +841,15 @@ function carsNear(x, y, r) {
 function paintChunk(c) {
   const g = c.canvas.getContext("2d");
   g.imageSmoothingEnabled = false;
-  for (let y = 0; y < 16; y++)
-    for (let x = 0; x < 16; x++) {
-      const gx = c.cx * 16 + x,
-        gy = c.cy * 16 + y,
-        t = c.t[x + y * 16];
-      g.drawImage(TI[t] || TI[0], x * 16, y * 16);
-      if (mod(gx, CELL) < 4 && mod(gy, CELL) >= 4 && mod(gx, CELL) === 2)
-        drawVerticalRoadLine(g, x * 16 + 8, y * 16, "#b7a23c55");
-      if (mod(gy, CELL) < 4 && mod(gx, CELL) >= 4 && mod(gy, CELL) === 2)
-        drawHorizontalRoadLine(g, x * 16, y * 16 + 8, "#b7a23c55");
-      if (mod(gx, CELL) < 4 && mod(gy, CELL) < 4 && mod(gx, CELL) === 0)
-        drawHorizontalRoadLine(g, x * 16, y * 16 + 8, "#d9cba633");
-      if ((t === 6 || t === 7) && y < 15 && !SOLID.has(c.t[x + (y + 1) * 16])) {
-        g.fillStyle = "rgba(0,0,0,.25)";
-        g.fillRect(x * 16, (y + 1) * 16, 16, 4);
-      }
-    }
+  renderOsmMap({
+    ctx: g,
+    world: OSM_CITY.gameWorld,
+    cam: { x: c.cx * 256 + 128, y: c.cy * 256 + 128 },
+    W: 256,
+    H: 256,
+    SC: 1,
+    w2s: (x, y) => ({ x: x - c.cx * 256, y: y - c.cy * 256 }),
+  });
   const gore = OV.get("G" + c.k);
   if (gore)
     for (const s of gore) {
@@ -1117,8 +867,7 @@ function paintChunk(c) {
 }
 function tileAt(tx, ty) {
   if (currentFloorId !== "outdoor") return floorTileAt(FLOOR_SCENE, tx, ty);
-  const c = getChunk(Math.floor(tx / 16), Math.floor(ty / 16));
-  return c.t[mod(tx, 16) + mod(ty, 16) * 16];
+  return 0;
 }
 function solidAt(tx, ty, exCar) {
   return getSolid(tx, ty, collisionContext, exCar);
@@ -3221,9 +2970,16 @@ function finishSearch() {
   const grants = collectQuestGrants(
     [mainQuest(), ...Q.side],
     Q.given,
-    (target) =>
-      Math.floor(o.x / CELL) === target.bx &&
-      Math.floor(o.y / CELL) === target.by,
+    (target) => {
+      if (target.siteId) {
+        const special = OSM_CITY.specials.get(K(target.bx, target.by));
+        return special?.building?.wayId === o.wayId;
+      }
+      return (
+        Math.floor(o.x / CELL) === target.bx &&
+        Math.floor(o.y / CELL) === target.by
+      );
+    },
   );
   for (const [id, n] of Object.entries(grants.items))
     got[id] = (got[id] || 0) + n;
@@ -3306,25 +3062,21 @@ function nearbyFloorEntrance() {
     pcy = Math.floor(P.y / (CELL * 16));
   let nearest = null,
     bestDistance = (1.8 * 16) ** 2;
-  for (let by = pcy - 1; by <= pcy + 1; by++)
-    for (let bx = pcx - 1; bx <= pcx + 1; bx++) {
-      const block = planBlock(bx, by);
-      for (const building of block.buildings) {
-        if (!FLOOR_DEFINITIONS[building.type]) continue;
-        const x = (building.x + Math.floor(building.w / 2) + 0.5) * 16,
-          y = (building.y + building.h - 0.5) * 16,
-          distance = d2(P.x, P.y, x, y);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          nearest = {
-            buildingId: building.type,
-            x,
-            y,
-            name: POI[building.type].name,
-          };
-        }
-      }
+  for (const building of OSM_CITY.buildingsNearDoor(pcx, pcy)) {
+    if (!FLOOR_DEFINITIONS[building.type]) continue;
+    const x = (building.x + Math.floor(building.w / 2) + 0.5) * 16,
+      y = (building.y + building.h + 0.5) * 16,
+      distance = d2(P.x, P.y, x, y);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      nearest = {
+        buildingId: building.type,
+        x,
+        y,
+        name: POI[building.type].name,
+      };
     }
+  }
   return nearest;
 }
 function updateInteract() {
@@ -3519,7 +3271,10 @@ function setupMain() {
   if (!q) return;
   Q.prog = {};
   Q.given = {};
-  Q.targets = q.targets ? q.targets.slice() : [];
+  Q.targets = (OSM_QUEST_TARGETS[q.id] || q.targets || []).map((target) => ({
+    ...target,
+  }));
+  if (OSM_QUEST_TARGETS[q.id]) q.targets = Q.targets;
   syncQuestProgress(q, Q.prog, {
     learned,
     owned: P.owned,
@@ -3764,12 +3519,13 @@ function questTargetWorld() {
       y: waypoint.y * CELL * 16,
       label: waypoint.label || "Метка",
     };
-  const q = trackedQuest();
-  if (!q || !q.targets || !q.targets.length) return null;
-  const t = q.targets[0];
+  const q = trackedQuest(),
+    targets = q?.kind === "side" ? q.targets : Q.targets;
+  if (!q || !targets || !targets.length) return null;
+  const t = targets[0];
   return {
-    x: t.bx * CELL * 16 + 14 * 16,
-    y: t.by * CELL * 16 + 14 * 16,
+    x: Number.isFinite(t.x) ? t.x : t.bx * CELL * 16 + 14 * 16,
+    y: Number.isFinite(t.y) ? t.y : t.by * CELL * 16 + 14 * 16,
     label: q.title,
   };
 }
@@ -4853,8 +4609,20 @@ function paintMapTo(g, span, cell, view = null) {
       x: width / 2 + (x - center.x) * cell,
       y: height / 2 + (y - center.y) * cell,
     });
-  g.fillStyle = "#0a0c09";
-  g.fillRect(0, 0, width, height);
+  const mapScale = cell / (CELL * 16),
+    mapCamera = { x: center.x * CELL * 16, y: center.y * CELL * 16 };
+  renderOsmMap({
+    ctx: g,
+    world: OSM_CITY.gameWorld,
+    cam: mapCamera,
+    W: width,
+    H: height,
+    SC: mapScale,
+    w2s: (x, y) => ({
+      x: width / 2 + (x - mapCamera.x) * mapScale,
+      y: height / 2 + (y - mapCamera.y) * mapScale,
+    }),
+  });
   for (let dy = -halfY; dy <= halfY; dy++)
     for (let dx = -halfX; dx <= halfX; dx++) {
       const bx = pcx + dx,
@@ -4864,8 +4632,6 @@ function paintMapTo(g, span, cell, view = null) {
         px = s.x - cell / 2,
         py = s.y - cell / 2,
         ex = EX.has(p.k) || p.special || p.camp;
-      g.fillStyle = "#10140e";
-      g.fillRect(px, py, cell + 1, cell + 1);
       if (ex) {
         const col = p.camp
           ? "#24404a"
@@ -4881,10 +4647,9 @@ function paintMapTo(g, span, cell, view = null) {
                     ? "#344048"
                     : "#2c3826";
         g.fillStyle = col;
+        g.globalAlpha = 0.22;
         g.fillRect(px + 1, py + 1, cell - 1, cell - 1);
-        g.fillStyle = "#4a4a44";
-        g.fillRect(px, py, cell, 3);
-        g.fillRect(px, py, 3, cell);
+        g.globalAlpha = 1;
         if (p.buildings.length) {
           g.fillStyle = "#ffb23e";
           g.fillRect(s.x - 1, s.y - 1, 3, 3);
@@ -5143,7 +4908,8 @@ function saveGame(dead) {
 }
 function hasSave() {
   try {
-    return !!(localStorage.getItem(SKEY) || localStorage.getItem(LEGACY_SKEY));
+    const raw = localStorage.getItem(SKEY) || localStorage.getItem(LEGACY_SKEY);
+    return !!raw && parseSave(raw).city === CITY_ID;
   } catch (e) {
     return false;
   }
@@ -5160,6 +4926,7 @@ function loadGame() {
     const raw = localStorage.getItem(SKEY) || localStorage.getItem(LEGACY_SKEY);
     if (!raw) return false;
     d = parseSave(raw);
+    if (d.city !== CITY_ID) return false;
   } catch (e) {
     return false;
   }
@@ -5320,8 +5087,7 @@ function initGame(seed, diffK) {
   deathCause = "";
   driveAcc = 0;
   initBase();
-  for (const k of ["2,0", "0,2", "-2,0", "1,1", "1,-1", "-1,1", "2,-1"])
-    EX.add(k);
+  for (const key of OSM_CITY.specials.keys()) EX.add(key);
   cam.x = BASEX;
   cam.y = BASEY;
   Z.length = 0;
@@ -6002,6 +5768,9 @@ function frame(now) {
   render();
   if (state === "map") drawBigmap();
 }
+$("btnNew").disabled = false;
+$("btnNew").textContent = "НОВАЯ ИСТОРИЯ";
+$("btnContinue").disabled = false;
 resize();
 startAttract();
 requestAnimationFrame(frame);

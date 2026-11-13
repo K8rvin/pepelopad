@@ -10,17 +10,15 @@ test("переходы по этажам, добыча, зомби и сохра
     const driver = `      window.__floorTest = {
         enter: (building = "hospital") => enterFloor(building, "ground"),
         moveToEntrance: (type) => {
-          for (let bx = -6; bx <= 6; bx++)
-            for (let by = -6; by <= 6; by++) {
-              const building = planBlock(bx, by).buildings.find((b) => b.type === type);
-              if (!building) continue;
-              P.x = (building.x + Math.floor(building.w / 2) + 0.5) * 16;
-              P.y = (building.y + building.h - 0.5) * 16;
-              updateInteract();
-              return promptObj?.kind;
-            }
-          return null;
+          const block = OSM_PROJECTION.blockForSite(type),
+            building = OSM_CITY.specials.get(K(block.bx, block.by))?.building;
+          if (!building) return null;
+          P.x = (building.x + Math.floor(building.w / 2) + 0.5) * 16;
+          P.y = (building.y + building.h + 0.5) * 16;
+          updateInteract();
+          return promptObj?.kind;
         },
+        debugEntrance: () => ({ nearest: nearbyFloorEntrance(), promptObj, state }),
         dieAndRespawn: () => {
           gameOver("zombie");
           respawn();
@@ -65,9 +63,11 @@ ${marker}`;
   await page.locator("#btnNew").click();
   await page.locator("#btnSkip").click();
   await page.waitForFunction(() => document.body.className === "play");
-  expect(
-    await page.evaluate(() => window.__floorTest.moveToEntrance("hospital")),
-  ).toBe("floorEntrance");
+  const entrance = await page.evaluate(() => {
+    const kind = window.__floorTest.moveToEntrance("hospital");
+    return { kind, ...window.__floorTest.debugEntrance() };
+  });
+  expect(entrance).toMatchObject({ kind: "floorEntrance", state: "play" });
   await page.keyboard.press("e");
 
   expect(await page.evaluate(() => window.__floorTest.snapshot().floor)).toBe(

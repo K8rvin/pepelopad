@@ -26,6 +26,7 @@ export function createChunkManager(deps) {
     gainXP,
     toast,
     spawnGuards,
+    stampCityBuildings = true,
   } = deps;
 
   function genChunk(cx, cy) {
@@ -53,7 +54,8 @@ export function createChunkManager(deps) {
       for (let bx = bx0; bx <= bx1; bx++) {
         const p = planBlock(bx, by);
         stampProps(t, c, p.props);
-        for (const b of p.buildings) stampBuilding(t, c, b);
+        if (stampCityBuildings)
+          for (const b of p.buildings) stampBuilding(t, c, b);
         if (p.special === "base") stampBase(t, c);
 
         if (p.nest) {

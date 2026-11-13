@@ -13,6 +13,17 @@ export function wayCategory(tags) {
   return "land";
 }
 
+export function osmWayWidth(way) {
+  const category = wayCategory(way.tags);
+  if (category === "railway") return 32;
+  if (category !== "road") return 16;
+  if (["footway", "path", "steps", "pedestrian"].includes(way.tags.highway))
+    return 24;
+  if (way.tags.highway === "service") return 48;
+  const lanes = Math.max(1, Number.parseInt(way.tags.lanes, 10) || 2);
+  return lanes * 48;
+}
+
 export function boundsOfWays(ways) {
   const bounds = {
     minX: Infinity,
@@ -35,13 +46,22 @@ export function createOsmWorld(data, chunkSize = 256) {
     throw new Error("Invalid OSM world data");
   const chunks = new Map();
   for (const way of data.ways) {
-    for (const [x, y] of way.points) {
-      const cx = Math.floor(x / chunkSize),
-        cy = Math.floor(y / chunkSize),
-        key = `${cx},${cy}`;
-      if (!chunks.has(key)) chunks.set(key, { cx, cy, ways: new Set() });
-      chunks.get(key).ways.add(way.id);
-    }
+    if (wayCategory(way.tags) === "land") continue;
+    const bounds = boundsOfWays([way]);
+    for (
+      let cx = Math.floor(bounds.minX / chunkSize);
+      cx <= Math.floor(bounds.maxX / chunkSize);
+      cx++
+    )
+      for (
+        let cy = Math.floor(bounds.minY / chunkSize);
+        cy <= Math.floor(bounds.maxY / chunkSize);
+        cy++
+      ) {
+        const key = `${cx},${cy}`;
+        if (!chunks.has(key)) chunks.set(key, { cx, cy, ways: new Set() });
+        chunks.get(key).ways.add(way.id);
+      }
   }
   return {
     metadata: data.metadata,

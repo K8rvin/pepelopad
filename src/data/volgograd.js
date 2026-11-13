@@ -29,6 +29,12 @@ export const VOLGOGRAD_SITES = {
     osmName: "Лукойл",
     kind: "gas",
   },
+  garage: {
+    ref: "way/105348124",
+    name: "Автосервис",
+    osmName: "МУП «Автокоммунтранс»",
+    kind: "garage",
+  },
   police: {
     ref: "way/124061100",
     name: "Участок",

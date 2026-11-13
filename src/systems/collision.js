@@ -17,6 +17,8 @@ export function getSolid(tx, ty, context, exCar) {
   }
 
   if (context.solidTiles.has(context.tileAt(tx, ty))) return { kind: "tile" };
+  const osm = context.osmSolidAt?.(tx * 16 + 8, ty * 16 + 8, 0);
+  if (osm) return { kind: "tile", o: osm };
   return null;
 }
 
@@ -40,6 +42,8 @@ export function circleHit(x, y, radius, context, exCar) {
     }
   }
 
+  const osm = context.osmSolidAt?.(x, y, radius);
+  if (osm) return { kind: "tile", o: osm };
   return null;
 }
 

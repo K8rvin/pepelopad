@@ -15,9 +15,12 @@ async function installBalanceDriver(page) {
           };
           let deaths = 0,
             previousMain = Q.main;
-          const milestones = [];
-          P.x = (2 * CELL + 12) * 16;
-          P.y = 17 * 16;
+          const milestones = [],
+            supermarketBlock = OSM_PROJECTION.blockForSite("supermarket"),
+            supermarket = planBlock(supermarketBlock.bx, supermarketBlock.by),
+            supply = supermarket.containers[0];
+          P.x = supply.x * 16 + 8;
+          P.y = (supply.y + 2) * 16 + 8;
           for (let step = 0; step < seconds * 20; step++) {
             Z.length = 0;
             if (state === "dead") {

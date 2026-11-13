@@ -11,8 +11,10 @@ test("m2 требует чертёж и сборку арбалета", async ({
         lootGunstore: () => {
           Q.main = 1;
           setupMain();
+          const block = OSM_PROJECTION.blockForSite("gunstore"),
+            container = planBlock(block.bx, block.by).containers[0];
           searching = {
-            o: { id: "quest-gunstore", x: 5, y: 2 * CELL + 5, type: "cache", looted: false },
+            o: { ...container, looted: false },
             t: 0,
             dur: 0,
           };
