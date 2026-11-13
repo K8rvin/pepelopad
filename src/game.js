@@ -170,6 +170,10 @@ assertValidGameData({
 });
 
 const $ = (id) => document.getElementById(id);
+$("appVersion").textContent =
+  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+$("buildDate").textContent =
+  typeof __BUILD_DATE__ !== "undefined" ? __BUILD_DATE__ : "dev";
 $("buildVersion").textContent =
   typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev";
 const cv = $("cv"),
