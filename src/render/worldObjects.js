@@ -38,7 +38,7 @@ export function renderWorldObjects({
           if (
             quest &&
             !container.looted &&
-            quest.targets.some(
+            quest.targets?.some(
               (target) =>
                 Math.floor(container.x / CELL) === target.bx &&
                 Math.floor(container.y / CELL) === target.by,
