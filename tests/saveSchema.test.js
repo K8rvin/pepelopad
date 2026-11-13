@@ -74,6 +74,13 @@ describe("схема сохранения", () => {
     expect(migrated.Q.sideProg).toEqual({});
   });
 
+  it("мигрирует v4 и назначает наружный уровень", () => {
+    const old = { ...createSaveData(snapshot()), v: 4 };
+    const migrated = migrateSave(old);
+    expect(migrated.v).toBe(SAVE_VERSION);
+    expect(migrated.floor).toBeNull();
+  });
+
   it("читает сохранение из JSON", () => {
     const data = createSaveData(snapshot());
     expect(parseSave(JSON.stringify(data)).seed).toBe(42);

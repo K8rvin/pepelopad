@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -37,6 +37,7 @@ export function createSaveData(snapshot) {
     dead: snapshot.dead,
     gateOpen: snapshot.gateOpen,
     P: playerSnapshot(snapshot.P),
+    floor: snapshot.floor || null,
     inv: snapshot.inv.map((slot) => (slot ? { id: slot.id, n: slot.n } : null)),
     invSlots: snapshot.invSlots,
     hasSpear: snapshot.hasSpear,
@@ -68,11 +69,12 @@ export function validateSaveData(data) {
 
 export function migrateSave(data) {
   if (!data || typeof data !== "object") throw new Error("Corrupted save data");
-  if (data.v !== 3 && data.v !== SAVE_VERSION)
+  if (data.v !== 3 && data.v !== 4 && data.v !== SAVE_VERSION)
     throw new Error("Unsupported save version");
   const migrated = {
     ...data,
     v: SAVE_VERSION,
+    floor: data.floor || null,
     invSlots: data.invSlots || 30,
     hasSpear: Boolean(data.hasSpear),
     J: data.J || [],
