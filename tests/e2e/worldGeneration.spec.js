@@ -30,6 +30,8 @@ ${marker}`;
   await page.locator("#btnNew").click();
   await page.locator("#btnSkip").click();
   await page.waitForFunction(() => document.body.className === "play");
-  expect(await page.evaluate(() => window.__worldGenerationCheck())).toEqual([]);
+  expect(await page.evaluate(() => window.__worldGenerationCheck())).toEqual(
+    [],
+  );
   expect(errors).toEqual([]);
 });
