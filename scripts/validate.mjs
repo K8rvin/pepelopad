@@ -12,6 +12,7 @@ import {
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   MAIN,
   assertValidGameData,
 } from "../src/data/index.js";
@@ -30,6 +31,7 @@ assertValidGameData({
   VEHICLES,
   CAMP_UPGRADES,
   DISTRICTS,
+  RAIDS,
   MAIN,
 });
 console.log(
