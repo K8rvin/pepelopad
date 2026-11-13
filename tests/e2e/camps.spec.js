@@ -114,6 +114,7 @@ test("улучшение лагеря, поставка по поручению 
   });
   await page.reload();
   await page.locator("#btnContinue").click();
+  await expect(page.locator("#promptT")).toContainText("Лагерь «Мост»");
   await page.keyboard.press("e");
   await expect(page.locator("#campInfo")).toContainText("Лагерь «Мост»");
 
