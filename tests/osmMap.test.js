@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   boundsOfWays,
   createOsmWorld,
+  osmWayWidth,
   wayCategory,
 } from "../src/world/osmMap.js";
 
@@ -12,6 +13,16 @@ describe("статичная OSM-модель", () => {
     expect(wayCategory({ railway: "rail" })).toBe("railway");
     expect(wayCategory({ natural: "water" })).toBe("water");
     expect(wayCategory({ leisure: "park" })).toBe("vegetation");
+  });
+
+  it("использует метрическую ширину дороги и одинаковые полосы", () => {
+    const twoLanes = { tags: { highway: "residential", lanes: "2" } };
+    expect(osmWayWidth(twoLanes)).toBe(96);
+    expect(osmWayWidth({ tags: { highway: "residential", lanes: "2" } })).toBe(
+      96,
+    );
+    expect(osmWayWidth({ tags: { highway: "footway" } })).toBe(24);
+    expect(osmWayWidth({ tags: { railway: "rail" } })).toBe(32);
   });
 
   it("считает границы и индексирует чанки", () => {

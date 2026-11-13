@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CITY_ID,
   createSaveData,
   migrateSave,
   parseSave,
@@ -57,6 +58,7 @@ describe("схема сохранения", () => {
     const source = snapshot();
     const data = createSaveData(source);
     expect(data.v).toBe(SAVE_VERSION);
+    expect(data.city).toBe(CITY_ID);
     expect(data.P.inCar).toBeUndefined();
     expect(data.inv).toEqual([{ id: "wood", n: 3 }, null]);
     expect(data.OV).toEqual([["A", { value: 1 }]]);
@@ -79,6 +81,12 @@ describe("схема сохранения", () => {
     const migrated = migrateSave(old);
     expect(migrated.v).toBe(SAVE_VERSION);
     expect(migrated.floor).toBeNull();
+  });
+
+  it("помечает координаты v5 как несовместимый процедурный город", () => {
+    const migrated = migrateSave({ ...createSaveData(snapshot()), v: 5 });
+    expect(migrated.v).toBe(SAVE_VERSION);
+    expect(migrated.city).toBe("legacy-procedural");
   });
 
   it("читает сохранение из JSON", () => {

@@ -15,9 +15,8 @@ test("деревья и камни создаются только на земл
           for (let by = -8; by <= 8; by++) {
             const plan = planBlock(bx, by);
             for (const prop of plan.props) {
-              if (pavedAt(prop.x, prop.y)) invalid.push([plan.k, "paved", prop]);
-              if (!buildingFits(plan.buildings, prop.x, prop.y, 1, 1, 0))
-                invalid.push([plan.k, "building", prop]);
+              if (!OSM_CITY.propSiteFree(prop.x * 16 + 8, prop.y * 16 + 8))
+                invalid.push([plan.k, "surface", prop]);
             }
           }
         return invalid;
