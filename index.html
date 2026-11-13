@@ -1853,7 +1853,8 @@
         </div>
         <div id="menuCtrls"><div class="ctrlGrid" id="menuCtrlGrid"></div></div>
         <div class="mfoot">
-          v3.1 · город · автомобили · лагеря · навыки · бесконечные задания
+          сборка <span id="buildVersion">dev</span> · город · автомобили ·
+          лагеря · навыки · бесконечные задания
         </div>
       </div>
     </div>
@@ -2049,6 +2050,8 @@
       });
 
       const $ = (id) => document.getElementById(id);
+      $("buildVersion").textContent =
+        typeof __BUILD_ID__ !== "undefined" ? __BUILD_ID__ : "dev";
       const cv = $("cv"),
         ctx = cv.getContext("2d"),
         LC = cnv(1, 1),
