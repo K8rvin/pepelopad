@@ -21,6 +21,29 @@ describe("тайлы чанков", () => {
     expect(tiles[4 + 5 * 16]).toBe(3);
   });
 
+  it("размещает зебру вне перекрёстка", () => {
+    const tiles = createTerrainTiles(0, 0, 1);
+    expect(tiles[2 + 12 * 16]).toBe(29);
+    expect(tiles[12 + 2 * 16]).toBe(29);
+    expect(tiles[2 + 2 * 16]).toBe(2);
+  });
+
+  it("не заменяет дорогу и тротуар деревьями и камнями", () => {
+    const tiles = createTerrainTiles(0, 0, 1);
+    const chunk = { cx: 0, cy: 0 };
+    const props = [];
+    for (let i = 0; i < 100; i++)
+      props.push({
+        type: i % 2 ? "tree" : "rock",
+        x: i % 16,
+        y: Math.floor(i / 16),
+      });
+    stampProps(tiles, chunk, props);
+    expect(tiles[2 + 5 * 16]).toBe(28);
+    expect(tiles[4 + 5 * 16]).toBe(3);
+    expect(tiles[2 + 12 * 16]).toBe(29);
+  });
+
   it("не оставляет деревья внутри здания", () => {
     for (let seed = 0; seed < 20; seed++) {
       const tiles = createTerrainTiles(0, 0, seed);
