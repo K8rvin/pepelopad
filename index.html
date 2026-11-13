@@ -525,6 +525,8 @@
         position: absolute;
         right: 14px;
         bottom: 14px;
+        cursor: pointer;
+        pointer-events: auto;
         border: 2px solid var(--rust2);
         background: #0a0c09;
         image-rendering: pixelated;
@@ -1156,6 +1158,8 @@
         letter-spacing: 2px;
       }
       #bmap {
+        cursor: crosshair;
+        touch-action: none;
         border: 2px solid var(--rust2);
         box-shadow:
           0 0 0 2px #000,
@@ -1781,15 +1785,24 @@
     <div id="mapOv" class="ov hid">
       <div class="mtitle px">КАРТА ГОРОДА</div>
       <canvas id="bmap" width="504" height="504"></canvas>
+      <div id="mapFloorNav" class="mhint hid">
+        <button id="mapFloorPrev" class="btn">← Этаж</button>
+        <b id="mapFloorName"></b>
+        <button id="mapFloorNext" class="btn">Этаж →</button>
+      </div>
       <div id="mapLeg">
         <span><i style="background: #c96a35"></i>Рубеж</span
-        ><span><i style="background: #ffb23e"></i>места</span
+        ><span><i style="background: #ffb23e"></i>места и машины</span
         ><span><i style="background: #a6e83c"></i>рассадники</span
         ><span><i style="background: #7fb8d8"></i>лагеря</span
-        ><span><i style="background: #ece5d0"></i>цель</span>
+        ><span><i style="background: #ece5d0"></i>цель</span
+        ><span><i style="background: #e58cff"></i>метка</span>
       </div>
       <div id="mapDistrict" class="mhint"></div>
-      <div class="mhint">M — закрыть · сид: <span id="seedShow"></span></div>
+      <div class="mhint">
+        M — закрыть · колесо — масштаб · drag — обзор · ЛКМ — метка · ПКМ —
+        удалить · сид: <span id="seedShow"></span>
+      </div>
     </div>
     <div id="pauseOv" class="ov hid">
       <div class="card">

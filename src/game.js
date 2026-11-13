@@ -131,6 +131,9 @@ import {
   floorTileAt,
 } from "/src/world/floorScene.js";
 import { createDomUI } from "/src/ui/domUI.js";
+import { createMapController } from "/src/ui/mapController.js";
+import { attachMapInteractions } from "/src/ui/mapInteractions.js";
+import { FLOOR_DEFINITIONS } from "/src/data/floors.js";
 import {
   cityRadiusAt,
   districtOf,
@@ -594,6 +597,12 @@ let state = "menu",
   DIFFK = "easy",
   DIFF = DIFFS.easy,
   newDiff = "easy";
+const mapController = createMapController({ minZoom: 0.5, maxZoom: 4 });
+let mapReturnState = "play",
+  pauseReturnState = "play",
+  mapFloorId = "ground",
+  mapFloorScene = null,
+  mapHoverName = "";
 let P,
   inv = [],
   learned = new Set(),
@@ -3292,6 +3301,32 @@ function updateFloorInteract() {
     $("prompt").classList.add("hid");
   }
 }
+function nearbyFloorEntrance() {
+  const pcx = Math.floor(P.x / (CELL * 16)),
+    pcy = Math.floor(P.y / (CELL * 16));
+  let nearest = null,
+    bestDistance = (1.8 * 16) ** 2;
+  for (let by = pcy - 1; by <= pcy + 1; by++)
+    for (let bx = pcx - 1; bx <= pcx + 1; bx++) {
+      const block = planBlock(bx, by);
+      for (const building of block.buildings) {
+        if (!FLOOR_DEFINITIONS[building.type]) continue;
+        const x = (building.x + Math.floor(building.w / 2) + 0.5) * 16,
+          y = (building.y + building.h - 0.5) * 16,
+          distance = d2(P.x, P.y, x, y);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          nearest = {
+            buildingId: building.type,
+            x,
+            y,
+            name: POI[building.type].name,
+          };
+        }
+      }
+    }
+  return nearest;
+}
 function updateInteract() {
   promptObj = null;
   if (currentFloorId !== "outdoor") {
@@ -3316,6 +3351,7 @@ function updateInteract() {
       c.fuel < 15 ? "Мало топлива!" : "W — газ · S — тормоз/задний ход";
     return;
   }
+  const entrance = nearbyFloorEntrance();
   let best = null,
     bd = (1.8 * 16) ** 2;
   for (const c of visChunks)
@@ -3376,6 +3412,10 @@ function updateInteract() {
     promptObj = { kind: "camp", o: camp };
     $("promptT").textContent = "E — " + camp.name + " · лидер " + camp.leader;
     $("promptS").textContent = "Торговля · улучшения · поручения";
+  } else if (entrance) {
+    promptObj = { kind: "floorEntrance", o: entrance };
+    $("promptT").textContent = "E — Войти: " + entrance.name;
+    $("promptS").textContent = "Доступны внутренние этажи";
   } else if (best && !best.looted) {
     promptObj = { kind: "cont", o: best };
     $("promptT").textContent = "E — Обыскать: " + contName(best.type);
@@ -3421,6 +3461,10 @@ function doInteract() {
     return;
   }
   if (!promptObj) return;
+  if (promptObj.kind === "floorEntrance") {
+    enterFloor(promptObj.o.buildingId, "ground");
+    return;
+  }
   if (promptObj.kind === "cont") {
     if (promptObj.o.type === "pump") {
       const c = nearestCar(44);
@@ -3713,6 +3757,13 @@ function randomPOI() {
 }
 function questTargetWorld() {
   if (siege) return { x: BASEX, y: BASEY, label: "РУБЕЖ", siege: true };
+  const waypoint = mapController.getState().waypoint;
+  if (waypoint && currentFloorId === "outdoor")
+    return {
+      x: waypoint.x * CELL * 16,
+      y: waypoint.y * CELL * 16,
+      label: waypoint.label || "Метка",
+    };
   const q = trackedQuest();
   if (!q || !q.targets || !q.targets.length) return null;
   const t = q.targets[0];
@@ -4787,23 +4838,34 @@ function toggleBuild() {
     SFX.ui();
   }
 }
-function paintMapTo(g, span, cell) {
-  const size = span * cell;
+function paintMapTo(g, span, cell, view = null) {
+  const width = g.canvas.width,
+    height = g.canvas.height,
+    center = view?.center || {
+      x: P.x / (CELL * 16),
+      y: P.y / (CELL * 16),
+    },
+    pcx = Math.floor(center.x),
+    pcy = Math.floor(center.y),
+    halfX = Math.ceil(width / cell / 2) + 1,
+    halfY = Math.ceil(height / cell / 2) + 1,
+    screen = (x, y) => ({
+      x: width / 2 + (x - center.x) * cell,
+      y: height / 2 + (y - center.y) * cell,
+    });
   g.fillStyle = "#0a0c09";
-  g.fillRect(0, 0, size, size);
-  const pcx = Math.floor(P.x / (CELL * 16)),
-    pcy = Math.floor(P.y / (CELL * 16)),
-    half = Math.floor(span / 2);
-  for (let dy = -half; dy <= half; dy++)
-    for (let dx = -half; dx <= half; dx++) {
+  g.fillRect(0, 0, width, height);
+  for (let dy = -halfY; dy <= halfY; dy++)
+    for (let dx = -halfX; dx <= halfX; dx++) {
       const bx = pcx + dx,
         by = pcy + dy,
         p = planBlock(bx, by),
-        px = (dx + half) * cell,
-        py = (dy + half) * cell,
+        s = screen(bx + 0.5, by + 0.5),
+        px = s.x - cell / 2,
+        py = s.y - cell / 2,
         ex = EX.has(p.k) || p.special || p.camp;
       g.fillStyle = "#10140e";
-      g.fillRect(px, py, cell, cell);
+      g.fillRect(px, py, cell + 1, cell + 1);
       if (ex) {
         const col = p.camp
           ? "#24404a"
@@ -4819,51 +4881,69 @@ function paintMapTo(g, span, cell) {
                     ? "#344048"
                     : "#2c3826";
         g.fillStyle = col;
-        g.fillRect(px + 1, py + 1, cell - 2, cell - 2);
+        g.fillRect(px + 1, py + 1, cell - 1, cell - 1);
         g.fillStyle = "#4a4a44";
         g.fillRect(px, py, cell, 3);
         g.fillRect(px, py, 3, cell);
         if (p.buildings.length) {
           g.fillStyle = "#ffb23e";
-          g.fillRect(px + cell / 2 - 1, py + cell / 2 - 1, 3, 3);
+          g.fillRect(s.x - 1, s.y - 1, 3, 3);
         }
         if (p.nest && !OV.get("D" + p.k)) {
           g.fillStyle = "#a6e83c";
-          g.fillRect(px + cell / 2 - 2, py + cell / 2 - 2, 5, 5);
+          g.fillRect(s.x - 2, s.y - 2, 5, 5);
         }
         if (p.camp) {
           g.fillStyle = "#7fb8d8";
-          g.fillRect(px + cell / 2 - 2, py + cell / 2 - 2, 5, 5);
+          g.fillRect(s.x - 2, s.y - 2, 5, 5);
+        }
+        if (view && p.name && cell >= 30) {
+          g.fillStyle = "#d9cba6";
+          g.font = "8px monospace";
+          g.textAlign = "center";
+          g.fillText(p.name, s.x, s.y + cell / 2 - 5, cell * 1.8);
+          g.textAlign = "start";
         }
       }
+    }
+  if (view)
+    for (const car of CARS.values()) {
+      if (car.dead) continue;
+      const s = screen(car.x / (CELL * 16), car.y / (CELL * 16));
+      g.fillStyle = "#ffb23e";
+      g.fillRect(s.x - 3, s.y - 2, 6, 4);
     }
   const q = trackedQuest();
   if (q && q.targets)
     for (const t of q.targets) {
-      const tx = (t.bx - pcx + half) * cell + cell / 2,
-        ty = (t.by - pcy + half) * cell + cell / 2,
+      const s = screen(t.bx + 0.5, t.by + 0.5),
         p = 2 + Math.sin(performance.now() / 200) * 1.5;
       g.strokeStyle = "#ece5d0";
       g.lineWidth = 2;
-      g.strokeRect(tx - 4 - p, ty - 4 - p, 8 + p * 2, 8 + p * 2);
+      g.strokeRect(s.x - 4 - p, s.y - 4 - p, 8 + p * 2, 8 + p * 2);
     }
+  const waypoint = mapController.getState().waypoint;
+  if (waypoint) {
+    const s = screen(waypoint.x, waypoint.y);
+    g.strokeStyle = "#e58cff";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(s.x, s.y - 7);
+    g.lineTo(s.x + 7, s.y);
+    g.lineTo(s.x, s.y + 7);
+    g.lineTo(s.x - 7, s.y);
+    g.closePath();
+    g.stroke();
+  }
   if (siege) {
-    const bx = (0 - pcx + half) * cell,
-      by = (0 - pcy + half) * cell,
+    const s = screen(0.5, 0.5),
       p = 3 + Math.sin(performance.now() / 150) * 2;
     g.strokeStyle = "#e04338";
-    g.strokeRect(
-      bx + cell / 2 - 6 - p,
-      by + cell / 2 - 6 - p,
-      12 + p * 2,
-      12 + p * 2,
-    );
+    g.strokeRect(s.x - 6 - p, s.y - 6 - p, 12 + p * 2, 12 + p * 2);
   }
+  const player = screen(P.x / (CELL * 16), P.y / (CELL * 16));
   g.save();
-  g.translate(
-    size / 2 + (P.x / (CELL * 16) - pcx) * cell,
-    size / 2 + (P.y / (CELL * 16) - pcy) * cell,
-  );
+  g.translate(player.x, player.y);
   g.rotate(P.aim);
   g.fillStyle = "#a6e83c";
   g.beginPath();
@@ -4885,25 +4965,43 @@ function drawMinimap() {
   }
   if (P) paintMapTo(mm, 9, 17);
 }
+function mapCanvasPoint(point) {
+  const view = mapController.getState(),
+    cell = 24 * view.zoom;
+  return {
+    x: view.center.x + (point.x - bm.canvas.width / 2) / cell,
+    y: view.center.y + (point.y - bm.canvas.height / 2) / cell,
+  };
+}
+function selectMapFloor(direction) {
+  if (!FLOOR_SCENE) return;
+  const floors = Object.keys(FLOOR_DEFINITIONS[FLOOR_SCENE.buildingId]),
+    index = floors.indexOf(mapFloorId),
+    next = clamp(index + direction, 0, floors.length - 1);
+  mapFloorId = floors[next];
+  mapFloorScene = createFloorScene(FLOOR_SCENE.buildingId, mapFloorId);
+  drawBigmap();
+}
 function drawBigmap() {
+  $("mapFloorNav").classList.toggle("hid", currentFloorId === "outdoor");
   if (currentFloorId !== "outdoor") {
+    const scene = mapFloorScene || FLOOR_SCENE;
     bm.fillStyle = "#0a0c09";
     bm.fillRect(0, 0, bm.canvas.width, bm.canvas.height);
-    for (let y = 0; y < FLOOR_SCENE.h; y++)
-      for (let x = 0; x < FLOOR_SCENE.w; x++)
-        bm.drawImage(
-          TI[floorTileAt(FLOOR_SCENE, x, y)],
-          x * 16 + 72,
-          y * 16 + 56,
-        );
+    for (let y = 0; y < scene.h; y++)
+      for (let x = 0; x < scene.w; x++)
+        bm.drawImage(TI[floorTileAt(scene, x, y)], x * 16 + 72, y * 16 + 56);
     bm.fillStyle = "#d9cba6";
     bm.font = "14px monospace";
-    bm.fillText(FLOOR_SCENE.name, 72, 34);
-    $("mapDistrict").textContent = FLOOR_SCENE.name;
+    bm.fillText(scene.name, 72, 34);
+    $("mapFloorName").textContent = scene.name;
+    $("mapDistrict").textContent =
+      FLOOR_SCENE.name + " · просмотр: " + scene.name;
     $("seedShow").textContent = SEED;
     return;
   }
-  paintMapTo(bm, 21, 24);
+  const view = mapController.getState();
+  paintMapTo(bm, 21, 24 * view.zoom, view);
   const district = districtDefinition(
     districtOf(
       Math.floor(P.x / (CELL * 16)),
@@ -4916,13 +5014,25 @@ function drawBigmap() {
     " · опасность ×" +
     district.danger +
     " · добыча: " +
-    district.loot.map(([id]) => ITEMS[id].n).join(", ");
+    district.loot.map(([id]) => ITEMS[id].n).join(", ") +
+    " · масштаб ×" +
+    view.zoom.toFixed(2) +
+    (mapHoverName ? " · " + mapHoverName : "") +
+    (view.waypoint ? " · метка установлена" : "");
   const raidRules = currentRaidRules();
   if (raidRules) $("mapDistrict").textContent += " · " + raidRules.label;
   $("seedShow").textContent = SEED;
 }
 function openMap() {
-  if (state !== "play") return;
+  if (state !== "play" && state !== "floor") return;
+  mapReturnState = state;
+  mapFloorId = currentFloorId === "outdoor" ? "ground" : currentFloorId;
+  mapFloorScene = FLOOR_SCENE;
+  mapHoverName = "";
+  mapController.panBy(
+    P.x / (CELL * 16) - mapController.getState().center.x,
+    P.y / (CELL * 16) - mapController.getState().center.y,
+  );
   state = "map";
   mouse.down = false;
   $("mapOv").classList.remove("hid");
@@ -4933,10 +5043,11 @@ function openMap() {
 function closeMap() {
   $("mapOv").classList.add("hid");
   $("pauseChip").classList.add("hid");
-  if (state === "map") state = "play";
+  if (state === "map") state = mapReturnState;
 }
 function openPause() {
-  if (state !== "play") return;
+  if (state !== "play" && state !== "floor") return;
+  pauseReturnState = state;
   state = "pause";
   mouse.down = false;
   $("pauseOv").classList.remove("hid");
@@ -4947,7 +5058,7 @@ function openPause() {
 function closePause() {
   $("pauseOv").classList.add("hid");
   $("pauseChip").classList.add("hid");
-  if (state === "pause") state = "play";
+  if (state === "pause") state = pauseReturnState;
 }
 function showEnding() {
   state = "ending";
@@ -5357,6 +5468,39 @@ window.addEventListener("keydown", (e) => {
   if (!e.repeat) keyAction(e.code);
 });
 window.addEventListener("keyup", (e) => (keys[e.code] = false));
+attachMapInteractions({
+  canvas: $("bmap"),
+  controller: mapController,
+  cellSize: () => 24 * mapController.getState().zoom,
+  isEnabled: () => state === "map" && currentFloorId === "outdoor",
+  onSelect: (point) => {
+    const target = mapCanvasPoint(point);
+    mapController.setWaypoint({ ...target, label: "Метка" });
+    drawBigmap();
+  },
+  onClear: () => {
+    mapController.clearWaypoint();
+    drawBigmap();
+  },
+  onHover: (point) => {
+    const target = mapCanvasPoint(point),
+      block = planBlock(Math.floor(target.x), Math.floor(target.y));
+    mapHoverName = block.name || "";
+    for (const car of CARS.values()) {
+      if (
+        !car.dead &&
+        Math.hypot(
+          car.x / (CELL * 16) - target.x,
+          car.y / (CELL * 16) - target.y,
+        ) < 0.3
+      )
+        mapHoverName = vehicleDefinition(car.type).name;
+    }
+  },
+});
+$("mmap").addEventListener("click", openMap);
+$("mapFloorPrev").onclick = () => selectMapFloor(-1);
+$("mapFloorNext").onclick = () => selectMapFloor(1);
 window.addEventListener("mousemove", (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;

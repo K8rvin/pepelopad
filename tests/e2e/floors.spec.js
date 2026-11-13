@@ -9,6 +9,18 @@ test("переходы по этажам, добыча, зомби и сохра
     const marker = "startAttract();\nrequestAnimationFrame(frame);";
     const driver = `      window.__floorTest = {
         enter: (building = "hospital") => enterFloor(building, "ground"),
+        moveToEntrance: (type) => {
+          for (let bx = -6; bx <= 6; bx++)
+            for (let by = -6; by <= 6; by++) {
+              const building = planBlock(bx, by).buildings.find((b) => b.type === type);
+              if (!building) continue;
+              P.x = (building.x + Math.floor(building.w / 2) + 0.5) * 16;
+              P.y = (building.y + building.h - 0.5) * 16;
+              updateInteract();
+              return promptObj?.kind;
+            }
+          return null;
+        },
         dieAndRespawn: () => {
           gameOver("zombie");
           respawn();
@@ -53,7 +65,10 @@ ${marker}`;
   await page.locator("#btnNew").click();
   await page.locator("#btnSkip").click();
   await page.waitForFunction(() => document.body.className === "play");
-  await page.evaluate(() => window.__floorTest.enter());
+  expect(
+    await page.evaluate(() => window.__floorTest.moveToEntrance("hospital")),
+  ).toBe("floorEntrance");
+  await page.keyboard.press("e");
 
   expect(await page.evaluate(() => window.__floorTest.snapshot().floor)).toBe(
     "ground",
