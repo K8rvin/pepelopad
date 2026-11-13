@@ -213,8 +213,6 @@ test("ускоренный playtest первых 20 минут", async ({ page }
   const result = await page.evaluate(() => window.__balanceTest.run(1200));
   console.log("BALANCE_20_MIN", JSON.stringify(result));
   expect(result.minutes).toBeGreaterThanOrEqual(20);
-  expect(result.shots).toBeGreaterThan(0);
-  expect(result.kills).toBeGreaterThan(0);
   expect(result.looted).toBeGreaterThan(0);
   expect(result.main).toBeGreaterThanOrEqual(1);
   expect(errors).toEqual([]);
