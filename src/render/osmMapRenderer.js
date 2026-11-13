@@ -1,4 +1,11 @@
 import { osmWayWidth, wayCategory } from "../world/osmMap.js";
+import {
+  paintBuildingDetail,
+  paintGroundDetail,
+  paintRoadBorder,
+  paintRoadMarkings,
+  paintWaterDetail,
+} from "./osmDetails.js";
 
 const COLORS = {
   building: "#3c4137",
@@ -27,7 +34,17 @@ function drawWay(ctx, way, w2s, category) {
   } else ctx.stroke();
 }
 
-export function renderOsmMap({ ctx, world, cam, W, H, SC, w2s }) {
+export function renderOsmMap({
+  ctx,
+  world,
+  cam,
+  W,
+  H,
+  SC,
+  w2s,
+  detailed = false,
+  seed = 24051939,
+}) {
   ctx.fillStyle = COLORS.land;
   ctx.fillRect(0, 0, W, H);
   const halfW = W / (2 * SC),
@@ -36,6 +53,7 @@ export function renderOsmMap({ ctx, world, cam, W, H, SC, w2s }) {
     maxX = cam.x + halfW,
     minY = cam.y - halfH,
     maxY = cam.y + halfH;
+  if (detailed) paintGroundDetail({ ctx, cam, W, H, SC, w2s, seed });
   let ways = world.ways;
   if (world.chunks) {
     const seen = new Set();
@@ -72,6 +90,7 @@ export function renderOsmMap({ ctx, world, cam, W, H, SC, w2s }) {
     )
       continue;
     const color = COLORS[category];
+    if (detailed && category === "road") paintRoadBorder({ ctx, way, SC, w2s });
     ctx.fillStyle = color;
     ctx.strokeStyle = color;
     ctx.lineWidth =
@@ -82,6 +101,12 @@ export function renderOsmMap({ ctx, world, cam, W, H, SC, w2s }) {
     ctx.lineJoin = "round";
     ctx.setLineDash(category === "railway" ? [8 * SC, 5 * SC] : []);
     drawWay(ctx, way, w2s, category);
+    if (detailed && category === "road")
+      paintRoadMarkings({ ctx, way, SC, w2s });
+    if (detailed && category === "building")
+      paintBuildingDetail({ ctx, way, SC, w2s });
+    if (detailed && category === "water")
+      paintWaterDetail({ ctx, way, SC, w2s });
   }
   ctx.setLineDash([]);
 }

@@ -849,6 +849,7 @@ function paintChunk(c) {
     H: 256,
     SC: 1,
     w2s: (x, y) => ({ x: x - c.cx * 256, y: y - c.cy * 256 }),
+    detailed: true,
   });
   const gore = OV.get("G" + c.k);
   if (gore)
