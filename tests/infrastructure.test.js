@@ -16,23 +16,19 @@ describe("инфраструктура проекта", () => {
     );
   });
 
-  it("использует index.html и ES-модуль как игровую точку входа", () => {
+  it("использует index.html и src/main.js как игровую точку входа", () => {
     const html = read("index.html");
     expect(html).toContain('<canvas id="cv">');
-    expect(html).toContain('<script type="module">');
+    expect(html).toContain('<script type="module" src="/src/main.js">');
   });
 
-  it("компилирует встроенный игровой модуль", () => {
-    const match = read("index.html").match(
-      /<script type="module">([\s\S]*?)<\/script>/,
-    );
-    expect(match).not.toBeNull();
-    const result = spawnSync(
-      process.execPath,
-      ["--input-type=module", "--check"],
-      { input: match[1], encoding: "utf8" },
-    );
-    expect(result.stderr).toBe("");
-    expect(result.status).toBe(0);
+  it("компилирует точку входа и игровой модуль", () => {
+    for (const file of ["src/main.js", "src/game.js"]) {
+      const result = spawnSync(process.execPath, ["--check", file], {
+        encoding: "utf8",
+      });
+      expect(result.stderr).toBe("");
+      expect(result.status).toBe(0);
+    }
   });
 });

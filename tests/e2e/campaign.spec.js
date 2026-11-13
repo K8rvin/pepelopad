@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
 
 async function installCampaignDriver(page) {
-  await page.route("**/index.html*index=0.js", async (route) => {
+  await page.route("**/src/game.js", async (route) => {
     const response = await route.fetch();
     const source = await response.text();
-    const marker = "startAttract();\n      requestAnimationFrame(frame);";
+    const marker = "startAttract();\nrequestAnimationFrame(frame);";
     const driver = `      window.__campaignTest = {
         snapshot: () => ({
           state,
