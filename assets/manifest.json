@@ -50,7 +50,7 @@
     "car_blue": { "src": "/assets/sprites/car_blue.png", "caption": "top-down four-wheeled white armored car with a roof hatch in earthy colors", "license": "CC0-1.0" },
     "car_taxi": { "src": "/assets/sprites/car_taxi.png", "caption": "top-down convertible car with headrests showing", "license": "CC0-1.0" },
     "car_police": { "src": "/assets/sprites/car_police.png", "caption": "top-down police car with a single dome siren", "license": "CC0-1.0" },
-    "car_ambulance": { "src": "/assets/sprites/car_ambulance.png", "caption": "top-down vintage ambulance with a high box body in warm colors", "license": "CC0-1.0" },
+    "car_ambulance": { "src": "/assets/sprites/car_ambulance.png", "caption": "top-down front-view ambulance with a high box body", "license": "CC0-1.0" },
     "car_truck": { "src": "/assets/sprites/car_truck.png", "caption": "top-down dump truck with a dirt load", "license": "CC0-1.0" },
     "car_wreck": { "src": "/assets/sprites/car_wreck.png", "caption": "top-down rusty teal car with a spoiler", "license": "CC0-1.0" }
   }
