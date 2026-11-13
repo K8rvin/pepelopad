@@ -49,7 +49,11 @@ export function createOsmWorld(data, chunkSize = 256) {
     ways: data.ways,
     relations: data.relations,
     bounds: boundsOfWays(data.ways),
+    nodeById: new Map(data.nodes.map((node) => [node.id, node])),
     wayById: new Map(data.ways.map((way) => [way.id, way])),
+    relationById: new Map(
+      data.relations.map((relation) => [relation.id, relation]),
+    ),
     boundsByWay: new Map(data.ways.map((way) => [way.id, boundsOfWays([way])])),
     chunks,
     chunkSize,
