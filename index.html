@@ -534,6 +534,18 @@
           0 0 0 2px #000,
           0 4px 18px rgba(0, 0, 0, 0.6);
       }
+      #mmapHint {
+        position: absolute;
+        right: 14px;
+        bottom: 175px;
+        max-width: 240px;
+        padding: 6px 9px;
+        background: var(--panel);
+        border: 1px solid var(--rust2);
+        color: var(--sand);
+        font-size: 11px;
+        pointer-events: none;
+      }
       #prompt {
         position: absolute;
         bottom: 96px;
@@ -1662,6 +1674,7 @@
       <div id="hotbar"></div>
       <div id="resRow"></div>
       <canvas id="mmap" width="153" height="153"></canvas>
+      <div id="mmapHint" class="hid"></div>
       <div id="prompt" class="hid">
         <b id="promptT"></b><span id="promptS"></span>
       </div>
