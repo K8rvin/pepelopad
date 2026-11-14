@@ -144,12 +144,24 @@ export function paintBuildingOpenings({ ctx, way, SC, w2s }) {
       to = w2s(
         opening.x + opening.tx * opening.halfWidth,
         opening.y + opening.ty * opening.halfWidth,
-      );
-    ctx.strokeStyle = opening.kind === "door" ? "#ffb23e" : "#7fb8d8";
+      ),
+      color = opening.kind === "door" ? "#ffca63" : "#9ed9ef";
+    ctx.lineCap = "butt";
+    ctx.strokeStyle = "#111812";
+    ctx.lineWidth = Math.max(3, 8 * SC);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, 4 * SC);
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
+    ctx.fillStyle = color;
+    const post = Math.max(2, 3 * SC);
+    ctx.fillRect(from.x - post / 2, from.y - post / 2, post, post);
+    ctx.fillRect(to.x - post / 2, to.y - post / 2, post, post);
   }
 }

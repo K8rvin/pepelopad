@@ -106,6 +106,20 @@ describe("схема сохранения", () => {
     expect(migrated.floor).toBeNull();
   });
 
+  it("удаляет структуры стартового Рубежа при миграции v7", () => {
+    const old = {
+      ...createSaveData(snapshot()),
+      v: 7,
+      SM: [
+        ["16,16", { t: "fire", x: 16, y: 16 }],
+        ["30,30", { t: "bench", x: 30, y: 30 }],
+      ],
+    };
+    const migrated = migrateSave(old);
+    expect(migrated.SM).toEqual([["30,30", { t: "bench", x: 30, y: 30 }]]);
+    expect(migrated.city).toBe(CITY_ID);
+  });
+
   it("читает сохранение из JSON", () => {
     const data = createSaveData(snapshot());
     expect(parseSave(JSON.stringify(data)).seed).toBe(42);

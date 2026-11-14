@@ -1,9 +1,21 @@
 export const VOLGOGRAD_SITES = {
-  base: {
+  origin: {
     ref: "node/6429297365",
-    name: "Рубеж у Волгограда I",
+    name: "Волгоград I",
     osmName: "Волгоград I",
-    kind: "base",
+    kind: "landmark",
+  },
+  residential: {
+    ref: "way/1441947097",
+    name: "Библиотечная улица",
+    osmName: "Библиотечная улица",
+    kind: "residential",
+  },
+  novoremeslennaya: {
+    ref: "way/35849219",
+    name: "Новоремесленная улица",
+    osmName: "Новоремесленная улица",
+    kind: "residential",
   },
   supermarket: {
     ref: "way/844049423",
@@ -99,6 +111,5 @@ export const VOLGOGRAD_QUEST_TARGETS = {
   m5: ["police", "warehouse"],
   m6: ["camp_bridge"],
   m7: ["mamayev"],
-  m8: ["base"],
   m10: ["mamayev"],
 };

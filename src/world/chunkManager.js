@@ -120,32 +120,6 @@ export function createChunkManager(deps) {
       }
     }
 
-    const addBC = (type, gx, gy, id) => {
-      const lx = gx - cx * 16;
-      const ly = gy - cy * 16;
-      if (lx >= 0 && lx < 16 && ly >= 0 && ly < 16) {
-        const o = {
-          x: gx,
-          y: gy,
-          lx,
-          ly,
-          type,
-          id,
-          looted: OV.get("L" + id) === true,
-        };
-        c.containers.push(o);
-        CMAP.set(K(gx, gy), o);
-      }
-    };
-    addBC("cache", 18, 16, "base:cache");
-    for (let i = 0; i < 4; i++)
-      addBC(
-        "garden",
-        20 + (i % 2) * 2,
-        20 + Math.floor(i / 2) * 2,
-        "base:g" + i,
-      );
-
     paintChunk(c);
     return c;
   }

@@ -21,6 +21,24 @@ test("m2 требует чертёж и сборку арбалета", async ({
           finishSearch();
           return { main: Q.main, hint: $("qHint").textContent, blueprint: learned.has("crossbow") };
         },
+        buildBench: () => {
+          addItem("wood", 20, true);
+          addItem("scrap", 20, true);
+          buildSel = "bench";
+          const px = Math.floor(P.x / 16), py = Math.floor(P.y / 16);
+          for (let radius = 2; radius <= 6; radius++)
+            for (let y = py - radius; y <= py + radius; y++)
+              for (let x = px - radius; x <= px + radius; x++) {
+                if (solidAt(x, y)) continue;
+                tryPlace(x, y);
+                if (nearBench()) {
+                  buildSel = null;
+                  return true;
+                }
+              }
+          buildSel = null;
+          return false;
+        },
         craftCrossbow: () => {
           doCraft(RECIPES.find((recipe) => recipe.id === "crossbow"));
           return { main: Q.main, owned: !!P.owned.crossbow };
@@ -39,6 +57,9 @@ ${marker}`;
   expect(looted.main).toBe(1);
   expect(looted.blueprint).toBe(true);
   expect(looted.hint).toContain("Собери арбалет на верстаке");
+  expect(await page.evaluate(() => window.__questCraftTest.buildBench())).toBe(
+    true,
+  );
   const crafted = await page.evaluate(() =>
     window.__questCraftTest.craftCrossbow(),
   );

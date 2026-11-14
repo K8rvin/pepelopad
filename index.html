@@ -285,41 +285,6 @@
         padding: 6px 14px;
         letter-spacing: 2px;
       }
-      #coreChip {
-        position: absolute;
-        left: 14px;
-        bottom: 170px;
-        background: var(--panel);
-        border: 2px solid var(--line);
-        padding: 6px 10px;
-        font-family: "Press Start 2P";
-        font-size: 8px;
-        color: var(--rust);
-        width: 240px;
-      }
-      #coreChip.safe {
-        color: var(--good);
-        border-color: var(--acid2);
-      }
-      #coreChip.danger {
-        color: var(--blood);
-        border-color: var(--blood);
-      }
-      .cbar {
-        height: 6px;
-        background: #241812;
-        margin-top: 5px;
-        border: 1px solid #000;
-      }
-      .cbar i {
-        display: block;
-        height: 100%;
-        background: linear-gradient(90deg, var(--rust2), var(--rust));
-        transition: width 0.2s;
-      }
-      #coreChip.safe .cbar i {
-        background: linear-gradient(90deg, var(--acid2), var(--good));
-      }
       #bars {
         position: absolute;
         left: 14px;
@@ -1656,10 +1621,6 @@
         <div class="sbar"><i id="siegeF"></i></div>
       </div>
       <div id="pauseChip" class="hid px">ПАУЗА</div>
-      <div id="coreChip" class="hid">
-        <span id="coreLabel">РУБЕЖ</span>
-        <div class="cbar"><i id="coreF"></i></div>
-      </div>
       <div id="bars">
         <div class="brow hp"><i id="hpF"></i><b id="hpT"></b></div>
         <div class="brow st"><i id="stF"></i></div>
@@ -1725,7 +1686,7 @@
         ><button data-tab="craft" class="tab">Крафт</button
         ><button data-tab="skill" class="tab">Навыки</button
         ><button data-tab="quest" class="tab">Задания</button
-        ><button data-tab="base" class="tab">Рубеж</button
+        ><button data-tab="base" class="tab">Постройки</button
         ><button data-tab="camp" class="tab">Лагерь</button
         ><button data-tab="trunk" class="tab">Багажник</button
         ><button data-tab="log" class="tab">Журнал</button>
@@ -1804,8 +1765,7 @@
         <button id="mapFloorNext" class="btn">Этаж →</button>
       </div>
       <div id="mapLeg">
-        <span><i style="background: #c96a35"></i>Рубеж</span
-        ><span><i style="background: #ffb23e"></i>места и машины</span
+        <span><i style="background: #ffb23e"></i>места и машины</span
         ><span><i style="background: #a6e83c"></i>рассадники</span
         ><span><i style="background: #7fb8d8"></i>лагеря</span
         ><span><i style="background: #ece5d0"></i>цель</span
@@ -1849,7 +1809,7 @@
         <div id="deathCause"></div>
         <div class="miniStats" id="deathStats"></div>
         <button id="btnRespawn" class="btn acid">
-          Вернуться на Рубеж (−30% ресурсов)</button
+          Возродиться в жилом районе (−30% ресурсов)</button
         ><button id="btnDeathMenu" class="btn red">В меню</button>
       </div>
     </div>

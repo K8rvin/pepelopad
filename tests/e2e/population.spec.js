@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("дороги содержат машины, городской спавн зомби активен, база безопасна", async ({
+test("дороги содержат машины, городской спавн зомби активен, лагерь безопасен", async ({
   page,
 }) => {
   const errors = [];
@@ -13,7 +13,7 @@ test("дороги содержат машины, городской спавн 
         cars: async () => {
           const { osmWayWidth } = await import("/src/world/osmMap.js");
           const cx = Math.floor(P.x / 256), cy = Math.floor(P.y / 256);
-          for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) getChunk(x, y);
+          for (let y = cy - 4; y <= cy + 4; y++) for (let x = cx - 4; x <= cx + 4; x++) getChunk(x, y);
           const roadCars = [...CARS.values()].filter((car) => car.id.startsWith("road:"));
           const invalid = [];
           for (const car of roadCars) {
@@ -30,10 +30,12 @@ test("дороги содержат машины, городской спавн 
         },
         spawn: (safe) => {
           if (safe) {
-            P.x = BASEX;
-            P.y = BASEY;
+            const camp = OSM_PROJECTION.worldToGame(OSM_PROJECTION.sites.camp_bridge);
+            P.x = camp.x;
+            P.y = camp.y;
+            getChunk(Math.floor(P.x / 256), Math.floor(P.y / 256));
           } else {
-            const way = OSM_CITY.gameWorld.ways.find((way) => way.tags.highway === "residential" && way.points.some(([x, y]) => Math.hypot(x - BASEX, y - BASEY) > 800));
+            const way = OSM_CITY.gameWorld.ways.find((way) => way.tags.highway === "residential" && way.points.some(([x, y]) => Math.hypot(x - SPAWN.x, y - SPAWN.y) > 800));
             P.x = way.points[0][0];
             P.y = way.points[0][1];
           }

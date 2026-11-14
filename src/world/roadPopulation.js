@@ -30,12 +30,22 @@ export function createRoadPopulation(world) {
   const cars = [],
     byBlock = new Map(),
     spawnByBlock = new Map(),
+    occupied = new Map(),
     add = (index, key, value) => {
       if (!index.has(key)) index.set(key, []);
       index.get(key).push(value);
     },
     blockKey = (x, y) =>
-      `${Math.floor(x / ROAD_BLOCK)},${Math.floor(y / ROAD_BLOCK)}`;
+      `${Math.floor(x / ROAD_BLOCK)},${Math.floor(y / ROAD_BLOCK)}`,
+    hasNearbyCar = (x, y) => {
+      const cx = Math.floor(x / 64),
+        cy = Math.floor(y / 64);
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          for (const car of occupied.get(`${cx + dx},${cy + dy}`) || [])
+            if ((car.x - x) ** 2 + (car.y - y) ** 2 < 36 * 36) return true;
+      return false;
+    };
   for (const way of world.ways) {
     const highway = way.tags.highway;
     if (!highway) continue;
@@ -74,8 +84,7 @@ export function createRoadPopulation(world) {
           x = a[0] + tx * distance - ty * offset * side,
           y = a[1] + ty * distance + tx * offset * side;
         if (osmSolidAt(x, y, world, 16)) continue;
-        if (cars.some((car) => (car.x - x) ** 2 + (car.y - y) ** 2 < 36 * 36))
-          continue;
+        if (hasNearbyCar(x, y)) continue;
         const car = {
           id: `road:${way.id}:${edge}:${distance}`,
           x,
@@ -90,9 +99,19 @@ export function createRoadPopulation(world) {
           hp: 55 + h2(way.id, edge, distance + 29) * 45,
         };
         cars.push(car);
+        add(occupied, `${Math.floor(x / 64)},${Math.floor(y / 64)}`, car);
         add(byBlock, blockKey(x, y), car);
       }
     }
+  }
+  if (cars.length > 2000) {
+    const selected = Array.from(
+      { length: 2000 },
+      (_, index) => cars[Math.floor((index * cars.length) / 2000)],
+    );
+    cars.splice(0, cars.length, ...selected);
+    byBlock.clear();
+    for (const car of cars) add(byBlock, blockKey(car.x, car.y), car);
   }
   return {
     cars,

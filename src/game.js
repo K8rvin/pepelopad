@@ -11,7 +11,7 @@ import {
 } from "/src/core/math.js";
 import { mb32, h2, hashStr } from "/src/core/rng.js";
 import { createEventBus } from "/src/core/events.js";
-import { T, SC, CH, CELL, BASEX, BASEY } from "/src/core/constants.js";
+import { T, SC, CH, CELL } from "/src/core/constants.js";
 import {
   ITEMS,
   WEAPONS,
@@ -141,6 +141,13 @@ import { createOsmCityModel } from "/src/world/osmCity.js";
 import { populationTarget } from "/src/world/roadPopulation.js";
 import { osmSolidAt } from "/src/world/osmCollision.js";
 import { renderOsmMap } from "/src/render/osmMapRenderer.js";
+import { renderDistrictBoundaries } from "/src/render/districtBoundaries.js";
+import {
+  advanceRailVehicle,
+  createRailPopulation,
+  railVehicleParts,
+} from "/src/world/railPopulation.js";
+import { renderRailVehicles } from "/src/render/railVehicles.js";
 
 assertValidGameData({
   ITEMS,
@@ -166,6 +173,8 @@ const OSM_WORLD = await loadOsmWorld(
 const OSM_PROJECTION = createOsmGameProjection(OSM_WORLD);
 const OSM_CITY = createOsmCityModel(OSM_WORLD, OSM_PROJECTION);
 const OSM_QUEST_TARGETS = OSM_PROJECTION.campaignTargets();
+const SPAWN = OSM_PROJECTION.worldToGame(OSM_PROJECTION.sites.residential);
+const RAIL_VEHICLES = createRailPopulation(OSM_CITY.gameWorld);
 
 const $ = (id) => document.getElementById(id);
 $("appVersion").textContent =
@@ -490,6 +499,9 @@ const ATLAS_SIZES = {
   car_ambulance: [28, 16],
   car_truck: [32, 16],
   car_wreck: [28, 16],
+  train: [32, 16],
+  train_carriage: [28, 16],
+  tram: [28, 16],
 };
 for (const [id, url] of Object.entries({
   wood: "./assets/sprites/wood.png",
@@ -523,11 +535,18 @@ for (const [id, url] of Object.entries({
   car_ambulance: "./assets/sprites/car_ambulance.png",
   car_truck: "./assets/sprites/car_truck.png",
   car_wreck: "./assets/sprites/car_wreck.png",
+  train: "./assets/sprites/train.png",
+  train_carriage: "./assets/sprites/train_carriage.png",
+  tram: "./assets/sprites/tram.png",
 })) {
   loadSprite(
     url,
     (image) => {
-      if (id.startsWith("car_")) S[id] = image;
+      if (
+        id.startsWith("car_") ||
+        ["train", "train_carriage", "tram"].includes(id)
+      )
+        S[id] = image;
       else if (id === "tree" || id === "rock") {
         const index = id === "tree" ? 14 : 15,
           terrain = cnv(16, 16),
@@ -652,7 +671,7 @@ let Z = [],
   visChunks = [],
   VFX = [];
 const VFX_ASSETS = { explosion: null };
-const cam = { x: BASEX, y: BASEY },
+const cam = { x: SPAWN.x, y: SPAWN.y },
   keys = {},
   mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false };
 let shake = 0,
@@ -690,7 +709,7 @@ const collisionContext = {
   solidTiles: SOLID,
   tileAt,
   osmSolidAt: (x, y, radius) =>
-    currentFloorId === "outdoor" && !inBase(x, y)
+    currentFloorId === "outdoor"
       ? osmSolidAt(x, y, OSM_CITY.gameWorld, radius)
       : null,
   carsNear,
@@ -921,108 +940,43 @@ function initCamp(cc) {
   CAMPS.set(cc.id, c);
   syncCampPopulation(c);
 }
-function initBase() {
-  const put = (t, x, y, hp) =>
-    SMAP.set(K(x, y), {
-      t,
-      x,
-      y,
-      hp: hp || BUILDS[t].hp,
-      max: hp || BUILDS[t].hp,
-      ang: 0,
-      cd: 0,
-      flash: 0,
-    });
-  for (let x = 6; x <= 25; x++) {
-    if (x < 14 || x > 16) {
-      put("fence", x, 6, 240);
-      put("fence", x, 25, 240);
-    }
-  }
-  for (let y = 7; y < 25; y++) {
-    put("fence", 6, y, 240);
-    put("fence", 25, y, 240);
-  }
-  for (let x = 14; x <= 16; x++)
-    SMAP.set(K(x, 25), {
-      t: "gate",
-      x,
-      y: 25,
-      hp: 280,
-      max: 280,
-      open: false,
-      ang: 0,
-      cd: 0,
-      flash: 0,
-    });
-  put("bench", 13, 15, 240);
-  put("fire", 16, 16, 360);
-  put("generator", 19, 14, 170);
-  put("medstation", 18, 15, 130);
-  put("turret", 10, 23, 130);
-  put("turret", 21, 23, 130);
-  put("turret", 23, 8, 130);
-  gateOpen = false;
-  applyBaseProjects();
-}
-function applyBaseProjects() {
-  bench = 1 + baseProj.workshop;
-  for (let x = 6; x <= 25; x++)
-    for (const y of [6, 25]) {
-      const s = SMAP.get(K(x, y));
-      if (s && s.t === "fence") {
-        s.max = 240 + baseProj.wall * 80;
-        s.hp = Math.min(s.hp + baseProj.wall * 20, s.max);
+function placeProjectStructure(projectId) {
+  if (projectId === "wall") {
+    for (const structure of SMAP.values())
+      if (structure.t === "fence" || structure.t === "gate") {
+        structure.max += 80;
+        structure.hp = Math.min(structure.hp + 20, structure.max);
       }
-    }
-  for (const s of SMAP.values())
-    if (s.t === "gate") {
-      s.max = 280 + baseProj.wall * 100;
-      s.hp = Math.min(s.hp + baseProj.wall * 25, s.max);
-    }
-  const extra = [
-    [8, 8],
-    [23, 23],
-    [8, 23],
-    [23, 8],
-  ];
-  for (let i = 0; i < baseProj.tower; i++) {
-    const [x, y] = extra[i];
-    if (!SMAP.has(K(x, y)))
-      SMAP.set(K(x, y), {
-        t: "turret",
-        x,
-        y,
-        hp: 130,
-        max: 130,
-        ang: 0,
-        cd: 0,
-      });
+    return;
   }
-  if (baseProj.radio && !SMAP.get("16,10"))
-    SMAP.set("16,10", {
-      t: "radioTower",
-      x: 16,
-      y: 10,
-      hp: 180,
-      max: 180,
-      ang: 0,
-      cd: 0,
-    });
-  if (baseProj.garage && !SMAP.get("22,18"))
-    SMAP.set("22,18", {
-      t: "garage",
-      x: 22,
-      y: 18,
-      hp: 200,
-      max: 200,
-      ang: 0,
-      cd: 0,
-    });
-  if (baseProj.clinic) {
-    const s = SMAP.get("18,15");
-    if (s) s.max = 130 + baseProj.clinic * 60;
-  }
+  const type = {
+    workshop: "bench",
+    tower: "turret",
+    garage: "garage",
+    radio: "radioTower",
+    clinic: "medstation",
+  }[projectId];
+  if (!type) return;
+  const px = Math.floor(P.x / 16),
+    py = Math.floor(P.y / 16);
+  for (let radius = 3; radius <= 8; radius++)
+    for (let y = py - radius; y <= py + radius; y++)
+      for (let x = px - radius; x <= px + radius; x++) {
+        if (Math.max(Math.abs(x - px), Math.abs(y - py)) !== radius) continue;
+        if (solidAt(x, y)) continue;
+        const definition = BUILDS[type];
+        SMAP.set(K(x, y), {
+          t: type,
+          x,
+          y,
+          hp: definition.hp,
+          max: definition.hp,
+          ang: 0,
+          cd: 0,
+          flash: 0,
+        });
+        return;
+      }
 }
 function buildHome() {
   const w = 22,
@@ -1139,7 +1093,7 @@ function homeObjective() {
     "Подойди к окну и посмотри, что происходит в городе.",
     "Открой шкаф. Там старый лук.",
     "Собери рюкзак на столе.",
-    "Выйди во двор. Ворота Рубежа закрыты.",
+    "Выйди из квартиры через дверь или окно. Улица рядом.",
     "",
   ];
   $("homeObjText").textContent = DL.active ? "…" : a[homeStage];
@@ -1232,13 +1186,13 @@ function enterWorld() {
     );
     journalAdd(
       "Карта города",
-      "Супермаркет «Калина» — восток. Оружейный «Калибр» — юг. Больница «Милосердие» — запад. АЗС и автосервис — рядом. Ворота закрыты.",
+      "Краснооктябрьский район. Библиотечная и Новоремесленная улицы. Цели отмечены на карте.",
     );
     setupMain();
     buildHotbar();
     buildResRow();
     refreshHUD();
-    toast("РУБЕЖ · безопасная зона", "quest");
+    toast("БИБЛИОТЕЧНАЯ · жилой район", "quest");
     tut = [
       [2, "Город живой: кварталы, перекрёстки, дворы. M — карта."],
       [8, "Лук перезаряжается сам. Янтарная дуга — натяжение."],
@@ -1721,14 +1675,11 @@ function updateZ(z, dt) {
   z.spitCd -= dt;
   const night = darkness() > 0.3,
     sight = z.sight * 16 * (night ? 1.2 : 1),
-    safe =
-      currentFloorId === "outdoor" &&
-      ((inBase(P.x, P.y) && !siege) || nearCamp(P.x, P.y));
+    safe = currentFloorId === "outdoor" && nearCamp(P.x, P.y);
   if (state === "play" && !safe) {
     if (z.siege) {
-      const near = dist(P.x, P.y, BASEX, BASEY) < 34 * 16;
-      z.tx = near ? P.x : BASEX;
-      z.ty = near ? P.y : BASEY;
+      z.tx = P.x;
+      z.ty = P.y;
       z.st = "chase";
     } else if (dp < sight || (z.mem > 0 && dp < sight * 2.2)) {
       if (
@@ -1901,8 +1852,7 @@ function ambientSpawn(dt) {
     const point = spawnPoints[Math.floor(rnd() * spawnPoints.length)],
       x = point.x,
       y = point.y;
-    if (inBase(x, y) || nearCamp(x, y) || dist(x, y, BASEX, BASEY) < 28 * 16)
-      continue;
+    if (nearCamp(x, y)) continue;
     if (circleHit(x, y, 6)) continue;
     const r = rnd(),
       th = threat();
@@ -2032,10 +1982,6 @@ function destroyStruct(s) {
   ptBurst(s.x * 16 + 8, s.y * 16 + 8, "#8a7450", 14);
   SFX.breakS();
   shake = Math.max(shake, 3);
-  if (s.t === "fire") {
-    gameOver("base");
-    return;
-  }
   toast((BUILDS[s.t] ? BUILDS[s.t].n : "Постройка") + " разрушена", "danger");
 }
 function updateStructs(dt) {
@@ -2739,11 +2685,6 @@ function updateLG(dt) {
     if (LG[i].life <= 0) LG.splice(i, 1);
   }
 }
-function inBase(x, y) {
-  const tx = x / 16,
-    ty = y / 16;
-  return tx >= 6 && tx <= 26 && ty >= 6 && ty <= 26;
-}
 function gainXP(n) {
   P.xp += n;
   TX.push({
@@ -2776,12 +2717,7 @@ function gainXP(n) {
   refreshHUD();
 }
 function damagePlayer(d, src) {
-  if (
-    P.iframe > 0 ||
-    state !== "play" ||
-    (currentFloorId === "outdoor" && inBase(P.x, P.y) && !siege)
-  )
-    return;
+  if (P.iframe > 0 || state !== "play") return;
   const abs = 0.6 + P.skills.tough * 0.05,
     ab = Math.min(P.armor, d * abs);
   P.armor -= ab;
@@ -2803,17 +2739,15 @@ function gameOver(reason) {
   setBody("dead");
   mouse.down = false;
   SFX.explode();
-  $("deathTitle").textContent = reason === "base" ? "РУБЕЖ ПАЛ" : "ТЫ ПОГИБ";
+  $("deathTitle").textContent = "ТЫ ПОГИБ";
   $("deathCause").textContent =
-    reason === "base"
-      ? "Костёр погас. Гниль забрала последний свет."
-      : reason === "fire"
-        ? "Огонь не различает своих."
-        : reason === "голод"
-          ? "Голод оказался терпеливее."
-          : reason === "яд"
-            ? "Заражение разъело изнутри."
-            : "Тебя разорвали: " + (deathCause || "гниль") + ".";
+    reason === "fire"
+      ? "Огонь не различает своих."
+      : reason === "голод"
+        ? "Голод оказался терпеливее."
+        : reason === "яд"
+          ? "Заражение разъело изнутри."
+          : "Тебя разорвали: " + (deathCause || "гниль") + ".";
   $("deathStats").innerHTML = miniStats();
   $("btnRespawn").classList.toggle("hid", DIFF.perma);
   $("deathOv").classList.remove("hid");
@@ -2834,35 +2768,21 @@ function respawn() {
       if (s.n <= 0) inv[i] = null;
     }
   }
-  if (!SMAP.get("16,16"))
-    SMAP.set("16,16", {
-      t: "fire",
-      x: 16,
-      y: 16,
-      hp: 240,
-      max: 360,
-      ang: 0,
-      cd: 0,
-    });
-  P.x = 184;
-  P.y = 232;
+  P.x = SPAWN.x;
+  P.y = SPAWN.y;
   P.hp = Math.round(maxHp() * 0.65);
   P.hu = 60;
   P.armor = 0;
   P.poison = 0;
   P.iframe = 3;
   P.inCar = null;
-  Z.splice(
-    0,
-    Z.length,
-    ...Z.filter((z) => dist(z.x, z.y, BASEX, BASEY) > 30 * 16),
-  );
+  Z.length = 0;
   siege = null;
   $("siegeB").classList.add("hid");
   $("deathOv").classList.add("hid");
   state = "play";
   setBody("play");
-  toast("Ты очнулся у костра. Рубеж стоит.", "info");
+  toast("Ты очнулся в жилом районе. Вахта продолжается.", "info");
   saveGame();
 }
 function miniStats() {
@@ -3402,7 +3322,7 @@ function randomPOI() {
   return { bx: 2, by: 0, label: "Супермаркет" };
 }
 function questTargetWorld() {
-  if (siege) return { x: BASEX, y: BASEY, label: "РУБЕЖ", siege: true };
+  if (siege) return { x: P.x, y: P.y, label: "ОРДА", siege: true };
   const waypoint = mapController.getState().waypoint;
   if (waypoint && currentFloorId === "outdoor")
     return {
@@ -3452,7 +3372,7 @@ function updateQuestUI() {
   $("qHint").textContent =
     q.targets && q.targets.length
       ? "◈ " + q.targets[0].label + " · M — карта"
-      : "Подготовка на Рубеже";
+      : "Подготовка к выживанию";
   if (q.id === "m2" && Q.prog.bp_crossbow && !Q.prog.craft_crossbow)
     $("qHint").textContent = "Чертёж найден. Собери арбалет на верстаке [C].";
 }
@@ -3496,7 +3416,6 @@ function updateTime(dt) {
   tod = clock.tod;
   if (clock.dawn) {
     toast("ДЕНЬ " + day + ". Город встретил рассвет.", "info");
-    for (const [k, v] of [...OV]) if (k.startsWith("Lbase:")) OV.delete(k);
     for (const c of chunks.values())
       for (const o of c.containers)
         if (["garden", "cache"].includes(o.type)) o.looted = false;
@@ -3529,7 +3448,7 @@ function startSiege() {
   };
   SFX.siren();
   shake = 4;
-  toast("☠ ОСАДА РУБЕЖА", "danger");
+  toast("☠ ОРДА НАШЛА ТЕБЯ", "danger");
   $("siegeB").classList.remove("hid");
 }
 function spawnSiegeWave() {
@@ -3539,8 +3458,8 @@ function spawnSiegeWave() {
     for (let tr = 0; tr < 8; tr++) {
       const a = rnd() * Math.PI * 2,
         r = (24 + rnd() * 6) * 16,
-        x = BASEX + Math.cos(a) * r,
-        y = BASEY + Math.sin(a) * r;
+        x = P.x + Math.cos(a) * r,
+        y = P.y + Math.sin(a) * r;
       if (solidAt(Math.floor(x / 16), Math.floor(y / 16))) continue;
       const rr = rnd();
       let tp =
@@ -3598,9 +3517,9 @@ function endSiege(surv, cleared) {
     toast(cleared ? "ОСАДА ОТБИТА" : "Рассвет. Орда отступила.", "quest");
     gainXP(110);
     if (cleared) {
-      addDrop(BASEX + 20, BASEY + 20, "elec", 2);
-      addDrop(BASEX - 20, BASEY + 20, "medkit", 1);
-      addDrop(BASEX, BASEY + 30, "arrow", 14);
+      addDrop(P.x + 20, P.y + 20, "elec", 2);
+      addDrop(P.x - 20, P.y + 20, "medkit", 1);
+      addDrop(P.x, P.y + 30, "arrow", 14);
     }
     qEvent("siege", {});
     saveGame();
@@ -3673,9 +3592,10 @@ function upgradeBase(id) {
     cost = projCost(id, lv);
   for (const k in cost) removeItem(k, cost[k]);
   baseProj[id] = lv + 1;
-  applyBaseProjects();
+  bench = 1 + baseProj.workshop;
+  placeProjectStructure(id);
   SFX.build();
-  toast("РУБЕЖ: " + PROJ[id].n + " ур." + baseProj[id], "epic");
+  toast("ПОСТРОЕНО: " + PROJ[id].n + " ур." + baseProj[id], "epic");
   qEvent("project", { id, level: baseProj[id] });
   for (let cy = -1; cy <= 1; cy++)
     for (let cx = -1; cx <= 1; cx++) chunks.delete(K(cx, cy));
@@ -3965,7 +3885,7 @@ function buildQuestList() {
 }
 function buildBase() {
   $("baseInfo").innerHTML =
-    "Рубеж · дом Артёма. Улучшения меняют базу реально: ворота, турели, огород, гараж, радио, лазарет.";
+    "Свободное строительство. Выбранный проект появляется на свободном месте рядом с тобой.";
   const L = $("baseList");
   L.innerHTML = "";
   for (const id in PROJ) {
@@ -4396,19 +4316,6 @@ function refreshHUD() {
     if (e) e.textContent = countItem(id);
   }
   refreshHotbar();
-  const fire = SMAP.get("16,16"),
-    near = inBase(P.x, P.y) || siege;
-  $("coreChip").classList.toggle("hid", !near || !fire);
-  if (fire) {
-    $("coreF").style.width = clamp((fire.hp / fire.max) * 100, 0, 100) + "%";
-    $("coreLabel").textContent = siege
-      ? "РУБЕЖ · ОСАДА"
-      : inBase(P.x, P.y)
-        ? "РУБЕЖ · БЕЗОПАСНО"
-        : "РУБЕЖ";
-    $("coreChip").classList.toggle("safe", inBase(P.x, P.y) && !siege);
-    $("coreChip").classList.toggle("danger", !!siege);
-  }
   $("carHud").classList.toggle("hid", !P.inCar);
   if (P.inCar) {
     const c = CARS.get(P.inCar);
@@ -4511,54 +4418,66 @@ function paintMapTo(g, span, cell, view = null) {
       y: height / 2 + (y - mapCamera.y) * mapScale,
     }),
   });
-  for (let dy = -halfY; dy <= halfY; dy++)
-    for (let dx = -halfX; dx <= halfX; dx++) {
-      const bx = pcx + dx,
-        by = pcy + dy,
-        p = planBlock(bx, by),
-        s = screen(bx + 0.5, by + 0.5),
-        px = s.x - cell / 2,
-        py = s.y - cell / 2,
-        ex = EX.has(p.k) || p.special || p.camp;
-      if (ex) {
-        const col = p.camp
-          ? "#24404a"
-          : p.nest
-            ? "#39511b"
-            : p.special === "base"
-              ? "#4a3a28"
-              : p.district === "industrial"
-                ? "#3a3a32"
-                : p.district === "commercial"
-                  ? "#403828"
-                  : p.district === "civic"
-                    ? "#344048"
-                    : "#2c3826";
-        g.fillStyle = col;
-        g.globalAlpha = 0.22;
-        g.fillRect(px + 1, py + 1, cell - 1, cell - 1);
-        g.globalAlpha = 1;
-        if (p.buildings.length) {
-          g.fillStyle = "#ffb23e";
-          g.fillRect(s.x - 1, s.y - 1, 3, 3);
-        }
-        if (p.nest && !OV.get("D" + p.k)) {
-          g.fillStyle = "#a6e83c";
-          g.fillRect(s.x - 2, s.y - 2, 5, 5);
-        }
-        if (p.camp) {
-          g.fillStyle = "#7fb8d8";
-          g.fillRect(s.x - 2, s.y - 2, 5, 5);
-        }
-        if (view && p.name && cell >= 30) {
-          g.fillStyle = "#d9cba6";
-          g.font = "8px monospace";
-          g.textAlign = "center";
-          g.fillText(p.name, s.x, s.y + cell / 2 - 5, cell * 1.8);
-          g.textAlign = "start";
+  renderDistrictBoundaries({
+    ctx: g,
+    districts: OSM_CITY.districtBoundaries,
+    W: width,
+    H: height,
+    SC: mapScale,
+    w2s: (x, y) => ({
+      x: width / 2 + (x - mapCamera.x) * mapScale,
+      y: height / 2 + (y - mapCamera.y) * mapScale,
+    }),
+  });
+  if (view)
+    for (let dy = -halfY; dy <= halfY; dy++)
+      for (let dx = -halfX; dx <= halfX; dx++) {
+        const bx = pcx + dx,
+          by = pcy + dy,
+          p = planBlock(bx, by),
+          s = screen(bx + 0.5, by + 0.5),
+          px = s.x - cell / 2,
+          py = s.y - cell / 2,
+          ex = EX.has(p.k) || p.special || p.camp;
+        if (ex) {
+          const col = p.camp
+            ? "#24404a"
+            : p.nest
+              ? "#39511b"
+              : p.special === "base"
+                ? "#4a3a28"
+                : p.district === "industrial"
+                  ? "#3a3a32"
+                  : p.district === "commercial"
+                    ? "#403828"
+                    : p.district === "civic"
+                      ? "#344048"
+                      : "#2c3826";
+          g.fillStyle = col;
+          g.globalAlpha = 0.22;
+          g.fillRect(px + 1, py + 1, cell - 1, cell - 1);
+          g.globalAlpha = 1;
+          if (p.buildings.length) {
+            g.fillStyle = "#ffb23e";
+            g.fillRect(s.x - 1, s.y - 1, 3, 3);
+          }
+          if (p.nest && !OV.get("D" + p.k)) {
+            g.fillStyle = "#a6e83c";
+            g.fillRect(s.x - 2, s.y - 2, 5, 5);
+          }
+          if (p.camp) {
+            g.fillStyle = "#7fb8d8";
+            g.fillRect(s.x - 2, s.y - 2, 5, 5);
+          }
+          if (view && p.name && cell >= 30) {
+            g.fillStyle = "#d9cba6";
+            g.font = "8px monospace";
+            g.textAlign = "center";
+            g.fillText(p.name, s.x, s.y + cell / 2 - 5, cell * 1.8);
+            g.textAlign = "start";
+          }
         }
       }
-    }
   if (view)
     for (const car of CARS.values()) {
       if (car.dead) continue;
@@ -4642,14 +4561,12 @@ function drawBigmap() {
   const view = mapController.getState();
   paintMapTo(bm, 21, 24 * view.zoom, view);
   const district = districtDefinition(
-    districtOf(
-      Math.floor(P.x / (CELL * 16)),
-      Math.floor(P.y / (CELL * 16)),
-      SEED,
+      planBlock(Math.floor(P.x / (CELL * 16)), Math.floor(P.y / (CELL * 16)))
+        .district,
     ),
-  );
+    officialDistrict = OSM_CITY.districtNameAt(P.x, P.y);
   $("mapDistrict").textContent =
-    district.name +
+    (officialDistrict || district.name) +
     " · опасность ×" +
     district.danger +
     " · добыча: " +
@@ -4888,7 +4805,7 @@ function loadGame() {
   $("hotbar").classList.remove("hid");
   cam.x = P.x;
   cam.y = P.y;
-  applyBaseProjects();
+  bench = 1 + baseProj.workshop;
   buildHotbar();
   buildResRow();
   updateQuestUI();
@@ -4960,10 +4877,9 @@ function initGame(seed, diffK) {
   nightToasted = false;
   deathCause = "";
   driveAcc = 0;
-  initBase();
   for (const key of OSM_CITY.specials.keys()) EX.add(key);
-  cam.x = BASEX;
-  cam.y = BASEY;
+  cam.x = SPAWN.x;
+  cam.y = SPAWN.y;
   Z.length = 0;
   PR.length = 0;
   PT.length = 0;
@@ -4993,8 +4909,8 @@ function startAttract() {
   for (let i = 0; i < 6; i++) {
     const a = rnd() * Math.PI * 2,
       r = (30 + rnd() * 8) * 16,
-      x = BASEX + Math.cos(a) * r,
-      y = BASEY + Math.sin(a) * r;
+      x = SPAWN.x + Math.cos(a) * r,
+      y = SPAWN.y + Math.sin(a) * r;
     if (!solidAt(Math.floor(x / 16), Math.floor(y / 16)))
       spawnZ("walker", x, y);
   }
@@ -5431,6 +5347,7 @@ const renderWorld = createWorldRenderer({
   SMAP,
   CAMPS,
   CARS,
+  carsNear,
   NPCS,
   Z,
   getState: () => state,
@@ -5458,6 +5375,7 @@ const renderWorld = createWorldRenderer({
   LG,
   VFX,
   VFX_ASSETS,
+  RAIL_VEHICLES,
 });
 function render() {
   if (state === "home") {
@@ -5466,12 +5384,22 @@ function render() {
   }
   renderWorld();
 }
+function updateRailVehicles(dt) {
+  for (const vehicle of RAIL_VEHICLES) {
+    advanceRailVehicle(vehicle, dt);
+    if (currentFloorId !== "outdoor" || P.inCar) continue;
+    for (const part of railVehicleParts(vehicle))
+      if (d2(P.x, P.y, part.x, part.y) < 14 * 14)
+        damagePlayer(35, vehicle.kind === "tram" ? "трамвай" : "поезд");
+  }
+}
 function update(dt) {
   playT += dt;
   energyT = Math.max(0, energyT - dt);
   recoil = Math.max(0, recoil - dt * 30);
   shake = Math.max(0, shake - dt * 22);
   updateTime(dt);
+  updateRailVehicles(dt);
   while (tut.length && playT >= tut[0][0]) toast(tut.shift()[1], "info");
   if (P.inCar) {
     updateCars(dt);
@@ -5610,8 +5538,8 @@ function update(dt) {
 }
 function updateMenu(dt) {
   menuT += dt;
-  cam.x = BASEX + Math.cos(menuT * 0.1) * 60;
-  cam.y = BASEY + Math.sin(menuT * 0.08) * 50;
+  cam.x = SPAWN.x + Math.cos(menuT * 0.1) * 60;
+  cam.y = SPAWN.y + Math.sin(menuT * 0.08) * 50;
   for (const z of [...Z]) updateZ(z, dt);
   updateStructs(dt);
   updatePT(dt);

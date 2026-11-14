@@ -30,7 +30,6 @@ export function cityRadiusAt(bx, by, seed) {
 export function districtOf(bx, by, seed) {
   const distance = Math.hypot(bx, by);
   if (distance > cityRadiusAt(bx, by, seed)) return "outskirts";
-  if (bx === 0 && by === 0) return "home";
   if (distance < 2.2) return "residential";
   if (distance < 4.5)
     return h2(bx, by, seed ^ 3) < 0.5 ? "commercial" : "civic";

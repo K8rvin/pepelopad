@@ -23,9 +23,8 @@ describe("генерация города", () => {
     }
   });
 
-  it("сохраняет специальные кварталы и дом игрока", () => {
-    expect(districtOf(0, 0, 42)).toBe("home");
-    expect(specialBlock(0, 0)).toBe("base");
+  it("сохраняет специальные кварталы без отдельной домашней зоны", () => {
+    expect(districtOf(0, 0, 42)).toBe("residential");
     expect(specialBlock(2, 0)).toBe("supermarket");
     expect(specialBlock(5, -4)).toBe("quarry");
     expect(specialBlock(100, 100)).toBeUndefined();

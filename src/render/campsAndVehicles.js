@@ -4,6 +4,7 @@ export function renderCampsAndVehicles({
   ctx,
   CAMPS,
   CARS,
+  carsNear,
   NPCS,
   cam,
   W,
@@ -57,7 +58,10 @@ export function renderCampsAndVehicles({
     }
   }
 
-  for (const car of CARS.values()) {
+  const visibleCars = carsNear
+    ? carsNear(cam.x, cam.y, W / SC + 120)
+    : CARS.values();
+  for (const car of visibleCars) {
     if (dist(car.x, car.y, cam.x, cam.y) > W / SC + 120) continue;
     entities.push({
       y: car.y + 10,

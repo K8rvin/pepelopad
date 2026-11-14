@@ -25,6 +25,7 @@ test("зомби и автомобиль рисуются с логически�
           hp: 100,
           fuel: 50,
         });
+        carGridAdd(CARS.get("render-car"));
         const stats = { draws: 0, sizes: [], carDraws: 0, carSizes: [] };
         const original = CanvasRenderingContext2D.prototype.drawImage;
         CanvasRenderingContext2D.prototype.drawImage = function (image, ...args) {

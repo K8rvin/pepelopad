@@ -16,6 +16,10 @@ import {
   findInteriorPoints,
 } from "./buildingGeometry.js";
 import { createRoadPopulation } from "./roadPopulation.js";
+import {
+  createDistrictBoundaries,
+  districtNameAt as findDistrictName,
+} from "./districtBoundaries.js";
 
 function buildingType(tags) {
   if (tags.amenity === "hospital" || tags.amenity === "clinic")
@@ -145,6 +149,7 @@ export function createOsmCityModel(world, projection) {
       1024,
     ),
     roadPopulation = createRoadPopulation(gameWorld),
+    districtBoundaries = createDistrictBoundaries(world, projection),
     buildings = new Map(),
     playableBuildings = new Map(),
     buildingsByBlock = new Map(),
@@ -280,7 +285,7 @@ export function createOsmCityModel(world, projection) {
         }
       }
     }
-    return nearest;
+    return nearest || findDistrictName(districtBoundaries, x, y);
   }
   function populationDensityAt(x, y) {
     const bx = Math.floor(x / projection.blockPixels),
@@ -355,14 +360,22 @@ export function createOsmCityModel(world, projection) {
       random = mb32((h2(bx, by, seed) * 1e9) | 0),
       special = specials.get(key),
       distance = Math.hypot(bx, by),
-      district =
-        distance > 100
-          ? "outskirts"
-          : distance > 55
-            ? "suburb"
-            : distance > 18
+      officialDistrict = findDistrictName(
+        districtBoundaries,
+        (bx * CELL + 14) * 16,
+        (by * CELL + 14) * 16,
+      ),
+      district = officialDistrict
+        ? officialDistrict === "Кировский район"
+          ? "industrial"
+          : officialDistrict === "Центральный район"
+            ? "civic"
+            : officialDistrict === "Краснооктябрьский район"
               ? "residential"
-              : "civic",
+              : distance > 55
+                ? "suburb"
+                : "residential"
+        : "outskirts",
       block = {
         bx,
         by,
@@ -481,6 +494,8 @@ export function createOsmCityModel(world, projection) {
     specials,
     buildings,
     roadPopulation,
+    districtBoundaries,
+    districtNameAt: (x, y) => findDistrictName(districtBoundaries, x, y),
     buildingAt,
     placeNameAt,
     populationDensityAt,

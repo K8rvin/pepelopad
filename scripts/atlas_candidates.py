@@ -38,10 +38,18 @@ SELECTION = {
     "car_taxi": 452815,
     "car_police": 461561,
     "car_ambulance": 812617,
-    "car_truck": 532690,
+    "car_truck": 676571,
     "car_wreck": 496956,
+    "train": 737988,
+    "train_carriage": 531583,
+    "tram": 579885,
 }
-ROTATE_RIGHT = {name for name in SELECTION if name.startswith("car_") and name != "car_ambulance"}
+ROTATE_RIGHT = {
+    name
+    for name in SELECTION
+    if (name.startswith("car_") and name != "car_ambulance")
+    or name in {"train", "train_carriage", "tram"}
+}
 
 with zipfile.ZipFile(ZIP_PATH) as archive:
     captions = json.load(archive.open("captions.json"))

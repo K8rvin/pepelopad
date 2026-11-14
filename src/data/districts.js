@@ -1,13 +1,4 @@
 export const DISTRICTS = {
-  home: {
-    name: "Рубеж и окрестности",
-    danger: 0.5,
-    enemies: ["walker", "dog"],
-    loot: [
-      ["wood", 0.2, 1],
-      ["cloth", 0.15, 1],
-    ],
-  },
   residential: {
     name: "Жилой район",
     danger: 0.9,

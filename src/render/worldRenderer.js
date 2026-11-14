@@ -6,6 +6,7 @@ import { renderLighting } from "./lighting.js";
 import { renderGuidance } from "./guidance.js";
 import { renderVfx } from "./vfx.js";
 import { renderBuildingInterior } from "./buildingInterior.js";
+import { renderRailVehicles } from "./railVehicles.js";
 
 export function createWorldRenderer(deps) {
   const {
@@ -32,10 +33,12 @@ export function createWorldRenderer(deps) {
     SMAP,
     CAMPS,
     CARS,
+    carsNear,
     NPCS,
     Z,
     VFX,
     VFX_ASSETS,
+    RAIL_VEHICLES,
     getState,
     getP,
     getActiveBuilding,
@@ -164,6 +167,7 @@ export function createWorldRenderer(deps) {
         ctx,
         CAMPS,
         CARS,
+        carsNear,
         NPCS,
         cam,
         W,
@@ -179,6 +183,16 @@ export function createWorldRenderer(deps) {
     ];
     entities.sort((a, b) => a.y - b.y);
     for (const entity of entities) entity.f();
+    renderRailVehicles({
+      ctx,
+      vehicles: RAIL_VEHICLES,
+      S,
+      SC,
+      cam,
+      W,
+      H,
+      w2s,
+    });
 
     renderParticles({
       ctx,

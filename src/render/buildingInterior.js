@@ -66,19 +66,6 @@ export function renderBuildingInterior({
     };
     for (const opening of openings) {
       drawInterval(cursor, Math.max(cursor, opening.along - opening.halfWidth));
-      const from = w2s(
-          opening.x - opening.tx * opening.halfWidth,
-          opening.y - opening.ty * opening.halfWidth,
-        ),
-        to = w2s(
-          opening.x + opening.tx * opening.halfWidth,
-          opening.y + opening.ty * opening.halfWidth,
-        );
-      ctx.strokeStyle = opening.kind === "door" ? "#ffb23e" : "#7fb8d8";
-      ctx.lineWidth = 3 * SC;
-      strokeWallPart(ctx, [from, to], w2s);
-      ctx.strokeStyle = "#8a8574";
-      ctx.lineWidth = 8 * SC;
       cursor = Math.min(length, opening.along + opening.halfWidth);
     }
     drawInterval(cursor, length);

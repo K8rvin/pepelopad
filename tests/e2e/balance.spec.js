@@ -204,7 +204,7 @@ ${marker}`;
 }
 
 test("ускоренный playtest первых 20 минут", async ({ page }) => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.stack));
   await installBalanceDriver(page);

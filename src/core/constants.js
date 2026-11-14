@@ -4,5 +4,3 @@ export const CH = 16;
 export const CELL = 28;
 export const CITY_R = 9;
 export const ROAD_LINE_WIDTH = 2;
-export const BASEX = 256;
-export const BASEY = 256;

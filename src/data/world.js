@@ -271,6 +271,13 @@ export const LOOT = {
 };
 
 export const BUILDS = {
+  bench: {
+    n: "Верстак",
+    cost: { wood: 6, scrap: 4 },
+    hp: 180,
+    bench: 1,
+    d: "Базовая мастерская для крафта.",
+  },
   barricade: {
     n: "Баррикада",
     cost: { wood: 4 },
@@ -327,7 +334,7 @@ export const PROJ = {
   },
   garage: {
     n: "Гараж",
-    d: "Ремонт и заправка авто на Рубеже.",
+    d: "Ремонт и заправка авто в построенном гараже.",
     cost: { scrap: 16, gears: 4, parts: 4 },
     max: 2,
     bp: "garage",

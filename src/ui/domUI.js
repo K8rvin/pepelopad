@@ -6,7 +6,7 @@ const TITLES = {
   craft: "КРАФТ",
   skill: "НАВЫКИ",
   quest: "ЗАДАНИЯ",
-  base: "РУБЕЖ",
+  base: "ПОСТРОЙКИ",
   camp: "ЛАГЕРЬ",
   trunk: "БАГАЖНИК",
   log: "ЖУРНАЛ",

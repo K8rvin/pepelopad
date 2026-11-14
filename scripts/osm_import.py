@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-DEFAULT_BBOX = (44.48, 48.69, 44.56, 48.75)
+DEFAULT_BBOX = (44.48, 48.69, 44.56, 48.77)
 SOURCE_URL = "https://www.openstreetmap.org/copyright"
 USER_AGENT = "PepelopadMapImporter/0.1 (https://github.com/K8rvin/pepelopad)"
 
@@ -35,6 +35,20 @@ def download_tile(bbox, attempts=4):
         "https://api.openstreetmap.org/api/0.6/map?bbox="
         + urllib.parse.quote(f"{west},{south},{east},{north}")
     )
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return response.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError) as error:
+            if attempt == attempts:
+                raise
+            print(f"Retry {attempt}/{attempts - 1}: {error}", flush=True)
+            time.sleep(attempt * 1.5)
+
+
+def download_way(way_id, attempts=4):
+    url = f"https://api.openstreetmap.org/api/0.6/way/{way_id}/full"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     for attempt in range(1, attempts + 1):
         try:
@@ -80,6 +94,30 @@ def merge_documents(documents):
         for kind in merged:
             merged[kind].update(document[kind])
     return merged
+
+
+def complete_relation_ways(document):
+    completed = document
+    while True:
+        missing = sorted(
+            {
+                member["ref"]
+                for relation in completed["relations"].values()
+                for member in relation["members"]
+                if relation["tags"].get("boundary") == "administrative"
+                and relation["tags"].get("admin_level") == "9"
+                and member["type"] == "way"
+                and member["ref"] not in completed["ways"]
+            }
+        )
+        if not missing:
+            return completed
+        for index, way_id in enumerate(missing, 1):
+            print(f"Relation way {index}/{len(missing)}: {way_id}", flush=True)
+            completed = merge_documents(
+                [completed, parse_osm_xml(download_way(way_id))]
+            )
+            time.sleep(0.1)
 
 
 def project(lat, lon, origin):
@@ -192,6 +230,7 @@ def main():
     parser.add_argument("--name", default="volgograd-center")
     parser.add_argument("--tile-size", type=float, default=0.01)
     parser.add_argument("--download", action="store_true")
+    parser.add_argument("--complete-relations", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -206,6 +245,8 @@ def main():
     else:
         with open(xml_path, encoding="utf-8") as source:
             document = parse_osm_xml(source.read())
+    if args.download or args.complete_relations:
+        document = complete_relation_ways(document)
     normalized = write_outputs(document, bbox, args.out, args.name)
     print(
         f"OSM import: {len(normalized['nodes'])} nodes, "

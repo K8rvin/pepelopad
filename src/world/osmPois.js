@@ -63,16 +63,16 @@ export function createOsmGameProjection(
   { pixelsPerMeter = 16, blockMeters = 28 } = {},
 ) {
   const sites = resolveVolgogradSites(world),
-    base = sites.base,
+    origin = sites.origin,
     blockPixels = blockMeters * pixelsPerMeter,
     originPixels = blockPixels / 2,
     worldToGame = (point) => ({
-      x: (point.x - base.x) * pixelsPerMeter + originPixels,
-      y: (point.y - base.y) * pixelsPerMeter + originPixels,
+      x: (point.x - origin.x) * pixelsPerMeter + originPixels,
+      y: (point.y - origin.y) * pixelsPerMeter + originPixels,
     }),
     gameToWorld = (point) => ({
-      x: (point.x - originPixels) / pixelsPerMeter + base.x,
-      y: (point.y - originPixels) / pixelsPerMeter + base.y,
+      x: (point.x - originPixels) / pixelsPerMeter + origin.x,
+      y: (point.y - originPixels) / pixelsPerMeter + origin.y,
     });
   return {
     sites,
