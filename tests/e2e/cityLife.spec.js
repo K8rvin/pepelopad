@@ -12,6 +12,7 @@ test("жилой спавн без базы и рельсовый транспо
     const driver = `      window.__cityLifeTest = {
         snapshot: () => ({
           spawn: SPAWN,
+          player: { x: P.x, y: P.y },
           district: OSM_CITY.districtNameAt(SPAWN.x, SPAWN.y),
           buildings: SMAP.size,
           hasCore: Boolean($("coreChip")),
@@ -37,6 +38,7 @@ ${marker}`;
   });
   const snapshot = await page.evaluate(() => window.__cityLifeTest.snapshot());
   expect(snapshot.district).toBe("Краснооктябрьский район");
+  expect(snapshot.player).toEqual({ x: snapshot.spawn.x, y: snapshot.spawn.y });
   expect(snapshot.buildings).toBe(0);
   expect(snapshot.hasCore).toBe(false);
   expect(

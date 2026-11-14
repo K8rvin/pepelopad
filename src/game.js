@@ -1167,8 +1167,8 @@ function enterWorld() {
     $("menuOv").classList.add("hid");
     $("dialog").classList.add("hid");
     DL.active = false;
-    P.x = 184;
-    P.y = 232;
+    P.x = SPAWN.x;
+    P.y = SPAWN.y;
     P.iframe = 2;
     cam.x = P.x;
     cam.y = P.y;
