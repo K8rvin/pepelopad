@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const CITY_ID = "volgograd-osm-1";
 
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -71,16 +71,24 @@ export function validateSaveData(data) {
 
 export function migrateSave(data) {
   if (!data || typeof data !== "object") throw new Error("Corrupted save data");
-  if (![3, 4, 5, SAVE_VERSION].includes(data.v))
+  if (![3, 4, 5, 6, SAVE_VERSION].includes(data.v))
     throw new Error("Unsupported save version");
+  const player = { ...data.P };
+  let floor = data.floor || null;
+  if (data.v === 6 && floor?.return) {
+    player.x = floor.return.x;
+    player.y = floor.return.y;
+    floor = null;
+  }
   const migrated = {
     ...data,
     v: SAVE_VERSION,
     city:
-      data.v === SAVE_VERSION && data.city === CITY_ID
+      [6, SAVE_VERSION].includes(data.v) && data.city === CITY_ID
         ? CITY_ID
         : "legacy-procedural",
-    floor: data.floor || null,
+    P: player,
+    floor,
     invSlots: data.invSlots || 30,
     hasSpear: Boolean(data.hasSpear),
     J: data.J || [],

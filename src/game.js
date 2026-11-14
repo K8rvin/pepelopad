@@ -122,13 +122,7 @@ import { renderCampsAndVehicles } from "/src/render/campsAndVehicles.js";
 import { renderWorldObjects } from "/src/render/worldObjects.js";
 import { renderActors } from "/src/render/actors.js";
 import { createWorldRenderer } from "/src/render/worldRenderer.js";
-import { renderFloor } from "/src/render/floorRenderer.js";
 import { changeFloor } from "/src/systems/floors.js";
-import {
-  createFloorScene,
-  floorContainers,
-  floorTileAt,
-} from "/src/world/floorScene.js";
 import { createDomUI } from "/src/ui/domUI.js";
 import { createMapController } from "/src/ui/mapController.js";
 import { attachMapInteractions } from "/src/ui/mapInteractions.js";
@@ -144,6 +138,7 @@ import { createChunkManager } from "/src/world/chunkManager.js";
 import { loadOsmWorld } from "/src/world/osmMap.js";
 import { createOsmGameProjection } from "/src/world/osmPois.js";
 import { createOsmCityModel } from "/src/world/osmCity.js";
+import { populationTarget } from "/src/world/roadPopulation.js";
 import { osmSolidAt } from "/src/world/osmCollision.js";
 import { renderOsmMap } from "/src/render/osmMapRenderer.js";
 
@@ -286,8 +281,7 @@ const AU = {
     if (this.wind)
       this.wind.gain.value = state === "home" ? 0.016 : 0.022 + dk * 0.028;
     if (this.drone)
-      this.drone.gain.value =
-        (state === "play" || state === "floor") && dk > 0.3 ? 0.02 : 0;
+      this.drone.gain.value = state === "play" && dk > 0.3 ? 0.02 : 0;
     if (this.eng) {
       const c = P && P.inCar ? CARS.get(P.inCar) : null;
       this.eng.gain.value = c && Math.abs(c.speed) > 4 ? 0.035 : 0;
@@ -599,7 +593,6 @@ const mapController = createMapController({ minZoom: 0.5, maxZoom: 4 });
 let mapReturnState = "play",
   pauseReturnState = "play",
   mapFloorId = "ground",
-  mapFloorScene = null,
   mapHoverName = "";
 let P,
   inv = [],
@@ -617,9 +610,7 @@ let P,
   hasSpear = false,
   energyT = 0,
   currentFloorId = "outdoor",
-  FLOOR_SCENE = null,
-  FLOOR_CONTAINERS = new Map(),
-  floorReturn = null;
+  activeBuilding = null;
 let stats,
   J = [],
   Q = {
@@ -866,8 +857,7 @@ function paintChunk(c) {
       g.globalAlpha = 1;
     }
 }
-function tileAt(tx, ty) {
-  if (currentFloorId !== "outdoor") return floorTileAt(FLOOR_SCENE, tx, ty);
+function tileAt() {
   return 0;
 }
 function solidAt(tx, ty, exCar) {
@@ -1091,51 +1081,28 @@ function homeSolid(x, y, r) {
   }
   return false;
 }
-function setFloorScene(scene) {
-  FLOOR_SCENE = scene;
-  FLOOR_CONTAINERS = floorContainers(scene);
-  for (const container of FLOOR_CONTAINERS.values())
-    container.looted = OV.get("L" + container.id) === true;
-  collisionContext.containers = FLOOR_CONTAINERS;
-}
-function enterFloor(buildingId, floorId) {
-  if (currentFloorId === "outdoor") floorReturn = { x: P.x, y: P.y };
-  currentFloorId = floorId;
-  setFloorScene(createFloorScene(buildingId, floorId));
-  P.inCar = null;
-  P.x = FLOOR_SCENE.spawn.x;
-  P.y = FLOOR_SCENE.spawn.y;
-  PR.length = 0;
-  searching = null;
-  state = "floor";
-  setBody("play");
-  $("fade").classList.add("on");
-  setTimeout(() => $("fade").classList.remove("on"), 120);
+function updateBuildingPresence() {
+  activeBuilding = OSM_CITY.buildingAt(P.x, P.y);
+  if (!activeBuilding) currentFloorId = "outdoor";
+  else {
+    if (currentFloorId === "outdoor") currentFloorId = "ground";
+    OSM_CITY.stairsFor(activeBuilding, currentFloorId);
+  }
 }
 function transitionFloor(target) {
-  if (target === "outdoor") {
-    exitFloor();
-    return;
-  }
+  if (!activeBuilding) return;
   const next = changeFloor(
-    { buildingId: FLOOR_SCENE.buildingId, floorId: currentFloorId },
+    { buildingId: activeBuilding.type, floorId: currentFloorId },
     target,
   );
-  enterFloor(next.buildingId, next.floorId);
+  currentFloorId = next.floorId;
+  searching = null;
+  OSM_CITY.stairsFor(activeBuilding, currentFloorId);
+  toast(FLOOR_DEFINITIONS[activeBuilding.type][currentFloorId].name, "info");
 }
 function exitFloor() {
   currentFloorId = "outdoor";
-  FLOOR_SCENE = null;
-  FLOOR_CONTAINERS = new Map();
-  collisionContext.containers = CMAP;
-  if (floorReturn) {
-    P.x = floorReturn.x;
-    P.y = floorReturn.y;
-  }
-  PR.length = 0;
-  searching = null;
-  state = "play";
-  setBody("play");
+  activeBuilding = null;
 }
 function say(lines, cb) {
   DL = { active: true, lines, i: 0, ch: 0, cb };
@@ -1369,7 +1336,7 @@ function addItem(id, n, silent) {
       P.owned[id] = true;
       P.weapon = id;
       P.mags[id] = 0;
-      if (state === "play" || state === "floor") startReload();
+      if (state === "play") startReload();
       toast("НОВОЕ ОРУЖИЕ: " + it.n, "epic");
       SFX.bp();
       refreshHotbar();
@@ -1757,7 +1724,7 @@ function updateZ(z, dt) {
     safe =
       currentFloorId === "outdoor" &&
       ((inBase(P.x, P.y) && !siege) || nearCamp(P.x, P.y));
-  if ((state === "play" || state === "floor") && !safe) {
+  if (state === "play" && !safe) {
     if (z.siege) {
       const near = dist(P.x, P.y, BASEX, BASEY) < 34 * 16;
       z.tx = near ? P.x : BASEX;
@@ -1807,11 +1774,7 @@ function updateZ(z, dt) {
         mx = Math.cos(a);
         my = Math.sin(a);
       }
-      if (
-        dp < 150 &&
-        z.spitCd <= 0 &&
-        (state === "play" || state === "floor")
-      ) {
+      if (dp < 150 && z.spitCd <= 0 && state === "play") {
         z.spitCd = 2.8;
         SFX.spit();
         const aa = Math.atan2(P.y - z.y, P.x - z.x) + (rnd() - 0.5) * 0.12;
@@ -1893,7 +1856,7 @@ function updateZ(z, dt) {
     z.sideT = 0.4 + rnd() * 0.4;
   }
   if (
-    (state === "play" || state === "floor") &&
+    state === "play" &&
     dp < z.r + P.r + 3 &&
     z.atk <= 0 &&
     z.fleeT <= 0 &&
@@ -1922,24 +1885,25 @@ function ambientSpawn(dt) {
       ),
     ),
     raidDanger = currentRaidRules()?.danger || 1,
-    cap =
-      Math.round(
-        (6 + Math.min(day, 12) * 1.3 + (night ? 6 : 0)) *
-          DIFF.cap *
-          district.danger *
-          raidDanger,
-      ) -
-      stats.calm +
-      (Q.endless ? 2 : 0);
-  if (Z.length >= Math.max(day < 3 ? 4 : 6, cap)) return;
+    cap = populationTarget({
+      day,
+      night,
+      difficulty: DIFF.cap,
+      districtDanger: district.danger,
+      raidDanger,
+      density: OSM_CITY.populationDensityAt(P.x, P.y),
+      calm: stats.calm,
+      endless: Q.endless,
+    }),
+    spawnPoints = OSM_CITY.spawnPointsNear(P.x, P.y, 28 * 16);
+  if (Z.length >= cap || !spawnPoints.length) return;
   for (let i = 0; i < 8; i++) {
-    const a = rnd() * Math.PI * 2,
-      d = (17 + rnd() * 10) * 16,
-      x = P.x + Math.cos(a) * d,
-      y = P.y + Math.sin(a) * d;
+    const point = spawnPoints[Math.floor(rnd() * spawnPoints.length)],
+      x = point.x,
+      y = point.y;
     if (inBase(x, y) || nearCamp(x, y) || dist(x, y, BASEX, BASEY) < 28 * 16)
       continue;
-    if (solidAt(Math.floor(x / 16), Math.floor(y / 16))) continue;
+    if (circleHit(x, y, 6)) continue;
     const r = rnd(),
       th = threat();
     let type = "walker";
@@ -2091,14 +2055,11 @@ function updateStructs(dt) {
           max: 0.8,
           col: "#ffb23e",
         });
-      if (
-        (state === "play" || state === "floor") &&
-        d2(P.x, P.y, sx, sy) < (3 * 16) ** 2
-      )
+      if (state === "play" && d2(P.x, P.y, sx, sy) < (3 * 16) ** 2)
         P.hp = clamp(P.hp + 2 * dt, 0, maxHp());
     } else if (s.t === "medstation") {
       if (
-        (state === "play" || state === "floor") &&
+        state === "play" &&
         d2(P.x, P.y, sx, sy) < (3.5 * 16) ** 2 &&
         P.hp < maxHp()
       )
@@ -2577,11 +2538,7 @@ function explode(x, y, r, dmg, hurtAll) {
   ptBurst(x, y, "#ffb23e", 22);
   LG.push({ x, y, r: r * 1.4, life: 0.3, max: 0.3, col: "255,150,60" });
   CL.push({ x, y, r: r * 0.8, life: 3.5, max: 3.5, fire: true });
-  if (
-    (state === "play" || state === "floor") &&
-    d2(P.x, P.y, x, y) < r * r &&
-    !P.inCar
-  ) {
+  if (state === "play" && d2(P.x, P.y, x, y) < r * r && !P.inCar) {
     damagePlayer(dmg, "взрыв");
     P.poison = Math.max(P.poison, 1);
   }
@@ -2627,7 +2584,7 @@ function updatePR(dt) {
       }
       if (p.from === "z") {
         if (
-          (state === "play" || state === "floor") &&
+          state === "play" &&
           !P.inCar &&
           d2(p.x, p.y, P.x, P.y) < (P.r + 4) ** 2
         ) {
@@ -2762,16 +2719,9 @@ function updateCL(dt) {
     if (c.fire) {
       for (const z of [...Z])
         if (d2(z.x, z.y, c.x, c.y) < c.r * c.r) hurtZ(z, 18 * dt, undefined, 0);
-      if (
-        (state === "play" || state === "floor") &&
-        !P.inCar &&
-        d2(P.x, P.y, c.x, c.y) < c.r * c.r
-      )
+      if (state === "play" && !P.inCar && d2(P.x, P.y, c.x, c.y) < c.r * c.r)
         damagePlayer(8 * dt, "огонь");
-    } else if (
-      (state === "play" || state === "floor") &&
-      d2(P.x, P.y, c.x, c.y) < c.r * c.r
-    )
+    } else if (state === "play" && d2(P.x, P.y, c.x, c.y) < c.r * c.r)
       P.poison = Math.max(P.poison, 0.5);
   }
 }
@@ -2828,7 +2778,7 @@ function gainXP(n) {
 function damagePlayer(d, src) {
   if (
     P.iframe > 0 ||
-    (state !== "play" && state !== "floor") ||
+    state !== "play" ||
     (currentFloorId === "outdoor" && inBase(P.x, P.y) && !siege)
   )
     return;
@@ -3016,76 +2966,21 @@ function contName(t) {
     }[t] || "Контейнер"
   );
 }
-function updateFloorInteract() {
-  if (searching) {
-    $("prompt").classList.remove("hid");
-    $("promptT").textContent = "ОБЫСК…";
-    $("promptS").textContent = "Не двигайся";
-    return;
-  }
-  let stair = null,
-    stairDistance = 40 * 40;
-  for (const candidate of FLOOR_SCENE.stairs) {
-    const distance = d2(P.x, P.y, candidate.x, candidate.y);
-    if (distance < stairDistance) {
-      stairDistance = distance;
-      stair = candidate;
-    }
-  }
-  if (stair) {
-    promptObj = { kind: "stairs", o: stair };
-    $("promptT").textContent =
-      stair.target === "outdoor" ? "E — Выйти наружу" : "E — " + stair.target;
-    $("promptS").textContent = FLOOR_SCENE.name;
-    $("prompt").classList.remove("hid");
-    return;
-  }
-  let best = null,
-    bestDistance = (1.8 * 16) ** 2;
-  for (const container of FLOOR_CONTAINERS.values()) {
-    if (container.looted) continue;
-    const distance = d2(P.x, P.y, container.x * 16 + 8, container.y * 16 + 8);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = container;
-    }
-  }
-  if (best) {
-    promptObj = { kind: "cont", o: best };
-    $("promptT").textContent = "E — Обыскать: " + contName(best.type);
-    $("promptS").textContent = FLOOR_SCENE.name;
-  } else {
-    $("prompt").classList.add("hid");
-  }
-}
-function nearbyFloorEntrance() {
-  const pcx = Math.floor(P.x / (CELL * 16)),
-    pcy = Math.floor(P.y / (CELL * 16));
+function nearbyStair() {
+  if (!activeBuilding) return null;
   let nearest = null,
-    bestDistance = (1.8 * 16) ** 2;
-  for (const building of OSM_CITY.buildingsNearDoor(pcx, pcy)) {
-    if (!FLOOR_DEFINITIONS[building.type]) continue;
-    const x = (building.x + Math.floor(building.w / 2) + 0.5) * 16,
-      y = (building.y + building.h + 0.5) * 16,
-      distance = d2(P.x, P.y, x, y);
+    bestDistance = 40 * 40;
+  for (const stair of OSM_CITY.stairsFor(activeBuilding, currentFloorId)) {
+    const distance = d2(P.x, P.y, stair.x, stair.y);
     if (distance < bestDistance) {
       bestDistance = distance;
-      nearest = {
-        buildingId: building.type,
-        x,
-        y,
-        name: POI[building.type].name,
-      };
+      nearest = stair;
     }
   }
   return nearest;
 }
 function updateInteract() {
   promptObj = null;
-  if (currentFloorId !== "outdoor") {
-    updateFloorInteract();
-    return;
-  }
   if (state !== "play" || buildSel) {
     $("prompt").classList.add("hid");
     return;
@@ -3104,7 +2999,7 @@ function updateInteract() {
       c.fuel < 15 ? "Мало топлива!" : "W — газ · S — тормоз/задний ход";
     return;
   }
-  const entrance = nearbyFloorEntrance();
+  const stair = nearbyStair();
   let best = null,
     bd = (1.8 * 16) ** 2;
   for (const c of visChunks)
@@ -3165,10 +3060,10 @@ function updateInteract() {
     promptObj = { kind: "camp", o: camp };
     $("promptT").textContent = "E — " + camp.name + " · лидер " + camp.leader;
     $("promptS").textContent = "Торговля · улучшения · поручения";
-  } else if (entrance) {
-    promptObj = { kind: "floorEntrance", o: entrance };
-    $("promptT").textContent = "E — Войти: " + entrance.name;
-    $("promptS").textContent = "Доступны внутренние этажи";
+  } else if (stair) {
+    promptObj = { kind: "stairs", o: stair };
+    $("promptT").textContent = "E — " + stair.label;
+    $("promptS").textContent = activeBuilding.name || "Лестница";
   } else if (best && !best.looted) {
     promptObj = { kind: "cont", o: best };
     $("promptT").textContent = "E — Обыскать: " + contName(best.type);
@@ -3204,18 +3099,13 @@ function updateInteract() {
 }
 function doInteract() {
   if (searching) return;
-  if (currentFloorId !== "outdoor") {
-    if (promptObj?.kind === "stairs") transitionFloor(promptObj.o.target);
-    else if (promptObj?.kind === "cont") startSearch(promptObj.o);
-    return;
-  }
   if (P.inCar) {
     exitCar();
     return;
   }
   if (!promptObj) return;
-  if (promptObj.kind === "floorEntrance") {
-    enterFloor(promptObj.o.buildingId, "ground");
+  if (promptObj.kind === "stairs") {
+    transitionFloor(promptObj.o.target);
     return;
   }
   if (promptObj.kind === "cont") {
@@ -4482,10 +4372,7 @@ function refreshHUD() {
   $("xpF").style.width = clamp((P.xp / xpNeed(P.lvl)) * 100, 0, 100) + "%";
   $("spChip").classList.toggle("hid", P.sp <= 0);
   $("spChip").textContent = "+" + P.sp + " НАВЫК";
-  $("fxHp").classList.toggle(
-    "low",
-    P.hp < maxHp() * 0.28 && (state === "play" || state === "floor"),
-  );
+  $("fxHp").classList.toggle("low", P.hp < maxHp() * 0.28 && state === "play");
   $("fxPoison").style.opacity = P.poison > 0 ? 0.7 : 0;
   const hh = Math.floor(tod),
     m = Math.floor((tod - hh) * 60);
@@ -4721,15 +4608,14 @@ function paintMapTo(g, span, cell, view = null) {
   g.restore();
 }
 function drawMinimap() {
-  if (currentFloorId !== "outdoor") {
-    mm.fillStyle = "#0a0c09";
-    mm.fillRect(0, 0, mm.canvas.width, mm.canvas.height);
-    mm.fillStyle = "#d9cba6";
-    mm.font = "10px monospace";
-    mm.fillText(FLOOR_SCENE.name, 6, 18);
-    return;
-  }
   if (P) paintMapTo(mm, 9, 17);
+  if (activeBuilding) {
+    mm.fillStyle = "#0a0c09cc";
+    mm.fillRect(0, 0, mm.canvas.width, 22);
+    mm.fillStyle = "#d9cba6";
+    mm.font = "9px monospace";
+    mm.fillText(activeBuilding.name || "Здание", 5, 14, mm.canvas.width - 10);
+  }
 }
 function mapCanvasPoint(point) {
   const view = mapController.getState(),
@@ -4740,32 +4626,19 @@ function mapCanvasPoint(point) {
   };
 }
 function selectMapFloor(direction) {
-  if (!FLOOR_SCENE) return;
-  const floors = Object.keys(FLOOR_DEFINITIONS[FLOOR_SCENE.buildingId]),
+  if (!activeBuilding) return;
+  const floors = Object.keys(FLOOR_DEFINITIONS[activeBuilding.type] || {}),
     index = floors.indexOf(mapFloorId),
     next = clamp(index + direction, 0, floors.length - 1);
-  mapFloorId = floors[next];
-  mapFloorScene = createFloorScene(FLOOR_SCENE.buildingId, mapFloorId);
+  mapFloorId = floors[next] || mapFloorId;
   drawBigmap();
 }
 function drawBigmap() {
-  $("mapFloorNav").classList.toggle("hid", currentFloorId === "outdoor");
-  if (currentFloorId !== "outdoor") {
-    const scene = mapFloorScene || FLOOR_SCENE;
-    bm.fillStyle = "#0a0c09";
-    bm.fillRect(0, 0, bm.canvas.width, bm.canvas.height);
-    for (let y = 0; y < scene.h; y++)
-      for (let x = 0; x < scene.w; x++)
-        bm.drawImage(TI[floorTileAt(scene, x, y)], x * 16 + 72, y * 16 + 56);
-    bm.fillStyle = "#d9cba6";
-    bm.font = "14px monospace";
-    bm.fillText(scene.name, 72, 34);
-    $("mapFloorName").textContent = scene.name;
-    $("mapDistrict").textContent =
-      FLOOR_SCENE.name + " · просмотр: " + scene.name;
-    $("seedShow").textContent = SEED;
-    return;
-  }
+  $("mapFloorNav").classList.toggle("hid", !activeBuilding);
+  if (activeBuilding)
+    $("mapFloorName").textContent =
+      FLOOR_DEFINITIONS[activeBuilding.type]?.[mapFloorId]?.name ||
+      "Первый этаж";
   const view = mapController.getState();
   paintMapTo(bm, 21, 24 * view.zoom, view);
   const district = districtDefinition(
@@ -4785,15 +4658,20 @@ function drawBigmap() {
     view.zoom.toFixed(2) +
     (mapHoverName ? " · " + mapHoverName : "") +
     (view.waypoint ? " · метка установлена" : "");
+  if (activeBuilding)
+    $("mapDistrict").textContent +=
+      " · " +
+      (activeBuilding.name || "Здание") +
+      " · " +
+      $("mapFloorName").textContent;
   const raidRules = currentRaidRules();
   if (raidRules) $("mapDistrict").textContent += " · " + raidRules.label;
   $("seedShow").textContent = SEED;
 }
 function openMap() {
-  if (state !== "play" && state !== "floor") return;
+  if (state !== "play") return;
   mapReturnState = state;
   mapFloorId = currentFloorId === "outdoor" ? "ground" : currentFloorId;
-  mapFloorScene = FLOOR_SCENE;
   mapHoverName = "";
   mapController.panBy(
     P.x / (CELL * 16) - mapController.getState().center.x,
@@ -4812,7 +4690,7 @@ function closeMap() {
   if (state === "map") state = mapReturnState;
 }
 function openPause() {
-  if (state !== "play" && state !== "floor") return;
+  if (state !== "play") return;
   pauseReturnState = state;
   state = "pause";
   mouse.down = false;
@@ -4879,11 +4757,11 @@ function saveGame(dead) {
       dead: !!dead,
       gateOpen,
       P,
-      floor: FLOOR_SCENE
+      floor: activeBuilding
         ? {
-            buildingId: FLOOR_SCENE.buildingId,
+            buildingId: activeBuilding.type,
+            wayId: activeBuilding.wayId,
             floorId: currentFloorId,
-            return: floorReturn,
           }
         : null,
       inv,
@@ -4974,15 +4852,12 @@ function loadGame() {
   J = d.J || [];
   gateOpen = d.gateOpen;
   P = d.P;
-  floorReturn = d.floor?.return || null;
-  if (d.floor?.buildingId) {
-    currentFloorId = d.floor.floorId;
-    setFloorScene(createFloorScene(d.floor.buildingId, currentFloorId));
-  } else {
+  activeBuilding = d.floor?.wayId ? OSM_CITY.buildingAt(P.x, P.y) : null;
+  if (d.floor?.wayId && activeBuilding?.wayId === d.floor.wayId)
+    currentFloorId = d.floor.floorId || "ground";
+  else {
     currentFloorId = "outdoor";
-    FLOOR_SCENE = null;
-    FLOOR_CONTAINERS = new Map();
-    collisionContext.containers = CMAP;
+    activeBuilding = null;
   }
   P.iframe = 1;
   P.poison = 0;
@@ -5026,7 +4901,7 @@ function loadGame() {
   } else if (mode === "ending") {
     showEnding();
   } else {
-    state = FLOOR_SCENE ? "floor" : "play";
+    state = "play";
     setBody("play");
   }
   return true;
@@ -5036,9 +4911,7 @@ function initGame(seed, diffK) {
   DIFFK = diffK;
   DIFF = DIFFS[diffK];
   currentFloorId = "outdoor";
-  FLOOR_SCENE = null;
-  FLOOR_CONTAINERS = new Map();
-  floorReturn = null;
+  activeBuilding = null;
   collisionContext.containers = CMAP;
   chunks.clear();
   visChunks = [];
@@ -5158,7 +5031,7 @@ function keyAction(code) {
     }
     return;
   }
-  if (state === "play" || state === "floor") {
+  if (state === "play") {
     if (code === "KeyE") doInteract();
     else if (code === "KeyR") {
       if (P.inCar) repairCar(CARS.get(P.inCar));
@@ -5252,7 +5125,10 @@ attachMapInteractions({
   onHover: (point) => {
     const target = mapCanvasPoint(point),
       block = planBlock(Math.floor(target.x), Math.floor(target.y));
-    mapHoverName = block.name || "";
+    mapHoverName =
+      OSM_CITY.placeNameAt(target.x * CELL * 16, target.y * CELL * 16) ||
+      block.name ||
+      "";
     for (const car of CARS.values()) {
       if (
         !car.dead &&
@@ -5266,6 +5142,28 @@ attachMapInteractions({
   },
 });
 $("mmap").addEventListener("click", openMap);
+$("mmap").addEventListener("pointermove", (event) => {
+  if (!P || state !== "play") return;
+  const canvas = $("mmap"),
+    rect = canvas.getBoundingClientRect(),
+    scale = 17 / (CELL * 16),
+    x =
+      P.x +
+      ((event.clientX - rect.left) * (canvas.width / rect.width) -
+        canvas.width / 2) /
+        scale,
+    y =
+      P.y +
+      ((event.clientY - rect.top) * (canvas.height / rect.height) -
+        canvas.height / 2) /
+        scale,
+    name = OSM_CITY.placeNameAt(x, y);
+  $("mmapHint").textContent = name || "Нет названия";
+  $("mmapHint").classList.toggle("hid", !name);
+});
+$("mmap").addEventListener("pointerleave", () =>
+  $("mmapHint").classList.add("hid"),
+);
 $("mapFloorPrev").onclick = () => selectMapFloor(-1);
 $("mapFloorNext").onclick = () => selectMapFloor(1);
 window.addEventListener("mousemove", (e) => {
@@ -5286,24 +5184,20 @@ window.addEventListener("mousedown", (e) => {
       advanceDialog();
       return;
     }
-    if (state === "play" || state === "floor") {
+    if (state === "play") {
       if (buildSel) {
         const w = screenToWorld(mouse.x, mouse.y);
         tryPlace(Math.floor(w.x / 16), Math.floor(w.y / 16));
       } else mouse.down = true;
     }
-  } else if (
-    e.button === 2 &&
-    (state === "play" || state === "floor") &&
-    buildSel !== null
-  )
+  } else if (e.button === 2 && state === "play" && buildSel !== null)
     toggleBuild();
 });
 window.addEventListener("mouseup", (e) => {
   if (e.button === 0) mouse.down = false;
 });
 window.addEventListener("contextmenu", (e) => {
-  if (state === "play" || state === "floor") e.preventDefault();
+  if (state === "play") e.preventDefault();
 });
 window.addEventListener(
   "wheel",
@@ -5317,10 +5211,10 @@ window.addEventListener(
   { passive: true },
 );
 window.addEventListener("blur", () => {
-  if (state === "play" || state === "floor") openPause();
+  if (state === "play") openPause();
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && (state === "play" || state === "floor")) openPause();
+  if (document.hidden && state === "play") openPause();
 });
 window.addEventListener("beforeunload", () => {
   if (["play", "panel", "pause", "map"].includes(state)) saveGame();
@@ -5368,7 +5262,7 @@ if (isTouch) {
       advanceDialog();
       return;
     }
-    if (state === "play" || state === "floor") {
+    if (state === "play") {
       aimId = e.pointerId;
       mouse.x = e.clientX;
       mouse.y = e.clientY;
@@ -5417,7 +5311,7 @@ $("btnContinue").onclick = () => {
   AU.resume();
   if (loadGame()) {
     $("menuOv").classList.add("hid");
-    if (state === "play" || state === "floor")
+    if (state === "play")
       toast("Вахта продолжается. День " + day + ".", "quest");
     SFX.quest();
   } else startAttract();
@@ -5541,6 +5435,10 @@ const renderWorld = createWorldRenderer({
   Z,
   getState: () => state,
   getP: () => P,
+  getActiveBuilding: () => activeBuilding,
+  getFloorId: () => currentFloorId,
+  getStairs: () =>
+    activeBuilding ? OSM_CITY.stairsFor(activeBuilding, currentFloorId) : [],
   getBuildSel: () => buildSel,
   mouse,
   screenToWorld,
@@ -5564,28 +5462,6 @@ const renderWorld = createWorldRenderer({
 function render() {
   if (state === "home") {
     renderHome();
-    return;
-  }
-  if (state === "floor") {
-    renderFloor({
-      ctx,
-      scene: FLOOR_SCENE,
-      containers: FLOOR_CONTAINERS,
-      TI,
-      S,
-      SC,
-      W,
-      H,
-      P,
-      Z: Z.filter((zombie) => (zombie.floorId || "outdoor") === currentFloorId),
-      now: performance.now() / 1000,
-      w2s,
-      drawWeaponOverlay,
-      PR,
-      PT,
-      TX,
-      rnd,
-    });
     return;
   }
   renderWorld();
@@ -5660,6 +5536,7 @@ function update(dt) {
       startReload();
     if (mouse.down && !buildSel && !searching) fireWeapon();
   }
+  updateBuildingPresence();
   P.iframe -= dt;
   P.hu = Math.max(0, P.hu - dt * 0.1 * (1 - P.skills.metabolism * 0.12));
   if (P.hu <= 0) {
@@ -5757,7 +5634,7 @@ function frame(now) {
       slowN = 0;
     }
   } else slowN = Math.max(0, slowN - 1);
-  if (state === "play" || state === "floor") update(dt);
+  if (state === "play") update(dt);
   else if (state === "menu") updateMenu(dt);
   else if (state === "home") updateHome(dt);
   else {

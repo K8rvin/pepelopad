@@ -2,6 +2,7 @@ import { CELL } from "../core/constants.js";
 import { K } from "../core/math.js";
 import { h2, mb32 } from "../core/rng.js";
 import { POI } from "../data/world.js";
+import { FLOOR_DEFINITIONS } from "../data/floors.js";
 import {
   distanceToSegmentSquared,
   osmSolidAt,
@@ -9,6 +10,12 @@ import {
 } from "./osmCollision.js";
 import { createOsmWorld, osmWayWidth, wayCategory } from "./osmMap.js";
 import { centerOfPoints } from "./osmPois.js";
+import {
+  createBuildingAccess,
+  distanceToBuildingWalls,
+  findInteriorPoints,
+} from "./buildingGeometry.js";
+import { createRoadPopulation } from "./roadPopulation.js";
 
 function buildingType(tags) {
   if (tags.amenity === "hospital" || tags.amenity === "clinic")
@@ -30,13 +37,18 @@ function buildingType(tags) {
   return "house";
 }
 
-function buildingRecord(way, projection, bxOverride, byOverride) {
+function buildingRecord(
+  way,
+  projection,
+  bxOverride,
+  byOverride,
+  entranceByCoordinate = new Map(),
+) {
   const gamePoints = way.points.map(([x, y]) => {
     const point = projection.worldToGame({ x, y });
     return [point.x, point.y];
   });
-  const transformed = { ...way, points: gamePoints },
-    center = centerOfPoints(gamePoints),
+  const center = centerOfPoints(gamePoints),
     bounds = {
       minX: Math.min(...gamePoints.map((point) => point[0])),
       maxX: Math.max(...gamePoints.map((point) => point[0])),
@@ -44,7 +56,16 @@ function buildingRecord(way, projection, bxOverride, byOverride) {
       maxY: Math.max(...gamePoints.map((point) => point[1])),
     },
     x = Math.floor(bounds.minX / 16),
-    y = Math.floor(bounds.minY / 16);
+    y = Math.floor(bounds.minY / 16),
+    entrancePoints = way.points.flatMap(([x, y]) =>
+      (entranceByCoordinate.get(`${x.toFixed(5)},${y.toFixed(5)}`) || []).map(
+        (point) => projection.worldToGame(point),
+      ),
+    ),
+    openings = createBuildingAccess(
+      { ...way, points: gamePoints },
+      entrancePoints,
+    );
   return {
     id: `osm:${way.id}`,
     wayId: way.id,
@@ -58,6 +79,9 @@ function buildingRecord(way, projection, bxOverride, byOverride) {
     name: way.tags.name || null,
     osmName: way.tags.name || null,
     tags: way.tags,
+    points: gamePoints,
+    bounds,
+    openings,
   };
 }
 
@@ -69,19 +93,38 @@ function addContainers(block, building, random) {
         Math.floor(random() * (definition.contN[1] - definition.contN[0] + 1)),
     );
   for (let index = 0; index < count; index++) {
-    const x =
-        building.x + 1 + Math.floor(random() * Math.max(1, building.w - 2)),
-      type =
-        definition.contTypes[
-          Math.floor(random() * definition.contTypes.length)
-        ];
-    block.containers.push({
-      x,
-      y: building.y + building.h + 1,
-      type,
-      wayId: building.wayId,
-      id: `${building.id}:${index}`,
-    });
+    const type =
+      definition.contTypes[Math.floor(random() * definition.contTypes.length)];
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const px =
+          building.bounds.minX +
+          random() * (building.bounds.maxX - building.bounds.minX),
+        py =
+          building.bounds.minY +
+          random() * (building.bounds.maxY - building.bounds.minY),
+        x = Math.floor(px / 16),
+        y = Math.floor(py / 16),
+        centerX = x * 16 + 8,
+        centerY = y * 16 + 8;
+      if (!pointInPolygon(centerX, centerY, building.points)) continue;
+      if (distanceToBuildingWalls(centerX, centerY, building.points) < 20)
+        continue;
+      if (
+        block.containers.some(
+          (container) => Math.hypot(container.x - x, container.y - y) < 1.5,
+        )
+      )
+        continue;
+      block.containers.push({
+        x,
+        y,
+        type,
+        wayId: building.wayId,
+        floorId: "ground",
+        id: `${building.id}:${index}`,
+      });
+      break;
+    }
   }
 }
 
@@ -101,15 +144,31 @@ export function createOsmCityModel(world, projection) {
       },
       1024,
     ),
+    roadPopulation = createRoadPopulation(gameWorld),
     buildings = new Map(),
+    playableBuildings = new Map(),
     buildingsByBlock = new Map(),
-    buildingsByDoor = new Map(),
     specialWayIds = new Set(),
-    specials = new Map();
+    specials = new Map(),
+    entranceByCoordinate = new Map();
+  for (const node of world.nodes) {
+    if (!node.tags.entrance && !node.tags.door) continue;
+    const key = `${node.x.toFixed(5)},${node.y.toFixed(5)}`;
+    if (!entranceByCoordinate.has(key)) entranceByCoordinate.set(key, []);
+    entranceByCoordinate.get(key).push(node);
+  }
   for (const way of world.ways) {
     if (!way.tags.building) continue;
-    const building = buildingRecord(way, projection);
+    const building = buildingRecord(
+      way,
+      projection,
+      undefined,
+      undefined,
+      entranceByCoordinate,
+    );
     buildings.set(way.id, building);
+    playableBuildings.set(way.id, building);
+    gameWorld.wayById.get(way.id).openings = building.openings;
     const key = K(building.bx, building.by);
     if (!buildingsByBlock.has(key)) buildingsByBlock.set(key, []);
     buildingsByBlock.get(key).push(building);
@@ -160,6 +219,12 @@ export function createOsmCityModel(world, projection) {
     }
     if (building) {
       specialWayIds.add(building.wayId);
+      const gameWay = gameWorld.wayById.get(building.wayId);
+      gameWay.openings = building.openings;
+      gameWay.tags = {
+        ...gameWay.tags,
+        building: gameWay.tags.building || "yes",
+      };
       const generic = buildingsByBlock.get(K(building.bx, building.by));
       if (generic)
         buildingsByBlock.set(
@@ -174,31 +239,80 @@ export function createOsmCityModel(world, projection) {
         bx: block.bx,
         by: block.by,
       };
+      playableBuildings.set(building.wayId, building);
     }
     specials.set(key, { id: special, site, ...block, building });
   }
-  const indexDoor = (building) => {
-    const bx = Math.floor(
-        ((building.x + Math.floor(building.w / 2) + 0.5) * 16) /
-          projection.blockPixels,
-      ),
-      by = Math.floor(
-        ((building.y + building.h + 0.5) * 16) / projection.blockPixels,
-      ),
-      key = K(bx, by);
-    if (!buildingsByDoor.has(key)) buildingsByDoor.set(key, []);
-    buildingsByDoor.get(key).push(building);
-  };
-  for (const building of buildings.values())
-    if (!specialWayIds.has(building.wayId)) indexDoor(building);
-  for (const special of specials.values())
-    if (special.building) indexDoor(special.building);
-  function buildingsNearDoor(bx, by) {
-    const result = [];
-    for (let y = by - 1; y <= by + 1; y++)
-      for (let x = bx - 1; x <= bx + 1; x++)
-        result.push(...(buildingsByDoor.get(K(x, y)) || []));
-    return result;
+  function buildingAt(x, y) {
+    const chunk = gameWorld.chunks.get(
+      `${Math.floor(x / gameWorld.chunkSize)},${Math.floor(y / gameWorld.chunkSize)}`,
+    );
+    for (const id of chunk?.ways || []) {
+      const way = gameWorld.wayById.get(id);
+      if (!way.tags.building) continue;
+      const box = gameWorld.boundsByWay.get(id);
+      if (x < box.minX || x > box.maxX || y < box.minY || y > box.maxY)
+        continue;
+      if (pointInPolygon(x, y, way.points))
+        return playableBuildings.get(id) || way;
+    }
+    return null;
+  }
+  function placeNameAt(x, y) {
+    const building = buildingAt(x, y);
+    if (building?.name) return building.name;
+    if (building?.type && POI[building.type]) return POI[building.type].name;
+    const chunk = gameWorld.chunks.get(
+      `${Math.floor(x / gameWorld.chunkSize)},${Math.floor(y / gameWorld.chunkSize)}`,
+    );
+    let nearest = null,
+      best = Infinity;
+    for (const id of chunk?.ways || []) {
+      const way = gameWorld.wayById.get(id);
+      if (!way.tags.highway || !way.tags.name) continue;
+      for (let index = 1; index < way.points.length; index++) {
+        const a = way.points[index - 1],
+          b = way.points[index],
+          distance = distanceToSegmentSquared(x, y, a[0], a[1], b[0], b[1]);
+        if (distance < best && distance <= (osmWayWidth(way) / 2 + 8) ** 2) {
+          best = distance;
+          nearest = way.tags.name;
+        }
+      }
+    }
+    return nearest;
+  }
+  function populationDensityAt(x, y) {
+    const bx = Math.floor(x / projection.blockPixels),
+      by = Math.floor(y / projection.blockPixels),
+      ids = new Set();
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++)
+        for (const building of buildingsByBlock.get(K(bx + dx, by + dy)) || [])
+          ids.add(building.wayId);
+    return Math.min(2.1, 0.9 + ids.size / 18);
+  }
+  function spawnPointsNear(x, y, radius) {
+    return roadPopulation.spawnPointsNear(x, y, radius);
+  }
+  function stairsFor(building, floorId = "ground") {
+    if (building.stairsByFloor?.[floorId])
+      return building.stairsByFloor[floorId];
+    const definitions = FLOOR_DEFINITIONS[building.type];
+    if (!definitions) return [];
+    const points = findInteriorPoints(building.points, 2);
+    if (!points.length) return [];
+    const targets =
+      floorId === "upper" || floorId === "basement"
+        ? ["ground"]
+        : ["upper", "basement"].filter((floor) => definitions[floor]);
+    const stairs = targets.map((target, index) => ({
+      ...(points[index] || points[0]),
+      target,
+      label: definitions[target].name,
+    }));
+    building.stairsByFloor = { ...building.stairsByFloor, [floorId]: stairs };
+    return stairs;
   }
   function vegetationAt(x, y) {
     const chunk = gameWorld.chunks.get(
@@ -338,6 +452,15 @@ export function createOsmCityModel(world, projection) {
       block.name = "Рассадник";
       block.poi = "nest";
     }
+    for (const car of roadPopulation.carsForBlock(bx, by)) {
+      if (
+        block.cars.some(
+          (existing) => Math.hypot(existing.x - car.x, existing.y - car.y) < 36,
+        )
+      )
+        continue;
+      block.cars.push(car);
+    }
     if (special?.id !== "quarry") {
       for (let index = 0; index < 12; index++) {
         const x = (bx * CELL + 3 + Math.floor(random() * 22)) * 16 + 8,
@@ -357,7 +480,12 @@ export function createOsmCityModel(world, projection) {
     projection,
     specials,
     buildings,
-    buildingsNearDoor,
+    roadPopulation,
+    buildingAt,
+    placeNameAt,
+    populationDensityAt,
+    spawnPointsNear,
+    stairsFor,
     planBlock,
     propSiteFree,
     vegetationAt,

@@ -46,8 +46,9 @@ describe("коллизии OSM-геометрии", () => {
     expect(circleHitsPolygon(-3, 5, 2, square)).toBe(false);
   });
 
-  it("блокирует здания и воду, но не дороги", () => {
-    expect(osmSolidAt(5, 5, world)?.id).toBe(1);
+  it("блокирует стены зданий и воду, но не внутреннее пространство или дороги", () => {
+    expect(osmSolidAt(5, 5, world)).toBeNull();
+    expect(osmSolidAt(5, 0, world)?.id).toBe(1);
     expect(osmSolidAt(25, 0, world)).toBeNull();
     expect(osmSolidAt(45, 5, world)?.id).toBe(3);
   });

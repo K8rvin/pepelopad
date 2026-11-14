@@ -134,3 +134,22 @@ export function paintWaterDetail({ ctx, way, SC, w2s }) {
     }
   ctx.restore();
 }
+
+export function paintBuildingOpenings({ ctx, way, SC, w2s }) {
+  for (const opening of way.openings || []) {
+    const from = w2s(
+        opening.x - opening.tx * opening.halfWidth,
+        opening.y - opening.ty * opening.halfWidth,
+      ),
+      to = w2s(
+        opening.x + opening.tx * opening.halfWidth,
+        opening.y + opening.ty * opening.halfWidth,
+      );
+    ctx.strokeStyle = opening.kind === "door" ? "#ffb23e" : "#7fb8d8";
+    ctx.lineWidth = Math.max(2, 4 * SC);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+}

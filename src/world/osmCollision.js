@@ -1,13 +1,5 @@
-export function pointInPolygon(x, y, points) {
-  let inside = false;
-  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-    const [xi, yi] = points[i],
-      [xj, yj] = points[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
-      inside = !inside;
-  }
-  return inside;
-}
+import { circleHitsBuildingWalls, pointInPolygon } from "./buildingGeometry.js";
+export { pointInPolygon };
 
 export function distanceToSegmentSquared(x, y, ax, ay, bx, by) {
   const dx = bx - ax,
@@ -70,7 +62,10 @@ export function osmSolidAt(x, y, world, radius = 0) {
         y - radius > bounds.maxY)
     )
       continue;
-    if (circleHitsPolygon(x, y, radius, way.points)) return way;
+    if (way.tags.building) {
+      const wall = circleHitsBuildingWalls(x, y, radius, way);
+      if (wall) return wall;
+    } else if (circleHitsPolygon(x, y, radius, way.points)) return way;
   }
   return null;
 }

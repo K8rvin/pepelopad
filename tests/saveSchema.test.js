@@ -89,6 +89,23 @@ describe("схема сохранения", () => {
     expect(migrated.city).toBe("legacy-procedural");
   });
 
+  it("переносит v6 из старой комнаты на сохранённую наружную позицию", () => {
+    const old = {
+      ...createSaveData(snapshot()),
+      v: 6,
+      floor: {
+        buildingId: "hospital",
+        floorId: "upper",
+        return: { x: 120, y: 240 },
+      },
+    };
+    const migrated = migrateSave(old);
+    expect(migrated.city).toBe(CITY_ID);
+    expect(migrated.P.x).toBe(120);
+    expect(migrated.P.y).toBe(240);
+    expect(migrated.floor).toBeNull();
+  });
+
   it("читает сохранение из JSON", () => {
     const data = createSaveData(snapshot());
     expect(parseSave(JSON.stringify(data)).seed).toBe(42);

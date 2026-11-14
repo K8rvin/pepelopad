@@ -8,7 +8,23 @@ async function startWithMapDriver(page) {
     const driver = `      window.__mapTest = {
         snapshot: () => ({ ...mapController.getState(), state, floor: currentFloorId }),
         target: () => questTargetWorld(),
-        enter: () => enterFloor("hospital", "ground"),
+        showStreet: () => {
+          const way = OSM_CITY.gameWorld.wayById.get(35844144),
+            a = way.points[0],
+            b = way.points[1];
+          P.x = (a[0] + b[0]) / 2;
+          P.y = (a[1] + b[1]) / 2;
+          updateBuildingPresence();
+          drawMinimap();
+          return way.tags.name;
+        },
+        enter: () => {
+          const block = OSM_PROJECTION.blockForSite("hospital"),
+            building = OSM_CITY.specials.get(K(block.bx, block.by)).building;
+          P.x = (building.bounds.minX + building.bounds.maxX) / 2;
+          P.y = (building.bounds.minY + building.bounds.maxY) / 2;
+          updateBuildingPresence();
+        },
       };
 ${marker}`;
     await route.fulfill({ response, body: source.replace(marker, driver) });
@@ -80,6 +96,14 @@ test("карта внутри здания переключает этажи и 
   await expect(page.locator("#mapFloorName")).toHaveText("Подвал");
   await page.keyboard.press("m");
   const restored = await page.evaluate(() => window.__mapTest.snapshot());
-  expect(restored.state).toBe("floor");
+  expect(restored.state).toBe("play");
   expect(restored.floor).toBe("ground");
+});
+
+test("миникарта показывает название улицы при наведении", async ({ page }) => {
+  await startWithMapDriver(page);
+  const street = await page.evaluate(() => window.__mapTest.showStreet());
+  await page.locator("#mmap").hover();
+  await expect(page.locator("#mmapHint")).toBeVisible();
+  await expect(page.locator("#mmapHint")).toHaveText(street);
 });

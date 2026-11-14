@@ -5,6 +5,7 @@ import { renderParticles } from "./particles.js";
 import { renderLighting } from "./lighting.js";
 import { renderGuidance } from "./guidance.js";
 import { renderVfx } from "./vfx.js";
+import { renderBuildingInterior } from "./buildingInterior.js";
 
 export function createWorldRenderer(deps) {
   const {
@@ -37,6 +38,9 @@ export function createWorldRenderer(deps) {
     VFX_ASSETS,
     getState,
     getP,
+    getActiveBuilding,
+    getFloorId,
+    getStairs,
     getBuildSel,
     mouse,
     screenToWorld,
@@ -94,6 +98,15 @@ export function createWorldRenderer(deps) {
         );
       }
     }
+
+    renderBuildingInterior({
+      ctx,
+      building: getActiveBuilding(),
+      floorId: getFloorId(),
+      stairs: getStairs(),
+      SC,
+      w2s,
+    });
 
     const now = performance.now() / 1000;
     for (const chunk of visChunks) {

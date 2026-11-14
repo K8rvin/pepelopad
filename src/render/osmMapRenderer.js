@@ -1,6 +1,7 @@
 import { osmWayWidth, wayCategory } from "../world/osmMap.js";
 import {
   paintBuildingDetail,
+  paintBuildingOpenings,
   paintGroundDetail,
   paintRoadBorder,
   paintRoadMarkings,
@@ -103,8 +104,10 @@ export function renderOsmMap({
     drawWay(ctx, way, w2s, category);
     if (detailed && category === "road")
       paintRoadMarkings({ ctx, way, SC, w2s });
-    if (detailed && category === "building")
+    if (detailed && category === "building") {
       paintBuildingDetail({ ctx, way, SC, w2s });
+      paintBuildingOpenings({ ctx, way, SC, w2s });
+    }
     if (detailed && category === "water")
       paintWaterDetail({ ctx, way, SC, w2s });
   }
