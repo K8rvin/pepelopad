@@ -40,8 +40,11 @@ test("большая карта: zoom, pan и пользовательская �
   page.on("pageerror", (error) => errors.push(error.stack));
   await startWithMapDriver(page);
   await page.locator("#mmap").click();
+  await expect(page.locator("#panel")).toBeVisible();
+  await expect(page.locator("#tab-map")).toBeVisible();
   await expect(page.locator("#mapOv")).toBeVisible();
   const before = await page.evaluate(() => window.__mapTest.snapshot());
+  expect(before.state).toBe("panel");
   const canvas = page.locator("#bmap");
   await canvas.hover();
   await page.mouse.wheel(0, -120);
@@ -80,6 +83,32 @@ test("большая карта: zoom, pan и пользовательская �
     (await page.evaluate(() => window.__mapTest.snapshot())).waypoint,
   ).toBeNull();
   expect(errors).toEqual([]);
+});
+
+test("Tab и M запоминают карту как последнюю вкладку", async ({ page }) => {
+  await startWithMapDriver(page);
+  await page.keyboard.press("m");
+  await expect(page.locator("#tab-map")).toBeVisible();
+  await expect(page.locator('[data-tab="map"]')).toHaveClass(/on/);
+  expect((await page.evaluate(() => window.__mapTest.snapshot())).state).toBe(
+    "panel",
+  );
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#panel")).toBeHidden();
+  expect((await page.evaluate(() => window.__mapTest.snapshot())).state).toBe(
+    "play",
+  );
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#tab-map")).toBeVisible();
+  await page.keyboard.press("i");
+  await expect(page.locator("#tab-inv")).toBeVisible();
+  await expect(page.locator("#tab-map")).toBeHidden();
+  await page.keyboard.press("m");
+  await expect(page.locator("#tab-map")).toBeVisible();
+  await page.keyboard.press("m");
+  await expect(page.locator("#panel")).toBeHidden();
 });
 
 test("карта внутри здания переключает этажи и возвращается в игру", async ({

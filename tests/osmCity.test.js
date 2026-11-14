@@ -115,4 +115,29 @@ describe("игровая модель статичного Волгограда"
     expect(address.houseNumber).toBeNull();
     expect(address.wayId).toBe(unnumbered.wayId);
   });
+
+  it("выбирает ближайший к жилому спавну супермаркет с полками", () => {
+    const spawn = projection.worldToGame(projection.sites.residential),
+      target = city.nearestSupermarketTarget(spawn.x, spawn.y);
+    expect(target.wayId).toBe(112437649);
+    expect(target.distance / projection.pixelsPerMeter).toBeLessThan(300);
+    const block = city.planBlock(target.bx, target.by, 42, new Map()),
+      shelves = block.containers.filter(
+        (container) =>
+          container.wayId === target.wayId && container.type === "shelf",
+      );
+    expect(shelves.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(shelves.map((shelf) => shelf.id)).size).toBe(shelves.length);
+    for (const shelf of shelves) {
+      expect(shelf.lootTable).toBe("market");
+      expect(shelf.floorId).toBe("ground");
+      expect(
+        pointInPolygon(
+          shelf.x * 16 + 8,
+          shelf.y * 16 + 8,
+          city.buildings.get(target.wayId).points,
+        ),
+      ).toBe(true);
+    }
+  });
 });

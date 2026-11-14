@@ -6,6 +6,7 @@ import {
   parseSave,
   SAVE_VERSION,
 } from "../src/persistence/saveSchema.js";
+import { normalizeVehicle } from "../src/systems/vehicles.js";
 
 const snapshot = () => ({
   seed: 42,
@@ -118,6 +119,57 @@ describe("схема сохранения", () => {
     const migrated = migrateSave(old);
     expect(migrated.SM).toEqual([["30,30", { t: "bench", x: 30, y: 30 }]]);
     expect(migrated.city).toBe(CITY_ID);
+  });
+
+  it("мигрирует топливо v8 активных машин и CAR-переопределений", () => {
+    const source = snapshot();
+    source.CARS = new Map([
+      [
+        "truck",
+        {
+          id: "truck",
+          type: "truck",
+          fuel: 80,
+          maxFuel: 160,
+          hp: 177,
+          engineHp: 65,
+          tireHp: 70,
+          trunk: [{ id: "wood", n: 2 }],
+        },
+      ],
+    ]);
+    source.OV = new Map([
+      ["CARtruck", { fuel: 40, hp: 150, broken: true, locked: false }],
+    ]);
+    const migrated = migrateSave({ ...createSaveData(source), v: 8 });
+    const truck = migrated.cars[0][1],
+      override = migrated.OV[0][1];
+    expect(migrated.v).toBe(9);
+    expect(migrated.city).toBe(CITY_ID);
+    expect(truck.fuel).toBe(60);
+    expect(truck.maxFuel).toBe(120);
+    expect(truck.hp).toBe(177);
+    expect(truck.engineHp).toBe(65);
+    expect(truck.tireHp).toBe(70);
+    expect(truck.trunk).toEqual([{ id: "wood", n: 2 }]);
+    expect(override.fuel).toBe(30);
+    expect(override.maxFuel).toBe(120);
+    expect(override.hp).toBe(150);
+    expect(override.broken).toBe(true);
+    expect(normalizeVehicle(truck).maxFuel).toBe(120);
+  });
+
+  it("использует старый класс бака, если v8 не хранил maxFuel", () => {
+    const source = snapshot();
+    source.CARS = new Map([
+      ["car", { id: "car", type: "sedan", fuel: 50, hp: 80 }],
+    ]);
+    source.OV = new Map([["CARcar", { fuel: 25 }]]);
+    const migrated = migrateSave({ ...createSaveData(source), v: 8 });
+    expect(migrated.cars[0][1].fuel).toBe(26);
+    expect(migrated.cars[0][1].maxFuel).toBe(52);
+    expect(migrated.OV[0][1].fuel).toBe(13);
+    expect(migrated.OV[0][1].maxFuel).toBe(52);
   });
 
   it("читает сохранение из JSON", () => {

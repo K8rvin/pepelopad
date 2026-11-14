@@ -16,9 +16,11 @@ async function installBalanceDriver(page) {
           let deaths = 0,
             previousMain = Q.main;
           const milestones = [],
-            supermarketBlock = OSM_PROJECTION.blockForSite("supermarket"),
-            supermarket = planBlock(supermarketBlock.bx, supermarketBlock.by),
-            supply = supermarket.containers[0];
+            questTarget = Q.targets[0],
+            supermarket = planBlock(questTarget.bx, questTarget.by),
+            supply = supermarket.containers.find(
+              (container) => container.wayId === questTarget.wayId,
+            );
           P.x = supply.x * 16 + 8;
           P.y = (supply.y + 2) * 16 + 8;
           for (let step = 0; step < seconds * 20; step++) {
@@ -54,7 +56,7 @@ async function installBalanceDriver(page) {
             let target = null,
               best = 220 * 220;
             for (const container of CMAP.values()) {
-              if (container.looted) continue;
+              if (container.looted || !isContainerActive(container)) continue;
               const distance = d2(
                 P.x,
                 P.y,

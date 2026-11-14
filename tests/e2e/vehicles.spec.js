@@ -151,3 +151,61 @@ test("класс машины, поездка, ремонт, багажник и
   expect(saved.cars[0][1].tireHp).toBe(100);
   expect(errors).toEqual([]);
 });
+
+test("мотоцикл, велосипед и самокат работают в общем игровом цикле", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/src/game.js*", async (route) => {
+    const response = await route.fetch();
+    const source = await response.text();
+    const marker = "startAttract();\nrequestAnimationFrame(frame);";
+    const driver = `      window.__newVehicleTest = {
+        drive: (type) => {
+          P.inCar = null;
+          CARS.clear();
+          CAR_GRID.clear();
+          const def = vehicleDefinition(type),
+            car = normalizeVehicle({ id: "test-" + type, type, x: P.x, y: P.y, angle: 0, fuel: def.maxFuel / 2, hp: def.maxHp, engineHp: 100, tireHp: 100, locked: false, broken: false, dead: false, speed: 0, trunk: [] });
+          CARS.set(car.id, car);
+          carGridAdd(car);
+          enterCar(car);
+          const beforeFuel = car.fuel;
+          keys.KeyW = true;
+          for (let frame = 0; frame < 60; frame++) updateCars(1 / 60);
+          keys.KeyW = false;
+          refreshHUD();
+          return {
+            speed: Number($("carSpeed").textContent),
+            beforeFuel,
+            fuel: car.fuel,
+            humanPowered: Boolean(def.humanPowered),
+            broken: car.broken,
+            sprite: Boolean(S[carSpriteKey(car)]),
+            refueled: refuelCar(car),
+          };
+        },
+      };
+${marker}`;
+    await route.fulfill({ response, body: source.replace(marker, driver) });
+  });
+  await page.goto("/");
+  await page.locator("#btnNew").click();
+  await page.locator("#btnSkip").click();
+  await page.waitForFunction(() => document.body.className === "play");
+  for (const type of ["motorcycle", "bicycle", "scooter"]) {
+    const result = await page.evaluate(
+      (type) => window.__newVehicleTest.drive(type),
+      type,
+    );
+    expect(result.speed).toBeGreaterThan(0);
+    expect(result.broken).toBe(false);
+    expect(result.sprite).toBe(true);
+    if (result.humanPowered) {
+      expect(result.fuel).toBe(0);
+      expect(result.refueled).toBe(false);
+    } else expect(result.fuel).toBeLessThan(result.beforeFuel);
+  }
+  expect(errors).toEqual([]);
+});

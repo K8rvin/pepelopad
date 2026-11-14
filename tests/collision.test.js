@@ -71,4 +71,16 @@ describe("столкновения", () => {
     expect(body.x).toBe(8);
     expect(checks).toBe(4);
   });
+
+  it("использует размеры класса транспорта", () => {
+    const context = makeContext();
+    context.carsNear = () => [
+      { id: "bicycle", type: "bicycle", x: 8, y: 8, dead: false },
+    ];
+    expect(circleHit(8, 15, 4, context)).toBeNull();
+    context.carsNear = () => [
+      { id: "sedan", type: "sedan", x: 8, y: 8, dead: false },
+    ];
+    expect(circleHit(8, 15, 4, context).kind).toBe("car");
+  });
 });

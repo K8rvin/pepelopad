@@ -61,4 +61,62 @@ describe("выдача сюжетных предметов", () => {
     );
     expect(result.items).toEqual({ medkit: 3 });
   });
+
+  it("выдаёт предмет для wayId только в контейнере того же здания", () => {
+    const quest = [
+        {
+          id: "apartment",
+          targets: [{ wayId: 112436182 }],
+          grant: [["note", 1]],
+        },
+      ],
+      given = {},
+      matches = () => true;
+    expect(
+      collectQuestGrants(quest, given, matches, { wayId: 112436181 }).items,
+    ).toEqual({});
+    expect(given).toEqual({});
+    expect(
+      collectQuestGrants(quest, given, matches, { wayId: 112436182 }).items,
+    ).toEqual({ note: 1 });
+    expect(given).toEqual({ "apartment:way:112436182": true });
+    expect(
+      collectQuestGrants(quest, given, matches, { wayId: 112436182 }).items,
+    ).toEqual({});
+  });
+
+  it("различает прогресс целей в одном квартале по wayId", () => {
+    const quest = [
+        {
+          id: "delivery",
+          targets: [
+            { bx: 2, by: 0, wayId: 101 },
+            { bx: 2, by: 0, wayId: 202 },
+          ],
+          grant: [["cargo", 1]],
+        },
+      ],
+      given = {},
+      matches = () => true;
+    expect(
+      collectQuestGrants(quest, given, matches, { wayId: 101 }).items,
+    ).toEqual({ cargo: 1 });
+    expect(
+      collectQuestGrants(quest, given, matches, { wayId: 202 }).items,
+    ).toEqual({ cargo: 1 });
+    expect(Object.keys(given)).toEqual([
+      "delivery:way:101",
+      "delivery:way:202",
+    ]);
+  });
+
+  it("сохраняет прежние ключи и сигнатуру для блочных целей", () => {
+    const given = {},
+      quest = [
+        { id: "legacy", targets: [{ bx: 3, by: 4 }], grant: [["can", 1]] },
+      ];
+    collectQuestGrants(quest, given, () => true, { wayId: 101 });
+    expect(given).toEqual({ "legacy:3,4": true });
+    expect(collectQuestGrants(quest, given, () => true).items).toEqual({});
+  });
 });

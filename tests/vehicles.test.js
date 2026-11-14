@@ -44,15 +44,23 @@ describe("физика автомобиля", () => {
     expect(c.angle).toBeGreaterThan(0);
   });
 
-  it("ограничивает скорость и расходует топливо", () => {
+  it("ограничивает скорость и расходует топливо по пройденной дистанции", () => {
     const c = car();
     advanceVehicle(c, { ...controls, boost: true }, 10);
-    expect(c.speed).toBeLessThanOrEqual(155 * 1.22);
-    consumeVehicleFuel(c, 1);
-    expect(c.fuel).toBeLessThan(50);
+    expect(c.speed).toBeLessThanOrEqual(400 * 1.22);
+    expect(consumeVehicleFuel(c, 0)).toBe(0);
+    expect(c.fuel).toBe(50);
+    expect(consumeVehicleFuel(c, 160000)).toBeCloseTo(0.8);
+    expect(c.fuel).toBeCloseTo(49.2);
     c.fuel = 0;
-    consumeVehicleFuel(c, 1);
+    consumeVehicleFuel(c, 160000);
     expect(c.fuel).toBe(0);
+  });
+
+  it("учитывает навык механика при расходе топлива", () => {
+    const c = car();
+    consumeVehicleFuel(c, 160000, 2);
+    expect(c.fuel).toBeCloseTo(50 - 0.8 * 0.84);
   });
 
   it("замедляется без водителя", () => {
@@ -72,6 +80,32 @@ describe("физика автомобиля", () => {
     expect(vehicleDefinition("taxi").fuelUse).toBeLessThan(
       vehicleDefinition("sedan").fuelUse,
     );
+    expect((vehicleDefinition("sedan").maxSpeed * 3.6) / 16).toBe(90);
+    expect(vehicleDefinition("sedan").fuelUse * 100000 * 16).toBe(8);
+  });
+
+  it("использует топливо на мотоцикле и мышечную тягу без бака", () => {
+    const motorcycle = { ...car(), type: "motorcycle", fuel: 0 };
+    expect(advanceVehicle(motorcycle, controls, 0.1).dx).toBe(0);
+    for (const type of ["bicycle", "scooter"]) {
+      const humanPowered = {
+        ...car(),
+        type,
+        fuel: 0,
+        engineHp: 0,
+        broken: true,
+      };
+      const movement = advanceVehicle(humanPowered, controls, 0.1);
+      expect(movement.dx).toBeGreaterThan(0);
+      const healthy = { ...car(), type, fuel: 0, engineHp: 100 };
+      expect(advanceVehicle(healthy, controls, 0.1).dx).toBeCloseTo(
+        movement.dx,
+      );
+      expect(humanPowered.broken).toBe(false);
+      expect(consumeVehicleFuel(humanPowered, 160000)).toBe(0);
+      expect(humanPowered.fuel).toBe(0);
+      expect(humanPowered.maxFuel).toBe(0);
+    }
   });
 
   it("нормализует автомобиль из старого сохранения", () => {
@@ -82,7 +116,7 @@ describe("физика автомобиля", () => {
       broken: true,
     });
     expect(c.maxHp).toBe(220);
-    expect(c.maxFuel).toBe(160);
+    expect(c.maxFuel).toBe(120);
     expect(c.engineHp).toBe(0);
     expect(c.tireHp).toBe(100);
     expect(c.broken).toBe(true);

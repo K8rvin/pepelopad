@@ -36,16 +36,20 @@ test("пролог показывает подсказку и обрабатыв
   expect(errors).toEqual([]);
 });
 
-test("крафт и все вкладки открываются без ошибок JavaScript", async ({
-  page,
-}) => {
+test("вкладки открываются без ошибок и Tab помнит крафт", async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto("/");
   await page.locator("#btnNew").click();
   await page.locator("#btnSkip").click();
   await page.waitForTimeout(900);
-  await page.keyboard.press("c");
 
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#panel")).toBeVisible();
+  await expect(page.locator("#tab-inv")).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#panel")).toBeHidden();
+
+  await page.keyboard.press("c");
   await expect(page.locator("#panel")).toBeVisible();
   await expect(page.locator("#craftList .craftRow")).toHaveCount(25);
 
@@ -57,11 +61,23 @@ test("крафт и все вкладки открываются без ошиб
     "camp",
     "trunk",
     "log",
+    "map",
     "craft",
   ]) {
     await page.locator(`[data-tab="${tab}"]`).click();
     await expect(page.locator(`#tab-${tab}`)).toBeVisible();
   }
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#panel")).toBeHidden();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#panel")).toBeVisible();
+  await expect(page.locator("#tab-craft")).toBeVisible();
+  await expect(page.locator('[data-tab="craft"]')).toHaveClass(/on/);
+
+  await page.keyboard.press("i");
+  await expect(page.locator("#tab-inv")).toBeVisible();
+  await expect(page.locator("#tab-craft")).toBeHidden();
   expect(errors).toEqual([]);
 });
 
