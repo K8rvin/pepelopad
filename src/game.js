@@ -94,6 +94,9 @@ import {
   applyCampUpgrade,
   donateToCamp,
   tradeLock,
+  createCampState,
+  campSnapshot,
+  createCampMission,
 } from "/src/systems/camps.js";
 import { loadSprite, loadSpriteSheet } from "/src/render/assets.js";
 import { cnv, R } from "/src/render/spriteUtils.js";
@@ -103,7 +106,27 @@ import { createStructureSprites } from "/src/render/proceduralStructures.js";
 import { createItemIcons } from "/src/render/proceduralItems.js";
 import { renderVfx } from "/src/render/vfx.js";
 import { prepareMegaQuest } from "/src/systems/campaign.js";
-import { collectQuestGrants } from "/src/systems/questGrants.js";
+import {
+  collectQuestGrants,
+  questGrantLedger,
+} from "/src/systems/questGrants.js";
+import {
+  FRIEND_HELP_CHOICES,
+  SCHOOL_BRANCHES,
+  STORY_DIALOGUES,
+} from "/src/data/story.js";
+import {
+  createStoryState,
+  normalizeStoryState,
+  recordStoryInteraction,
+  receiveRescuedAtSchool,
+  selectSchoolBranch,
+} from "/src/systems/story.js";
+import {
+  advanceTravelClock,
+  estimateStoryTravel,
+  storyTravelLock,
+} from "/src/systems/storyTravel.js";
 import {
   CITY_ID,
   createSaveData,
@@ -114,6 +137,8 @@ import { renderHome as drawHome } from "/src/render/homeRenderer.js";
 import {
   screenToWorld as toWorld,
   worldToScreen as toScreen,
+  speedZoomFactor,
+  lerpAngle,
 } from "/src/render/camera.js";
 import { drawWeaponOverlay as renderWeapon } from "/src/render/weaponRenderer.js";
 import { renderLighting } from "/src/render/lighting.js";
@@ -638,11 +663,16 @@ let stats,
     side: [],
     tracked: "main",
     prog: {},
-    given: {},
+    mainGiven: {},
+    sideGiven: {},
     endless: false,
     sideSeq: 0,
     raids: {},
   },
+  STORY = createStoryState(),
+  OPTIONS = { rotateCamera: false, rotateMinimap: false },
+  loadedCampStates = new Map(),
+  storyChoiceActive = false,
   baseProj = {
     wall: 0,
     workshop: 0,
@@ -675,7 +705,14 @@ let Z = [],
   visChunks = [],
   VFX = [];
 const VFX_ASSETS = { explosion: null };
-const cam = { x: SPAWN.x, y: SPAWN.y },
+const cam = {
+    x: SPAWN.x,
+    y: SPAWN.y,
+    zoom: 1,
+    rotation: 0,
+    heading: 0,
+    mapRotation: 0,
+  },
   keys = {},
   mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false };
 let shake = 0,
@@ -992,7 +1029,7 @@ function recoverFromStuck() {
 function spawnGuards(p) {
   const district = districtDefinition(p.district),
     n = districtGuardCount(
-      p.buildings[0] ? POI[p.buildings[0].type].guard : 1,
+      p.buildings[0] ? POI[p.buildings[0].type]?.guard || 1 : 1,
       threat(),
       p.district,
     );
@@ -1004,10 +1041,26 @@ function spawnGuards(p) {
       spawnZ(day < 3 ? "walker" : pick(district.enemies), x, y);
   }
 }
+function persistCamp(c) {
+  OV.set("CAMP" + c.id, campSnapshot(c));
+}
+function campDefinitionFromSite(site, id) {
+  const point = OSM_PROJECTION.worldToGame(site),
+    block = OSM_PROJECTION.blockForSite(id);
+  return { id, name: site.name, x: point.x, y: point.y, ...block };
+}
+function initializeCamps(saved = []) {
+  loadedCampStates = new Map(saved);
+  CAMPS.clear();
+  for (const [id, site] of Object.entries(OSM_PROJECTION.sites))
+    if (site.kind === "camp") initCamp(campDefinitionFromSite(site, id));
+}
 function syncCampPopulation(c) {
-  const count = NPCS.filter((n) => n.camp === c.id).length,
-    r = mb32(hashStr(c.id));
-  for (let i = count; i < 4 + c.proj.tower * 2; i++)
+  for (let i = NPCS.length - 1; i >= 0; i--)
+    if (NPCS[i].camp === c.id) NPCS.splice(i, 1);
+  const r = mb32(hashStr(c.id)),
+    count = c.residents.length + c.rescuedResidents.length + c.proj.tower * 2;
+  for (let i = 0; i < count; i++)
     NPCS.push({
       id: c.id + ":n" + i,
       camp: c.id,
@@ -1017,29 +1070,46 @@ function syncCampPopulation(c) {
       ty: c.y,
       wt: 0,
       leader: i === 0,
+      rescued:
+        i >= c.residents.length &&
+        i < c.residents.length + c.rescuedResidents.length,
       shootT: 0,
     });
 }
-function initCamp(cc) {
-  if (CAMPS.has(cc.id)) {
-    syncCampPopulation(CAMPS.get(cc.id));
-    return;
-  }
-  const st = OV.get("CAMP" + cc.id) || {
-      level: 1,
-      trust: 0,
-      proj: { wall: 0, garden: 0, tower: 0, clinic: 0 },
-      quest: null,
-    },
-    c = Object.assign({}, cc, st, {
-      leader: cc.name.includes("Мост")
-        ? "Марта"
-        : cc.name.includes("Ферма")
-          ? "Илья"
-          : "Серый",
+function syncStoryNPCs() {
+  for (let i = NPCS.length - 1; i >= 0; i--)
+    if (NPCS[i].storyActor) NPCS.splice(i, 1);
+  const bartender = OSM_PROJECTION.worldToGame(OSM_PROJECTION.sites.bartender);
+  NPCS.push({
+    id: "story:bartender",
+    storyActor: "bartender",
+    camp: null,
+    x: bartender.x,
+    y: bartender.y,
+    leader: false,
+    shootT: 0,
+  });
+  if (mainQuest()?.id === "m5" && STORY.rescue.status === "waiting") {
+    const rescue = OSM_PROJECTION.worldToGame(
+      OSM_PROJECTION.sites.school_rescue,
+    );
+    NPCS.push({
+      id: "story:rescue",
+      storyActor: "rescue",
+      camp: null,
+      x: rescue.x,
+      y: rescue.y,
+      leader: false,
+      shootT: 0,
     });
-  CAMPS.set(cc.id, c);
-  syncCampPopulation(c);
+  }
+}
+function initCamp(cc) {
+  if (CAMPS.has(cc.id)) return;
+  const saved = loadedCampStates.get(cc.id) || OV.get("CAMP" + cc.id),
+    camp = createCampState(cc, saved);
+  CAMPS.set(cc.id, camp);
+  syncCampPopulation(camp);
 }
 function placeProjectStructure(projectId) {
   if (projectId === "wall") {
@@ -1161,6 +1231,10 @@ function exitFloor() {
 }
 function say(lines, cb) {
   DL = { active: true, lines, i: 0, ch: 0, cb };
+  storyChoiceActive = false;
+  $("dlgChoices").classList.add("hid");
+  $("dlgChoices").innerHTML = "";
+  $("dlgHint").textContent = "E / Space / клик — далее";
   $("dialog").classList.remove("hid");
   dlgText();
 }
@@ -2509,12 +2583,134 @@ function updateNPCs(dt) {
     }
   }
 }
+function storyTargetIncomplete(target) {
+  return !target.goal || !(Q.prog[target.goal] || 0);
+}
+function activeStoryTargets() {
+  const quest = mainQuest();
+  return (quest ? Q.targets || [] : []).filter(storyTargetIncomplete);
+}
+function storyInteractionPosition(target) {
+  return {
+    x: Number.isFinite(target.interactionX) ? target.interactionX : target.x,
+    y: Number.isFinite(target.interactionY) ? target.interactionY : target.y,
+  };
+}
+function nearestStoryInteraction() {
+  if (P.inCar) return null;
+  let nearest = null,
+    best = (2.2 * 16) ** 2;
+  const candidates = activeStoryTargets().filter((target) => !target.camp);
+  if (mainQuest()?.id !== "m2") {
+    const site = OSM_PROJECTION.sites.bartender,
+      point = OSM_PROJECTION.worldToGame(site);
+    candidates.push({
+      event: "talk",
+      interaction: "bartender",
+      label: "Бармен Олег",
+      x: point.x,
+      y: point.y,
+      repeat: true,
+    });
+  }
+  for (const target of candidates) {
+    const point = storyInteractionPosition(target),
+      distance = d2(P.x, P.y, point.x, point.y);
+    if (distance < best) {
+      best = distance;
+      nearest = target;
+    }
+  }
+  return nearest;
+}
+function grantStoryTarget(target) {
+  const quest = mainQuest();
+  if (!quest) return;
+  const grants = collectQuestGrants(
+    [quest],
+    questGrantLedger(Q, "main"),
+    (candidate) => candidate === target,
+    { wayId: target.wayId },
+  );
+  for (const [id, n] of Object.entries(grants.items)) addItem(id, n, true);
+}
+function completeStoryInteraction(target) {
+  if (target.repeat) return;
+  recordStoryInteraction(STORY, target);
+  qEvent(target.event, {
+    stage: mainQuest()?.id,
+    goal: target.goal,
+    wayId: target.wayId,
+    camp: target.camp,
+  });
+  syncStoryNPCs();
+  saveGame();
+}
+function showFriendHelp(target) {
+  storyChoiceActive = true;
+  DL.active = false;
+  $("dialog").classList.remove("hid");
+  $("dlgWho").textContent = "ДЕНИС";
+  $("dlgText").textContent = "Что ответишь другу?";
+  $("dlgHint").textContent = "Выбор сохранится";
+  const choices = $("dlgChoices");
+  choices.innerHTML = "";
+  choices.classList.remove("hid");
+  for (const choice of FRIEND_HELP_CHOICES) {
+    const button = document.createElement("button");
+    button.className = "btn small";
+    button.textContent = choice.label;
+    button.disabled = choice.cost && countItem(choice.cost[0]) < choice.cost[1];
+    button.onclick = () => {
+      if (choice.cost) removeItem(choice.cost[0], choice.cost[1]);
+      STORY.friendHelp = choice.id;
+      storyChoiceActive = false;
+      choices.classList.add("hid");
+      $("dialog").classList.add("hid");
+      say([{ who: "АРТЁМ", text: choice.response }], () =>
+        completeStoryInteraction(target),
+      );
+    };
+    choices.appendChild(button);
+  }
+}
+function interactStory(target) {
+  const lines = STORY_DIALOGUES[target.interaction] || [
+    { text: "Здесь всё спокойно." },
+  ];
+  say(lines, () => {
+    if (target.interaction === "friend" && !STORY.friendHelp) {
+      showFriendHelp(target);
+      return;
+    }
+    grantStoryTarget(target);
+    completeStoryInteraction(target);
+  });
+}
+function handleStoryCamp(c) {
+  const targets = activeStoryTargets().filter(
+    (target) => target.camp === c.id && target.event === "visit",
+  );
+  for (const target of targets) {
+    if (target.requires && !Q.prog[target.requires]) continue;
+    if (target.goal === "return_school") {
+      if (receiveRescuedAtSchool(STORY, c)) {
+        persistCamp(c);
+        syncCampPopulation(c);
+        toast("Спасённый выживший добрался до школы сам", "quest");
+      }
+    }
+    grantStoryTarget(target);
+    completeStoryInteraction(target);
+  }
+}
 function openCamp(c) {
   curCamp = c;
+  handleStoryCamp(c);
   const grants = collectQuestGrants(
     [mainQuest()],
-    Q.given,
-    (target) => target.bx === c.bx && target.by === c.by,
+    questGrantLedger(Q, "main"),
+    (target) => !target.goal && target.bx === c.bx && target.by === c.by,
   );
   for (const [id, n] of Object.entries(grants.items)) addItem(id, n);
   if (grants.granted.length) toast("Припасы для лагеря получены", "quest");
@@ -2527,12 +2723,7 @@ function donate(c, id, n) {
   }
   removeItem(id, n);
   donateToCamp(c, n);
-  OV.set("CAMP" + c.id, {
-    level: c.level,
-    trust: c.trust,
-    proj: c.proj,
-    quest: c.quest,
-  });
+  persistCamp(c);
   toast("Передано: " + ITEMS[id].n + " ×" + n + " · доверие +" + n, "quest");
   qEvent("camp_supply", { camp: c.id, id, n });
   qEvent("donate", { camp: c.id, n });
@@ -2549,12 +2740,7 @@ function upgradeCamp(c, id) {
   for (const k in cost) removeItem(k, cost[k]);
   applyCampUpgrade(c, id);
   syncCampPopulation(c);
-  OV.set("CAMP" + c.id, {
-    level: c.level,
-    trust: c.trust,
-    proj: c.proj,
-    quest: c.quest,
-  });
+  persistCamp(c);
   SFX.build();
   toast(c.name + ": улучшение " + id + " ур." + c.proj[id], "epic");
   qEvent("project", { id, level: c.proj[id], camp: c.id });
@@ -2951,22 +3137,36 @@ function finishSearch() {
     rnd,
   );
   if (bonus) got[bonus.id] = (got[bonus.id] || 0) + bonus.n;
-  const grants = collectQuestGrants(
-    [mainQuest(), ...Q.side],
-    Q.given,
-    (target) => {
-      if (target.wayId != null) return true;
-      if (target.siteId) {
-        const special = OSM_CITY.specials.get(K(target.bx, target.by));
-        return special?.building?.wayId === o.wayId;
-      }
-      return (
-        Math.floor(o.x / CELL) === target.bx &&
-        Math.floor(o.y / CELL) === target.by
-      );
-    },
-    o,
-  );
+  const matchesGrant = (target) => {
+    if (target.goal) return false;
+    if (target.wayId != null) return true;
+    if (target.siteId) {
+      const special = OSM_CITY.specials.get(K(target.bx, target.by));
+      return special?.building?.wayId === o.wayId;
+    }
+    return (
+      Math.floor(o.x / CELL) === target.bx &&
+      Math.floor(o.y / CELL) === target.by
+    );
+  };
+  const mainGrants = collectQuestGrants(
+      [mainQuest()],
+      questGrantLedger(Q, "main"),
+      matchesGrant,
+      o,
+    ),
+    sideGrants = collectQuestGrants(
+      Q.side,
+      questGrantLedger(Q, "side"),
+      matchesGrant,
+      o,
+    ),
+    grants = {
+      items: mainGrants.items,
+      granted: [...mainGrants.granted, ...sideGrants.granted],
+    };
+  for (const [id, n] of Object.entries(sideGrants.items))
+    grants.items[id] = (grants.items[id] || 0) + n;
   for (const [id, n] of Object.entries(grants.items))
     got[id] = (got[id] || 0) + n;
   if (grants.granted.length) toast("Находка по заданию!", "quest");
@@ -3076,7 +3276,15 @@ function updateInteract() {
       sNear = s;
     }
   }
-  if (car) {
+  const story = nearestStoryInteraction();
+  if (story) {
+    promptObj = { kind: "story", o: story };
+    $("promptT").textContent =
+      "E — " +
+      (story.event === "visit" ? "Осмотреть: " : "Поговорить: ") +
+      story.label;
+    $("promptS").textContent = "Сюжетное взаимодействие";
+  } else if (car) {
     promptObj = { kind: "car", o: car };
     $("promptT").textContent =
       "E — " +
@@ -3143,6 +3351,10 @@ function doInteract() {
     return;
   }
   if (!promptObj) return;
+  if (promptObj.kind === "story") {
+    interactStory(promptObj.o);
+    return;
+  }
   if (promptObj.kind === "stairs") {
     transitionFloor(promptObj.o.target);
     return;
@@ -3199,12 +3411,10 @@ function trackedQuest() {
 function setupMain() {
   const q = mainQuest();
   if (!q) return;
-  Q.prog = {};
-  Q.given = {};
-  const targets =
-    q.id === "m1"
-      ? [OSM_CITY.nearestSupermarketTarget(SPAWN.x, SPAWN.y)].filter(Boolean)
-      : OSM_QUEST_TARGETS[q.id] || q.targets || [];
+  Q.prog = Q.prog || {};
+  Q.mainGiven = Q.mainGiven || Q.given || {};
+  Q.sideGiven = Q.sideGiven || {};
+  const targets = OSM_QUEST_TARGETS[q.id] || q.targets || [];
   Q.targets = targets.map((target) => ({ ...target }));
   q.targets = Q.targets;
   syncQuestProgress(q, Q.prog, {
@@ -3217,17 +3427,20 @@ function setupMain() {
     completeQuest(q);
     return;
   }
-  if (q.goals.some((g) => g[0] === "nest") && !q.targets) {
+  if (q.goals.some((g) => g[0] === "nest") && !Q.targets.length) {
     const n = findNearestNest();
-    q.targets = n ? [n] : [];
+    Q.targets = n ? [n] : [];
+    q.targets = Q.targets;
   }
   if (q.goals.some((g) => g[0] === "mega")) {
     Q.targets = [prepareMegaQuest(OV, PLAN, chunks, CMAP)];
+    q.targets = Q.targets;
   }
-  if (q.goals.some((g) => g[0] === "siege")) {
+  if (q.goals.some((g) => g[0] === "siege") && !Q.forcedSiege) {
     Q.forcedSiege = nextSiegeDay();
     toast("Орда придёт в 22:00. Проверь ворота.", "danger");
   }
+  syncStoryNPCs();
   updateQuestUI();
 }
 function findNearestNest() {
@@ -3252,7 +3465,7 @@ function handleQuestEvent(type, data) {
     if (!p) continue;
     if (type === "camp_supply" && q.campId !== data.camp) continue;
     if (type === "deliver" && q.campId && q.campId !== data.camp) continue;
-    applyQuestEvent(p, type, data);
+    applyQuestEvent(p, type, data, q);
     if (goalsComplete(q, p)) completeQuest(q);
   }
   updateQuestUI();
@@ -3274,10 +3487,10 @@ function completeQuest(q) {
       if (q.reward.items)
         for (const [id, n] of q.reward.items) addItem(id, n, true);
       const rewardCamp = q.campId ? CAMPS.get(q.campId) : curCamp;
-      if (q.reward.trust && rewardCamp) {
-        rewardCamp.trust += q.reward.trust;
-        OV.set("CAMP" + rewardCamp.id, rewardCamp);
-      }
+      if (q.reward.trust && rewardCamp) rewardCamp.trust += q.reward.trust;
+      if (q.campMission && rewardCamp) rewardCamp.missionDone = true;
+      if (rewardCamp && (q.reward.trust || q.campMission))
+        persistCamp(rewardCamp);
     }
     journalAdd(q.title, q.story || "Поручение выполнено.");
     if (q.kind === "side") {
@@ -3288,6 +3501,9 @@ function completeQuest(q) {
       if (Q.endless) genSideQuest("radio");
     } else {
       Q.main++;
+      Q.prog = {};
+      Q.targets = [];
+      Q.forcedSiege = 0;
       if (Q.main >= MAIN.length) {
         showEnding();
         return;
@@ -3452,7 +3668,7 @@ function questTargetWorld() {
       label: waypoint.label || "Метка",
     };
   const q = trackedQuest(),
-    targets = q?.kind === "side" ? q.targets : Q.targets;
+    targets = q?.kind === "side" ? q.targets : activeStoryTargets();
   if (!q || !targets || !targets.length) return null;
   const t = targets[0];
   return {
@@ -3490,14 +3706,30 @@ function updateQuestUI() {
       );
     })
     .join("");
-  $("qHint").textContent =
-    q.targets && q.targets.length
-      ? "◈ " + q.targets[0].label + " · M — карта"
-      : "Подготовка к выживанию";
-  if (q.id === "m2" && Q.prog.bp_crossbow && !Q.prog.craft_crossbow)
-    $("qHint").textContent = "Чертёж найден. Собери арбалет на верстаке [C].";
+  const target = q.kind === "side" ? q.targets?.[0] : activeStoryTargets()[0];
+  $("qHint").textContent = target
+    ? "◈ " + target.label + " · M — карта"
+    : "Подготовка к выживанию";
+  if (q.id === "m2" && Q.prog.talk_gunstore && !Q.prog.craft_crossbow)
+    $("qHint").textContent = "Чертёж получен. Собери арбалет на верстаке [C].";
 }
 function goalLabel(k, n) {
+  const storyLabels = {
+    visit_parents: "Проведать родителей",
+    visit_friend: "Поговорить с Денисом",
+    visit_girlfriend: "Найти Лену",
+    talk_bartender: "Поговорить с барменом",
+    talk_gunstore: "Поговорить с хозяином «Хищника»",
+    visit_work: "Добраться до работы",
+    talk_police: "Узнать адрес у сержанта",
+    visit_school: "Найти школьный лагерь",
+    school_medicine: "Взять лекарства",
+    school_food: "Взять продукты",
+    school_rescue: "Вывести выжившего",
+    return_school: "Вернуться в школьный лагерь",
+    school_branch: "Выбрать развитие лагеря",
+  };
+  if (storyLabels[k]) return storyLabels[k];
   if (ITEMS[k]) return ITEMS[k].n + " ×" + n;
   if (k === "nest") return "Сжечь рассадники";
   if (k === "mega") return "Сердце Матки";
@@ -4055,6 +4287,32 @@ function buildBase() {
     L.appendChild(row);
   }
 }
+function startCampMission(c) {
+  const quest = createCampMission(c);
+  if (!quest || Q.side.length >= 3 || Q.side.some((q) => q.id === quest.id))
+    return;
+  Q.side.push(quest);
+  Q.sideProg[quest.id] = {};
+  Q.tracked = quest.id;
+  c.quest = quest.id;
+  persistCamp(c);
+  toast("НОВОЕ ПОРУЧЕНИЕ: " + quest.title, "quest");
+  buildQuestList();
+}
+function chooseSchoolBranch(c, branch) {
+  if (!selectSchoolBranch(STORY, c, branch)) return;
+  persistCamp(c);
+  syncCampPopulation(c);
+  qEvent("camp", {
+    stage: "m6",
+    goal: "school_branch",
+    camp: c.id,
+    wayId: Q.targets.find((target) => target.camp === c.id)?.wayId,
+    branch,
+  });
+  say([{ who: "НАДЕЖДА", text: SCHOOL_BRANCHES[branch].text }]);
+  buildCamp();
+}
 function buildCamp() {
   const L = $("campList");
   L.innerHTML = "";
@@ -4064,7 +4322,10 @@ function buildCamp() {
     return;
   }
   const c = curCamp;
-  qEvent("camp", { id: c.id });
+  c.residents ||= [];
+  c.rescuedResidents ||= [];
+  c.facilities ||= [];
+  qEvent("camp", { id: c.id, camp: c.id });
   $("campInfo").innerHTML =
     '<b style="color:var(--steel)">' +
     c.name +
@@ -4074,7 +4335,17 @@ function buildCamp() {
     c.level +
     ' · доверие <b style="color:var(--acid)">' +
     c.trust +
-    "</b><br>Улучшения лагеря повышают его безопасность и ассортимент.";
+    "</b><br>Специализация: " +
+    c.specialization +
+    ".<br>Жители: " +
+    [
+      ...c.residents,
+      ...c.rescuedResidents.map(() => "Спасённый выживший"),
+    ].join(", ") +
+    ".<br>Постоянные объекты: " +
+    c.facilities.map((id) => CAMP_UPGRADES[id]?.name || id).join(", ") +
+    (c.branch ? "<br>Выбор лагеря: " + SCHOOL_BRANCHES[c.branch]?.label : "") +
+    "<br>Улучшения лагеря повышают его безопасность и ассортимент.";
   const acts = document.createElement("div");
   acts.className = "infoBox";
   acts.innerHTML = "<b>Передать припасы:</b><br>";
@@ -4093,13 +4364,19 @@ function buildCamp() {
     b.onclick = () => donate(c, id, n);
     acts.appendChild(b);
   }
-  const q = document.createElement("button");
+  const mission = createCampMission(c),
+    missionActive = mission && Q.side.some((quest) => quest.id === mission.id),
+    q = document.createElement("button");
   q.className = "btn acid small";
   q.style.margin = "4px";
-  q.textContent = "Взять поручение";
-  q.disabled = Q.side.length >= 3;
+  q.textContent = c.missionDone
+    ? "Поручение выполнено"
+    : missionActive
+      ? "Поручение активно"
+      : mission?.title || "Взять поручение";
+  q.disabled = !mission || missionActive || Q.side.length >= 3;
   q.onclick = () => {
-    genSideQuest(c);
+    startCampMission(c);
     buildCamp();
   };
   acts.appendChild(q);
@@ -4130,7 +4407,7 @@ function buildCamp() {
     d.onclick = () => {
       removeItem("cargo", 1);
       c.trust += 4;
-      OV.set("CAMP" + c.id, c);
+      persistCamp(c);
       qEvent("deliver", { camp: c.id });
       toast("Груз доставлен. Доверие +4", "quest");
       buildCamp();
@@ -4138,6 +4415,20 @@ function buildCamp() {
     acts.appendChild(d);
   }
   L.appendChild(acts);
+  if (c.id === "camp_school" && mainQuest()?.id === "m6" && !c.branch) {
+    const branchBox = document.createElement("div");
+    branchBox.className = "infoBox";
+    branchBox.innerHTML = "<b>Единственный выбор развития:</b><br>";
+    for (const [id, definition] of Object.entries(SCHOOL_BRANCHES)) {
+      const button = document.createElement("button");
+      button.className = "btn acid small";
+      button.style.margin = "4px";
+      button.textContent = definition.label;
+      button.onclick = () => chooseSchoolBranch(c, id);
+      branchBox.appendChild(button);
+    }
+    L.appendChild(branchBox);
+  }
   const up = document.createElement("div");
   up.className = "infoBox";
   up.innerHTML = "<b>Улучшения лагеря:</b><br>";
@@ -4519,7 +4810,7 @@ function toggleBuild() {
     SFX.ui();
   }
 }
-function paintMapTo(g, span, cell, view = null) {
+function paintMapTo(g, span, cell, view = null, rotation = 0) {
   const width = g.canvas.width,
     height = g.canvas.height,
     center = view?.center || {
@@ -4530,12 +4821,19 @@ function paintMapTo(g, span, cell, view = null) {
     pcy = Math.floor(center.y),
     halfX = Math.ceil(width / cell / 2) + 1,
     halfY = Math.ceil(height / cell / 2) + 1,
-    screen = (x, y) => ({
-      x: width / 2 + (x - center.x) * cell,
-      y: height / 2 + (y - center.y) * cell,
-    });
+    rotate = (dx, dy) => ({
+      x: width / 2 + dx * Math.cos(rotation) - dy * Math.sin(rotation),
+      y: height / 2 + dx * Math.sin(rotation) + dy * Math.cos(rotation),
+    }),
+    screen = (x, y) => rotate((x - center.x) * cell, (y - center.y) * cell);
   const mapScale = cell / (CELL * 16),
-    mapCamera = { x: center.x * CELL * 16, y: center.y * CELL * 16 };
+    mapCamera = {
+      x: center.x * CELL * 16,
+      y: center.y * CELL * 16,
+      rotation,
+    },
+    mapScreen = (x, y) =>
+      rotate((x - mapCamera.x) * mapScale, (y - mapCamera.y) * mapScale);
   renderOsmMap({
     ctx: g,
     world: OSM_CITY.gameWorld,
@@ -4543,10 +4841,7 @@ function paintMapTo(g, span, cell, view = null) {
     W: width,
     H: height,
     SC: mapScale,
-    w2s: (x, y) => ({
-      x: width / 2 + (x - mapCamera.x) * mapScale,
-      y: height / 2 + (y - mapCamera.y) * mapScale,
-    }),
+    w2s: mapScreen,
   });
   renderDistrictBoundaries({
     ctx: g,
@@ -4554,10 +4849,7 @@ function paintMapTo(g, span, cell, view = null) {
     W: width,
     H: height,
     SC: mapScale,
-    w2s: (x, y) => ({
-      x: width / 2 + (x - mapCamera.x) * mapScale,
-      y: height / 2 + (y - mapCamera.y) * mapScale,
-    }),
+    w2s: mapScreen,
   });
   if (view)
     for (let dy = -halfY; dy <= halfY; dy++)
@@ -4646,7 +4938,7 @@ function paintMapTo(g, span, cell, view = null) {
   const player = screen(P.x / (CELL * 16), P.y / (CELL * 16));
   g.save();
   g.translate(player.x, player.y);
-  g.rotate(P.aim);
+  g.rotate(P.aim + rotation);
   g.fillStyle = "#a6e83c";
   g.beginPath();
   g.moveTo(6, 0);
@@ -4657,7 +4949,7 @@ function paintMapTo(g, span, cell, view = null) {
   g.restore();
 }
 function drawMinimap() {
-  if (P) paintMapTo(mm, 9, 17);
+  if (P) paintMapTo(mm, 9, 17, null, cam.mapRotation);
   if (activeBuilding) {
     mm.fillStyle = "#0a0c09cc";
     mm.fillRect(0, 0, mm.canvas.width, 22);
@@ -4717,6 +5009,114 @@ function drawBigmap() {
   const raidRules = currentRaidRules();
   if (raidRules) $("mapDistrict").textContent += " · " + raidRules.label;
   $("seedShow").textContent = SEED;
+  updateStoryTravelUI();
+}
+function storyTravelTarget() {
+  const target = activeStoryTargets()[0];
+  if (!target) return null;
+  return {
+    x: Number.isFinite(target.x) ? target.x : target.bx * CELL * 16 + 14 * 16,
+    y: Number.isFinite(target.y) ? target.y : target.by * CELL * 16 + 14 * 16,
+    label: target.label || mainQuest()?.title,
+  };
+}
+function storyTravelStatus() {
+  const target = storyTravelTarget(),
+    car = P.inCar ? CARS.get(P.inCar) : null,
+    definition = car ? vehicleDefinition(car.type) : null,
+    lock = storyTravelLock({
+      mapOpen: mapActive(),
+      siege,
+      target,
+      player: P,
+      car,
+      definition,
+    });
+  return {
+    target,
+    car,
+    definition,
+    lock,
+    estimate:
+      target && definition ? estimateStoryTravel(P, target, definition) : null,
+  };
+}
+function updateStoryTravelUI() {
+  const status = storyTravelStatus(),
+    box = $("storyTravelBox");
+  box.classList.toggle("hid", !status.target);
+  if (!status.target) return;
+  $("btnStoryTravel").disabled = Boolean(status.lock);
+  $("storyTravelInfo").textContent =
+    status.target.label +
+    (status.estimate
+      ? " · " +
+        Math.round(status.estimate.straightMeters) +
+        " м · топливо " +
+        status.estimate.fuel.toFixed(1) +
+        " л · " +
+        Math.round(status.estimate.hours * 60) +
+        " мин"
+      : "") +
+    (status.lock ? " · " + status.lock : " · маршрут готов");
+}
+function travelToStoryTarget() {
+  const status = storyTravelStatus();
+  if (status.lock) {
+    toast(status.lock, "danger");
+    return;
+  }
+  const { target, car, definition, estimate } = status;
+  let point = null;
+  for (const radius of [48 * 16, 96 * 16, 160 * 16]) {
+    point = OSM_CITY.spawnPointsNear(target.x, target.y, radius)
+      .filter(
+        (candidate) =>
+          !circleHit(
+            candidate.x,
+            candidate.y,
+            definition.collisionRadius,
+            car.id,
+          ),
+      )
+      .sort(
+        (a, b) =>
+          d2(target.x, target.y, a.x, a.y) - d2(target.x, target.y, b.x, b.y),
+      )[0];
+    if (point) break;
+  }
+  if (!point) {
+    toast("Рядом с целью нет свободной дороги", "danger");
+    return;
+  }
+  car.fuel = Math.max(0, car.fuel - estimate.fuel);
+  car.x = point.x;
+  car.y = point.y;
+  car.angle = point.angle;
+  car.speed = 0;
+  carGridMove(car);
+  P.x = point.x;
+  P.y = point.y;
+  currentFloorId = "outdoor";
+  activeBuilding = null;
+  const clock = advanceTravelClock({ day, tod }, estimate.hours);
+  day = clock.day;
+  tod = clock.tod;
+  cam.x = P.x;
+  cam.y = P.y;
+  searching = null;
+  closePanel();
+  toast(
+    "Прибытие: " +
+      target.label +
+      " · −" +
+      estimate.fuel.toFixed(1) +
+      " л · " +
+      Math.round(estimate.hours * 60) +
+      " мин",
+    "quest",
+  );
+  saveGame();
 }
 function activateMap() {
   mapFloorId = currentFloorId === "outdoor" ? "ground" : currentFloorId;
@@ -4737,6 +5137,8 @@ function openPause() {
   mouse.down = false;
   $("pauseOv").classList.remove("hid");
   $("pauseChip").classList.remove("hid");
+  $("rotateCamera").checked = OPTIONS.rotateCamera;
+  $("rotateMinimap").checked = OPTIONS.rotateMinimap;
   saveGame();
   SFX.ui();
 }
@@ -4811,6 +5213,8 @@ function saveGame(dead) {
       learned,
       bench,
       Q,
+      story: STORY,
+      options: OPTIONS,
       baseProj,
       OV,
       SMAP,
@@ -4873,7 +5277,7 @@ function loadGame() {
     CARS.set(k, v);
     carGridAdd(v);
   }
-  for (const [k, v] of d.camps) CAMPS.set(k, v);
+  initializeCamps(d.camps);
   day = d.day;
   tod = d.tod;
   playT = d.playT || 0;
@@ -4888,12 +5292,8 @@ function loadGame() {
   Q = d.Q;
   Q.sideProg = Q.sideProg || {};
   Q.raids = Q.raids || {};
-  if (Q.main === 0) {
-    Q.targets = [OSM_CITY.nearestSupermarketTarget(SPAWN.x, SPAWN.y)].filter(
-      Boolean,
-    );
-    MAIN[0].targets = Q.targets;
-  }
+  STORY = normalizeStoryState(d.story);
+  OPTIONS = { rotateCamera: false, rotateMinimap: false, ...d.options };
   baseProj = d.baseProj;
   stats = d.stats;
   J = d.J || [];
@@ -4936,6 +5336,7 @@ function loadGame() {
   cam.x = P.x;
   cam.y = P.y;
   bench = 1 + baseProj.workshop;
+  setupMain();
   buildHotbar();
   buildResRow();
   updateQuestUI();
@@ -4988,12 +5389,17 @@ function initGame(seed, diffK) {
     sideProg: {},
     tracked: "main",
     prog: {},
-    given: {},
+    mainGiven: {},
+    sideGiven: {},
     endless: false,
     sideSeq: 0,
     raids: {},
     forcedSiege: 0,
   };
+  STORY = createStoryState();
+  OPTIONS = { rotateCamera: false, rotateMinimap: false };
+  storyChoiceActive = false;
+  initializeCamps();
   J = [];
   baseProj = {
     wall: 0,
@@ -5010,6 +5416,10 @@ function initGame(seed, diffK) {
   for (const key of OSM_CITY.specials.keys()) EX.add(key);
   cam.x = SPAWN.x;
   cam.y = SPAWN.y;
+  cam.zoom = 1;
+  cam.rotation = 0;
+  cam.heading = 0;
+  cam.mapRotation = 0;
   Z.length = 0;
   PR.length = 0;
   PT.length = 0;
@@ -5201,16 +5611,16 @@ $("mmap").addEventListener("pointermove", (event) => {
   const canvas = $("mmap"),
     rect = canvas.getBoundingClientRect(),
     scale = 17 / (CELL * 16),
-    x =
-      P.x +
+    dx =
       ((event.clientX - rect.left) * (canvas.width / rect.width) -
         canvas.width / 2) /
-        scale,
-    y =
-      P.y +
+      scale,
+    dy =
       ((event.clientY - rect.top) * (canvas.height / rect.height) -
         canvas.height / 2) /
-        scale,
+      scale,
+    x = P.x + dx * Math.cos(cam.mapRotation) + dy * Math.sin(cam.mapRotation),
+    y = P.y - dx * Math.sin(cam.mapRotation) + dy * Math.cos(cam.mapRotation),
     name = OSM_CITY.placeNameAt(x, y);
   $("mmapHint").textContent = name || "Нет названия";
   $("mmapHint").classList.toggle("hid", !name);
@@ -5220,6 +5630,7 @@ $("mmap").addEventListener("pointerleave", () =>
 );
 $("mapFloorPrev").onclick = () => selectMapFloor(-1);
 $("mapFloorNext").onclick = () => selectMapFloor(1);
+$("btnStoryTravel").onclick = travelToStoryTarget;
 window.addEventListener("mousemove", (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
@@ -5398,6 +5809,12 @@ $("panelX").onclick = closePanel;
 $("spChip").onclick = () => openPanel("skill");
 $("btnResume").onclick = closePause;
 $("speedSel").onchange = (e) => (timeSpeed = +e.target.value);
+for (const key of ["rotateCamera", "rotateMinimap"])
+  $(key).onchange = (event) => {
+    OPTIONS[key] = event.target.checked;
+    drawMinimap();
+    saveGame();
+  };
 $("btnRestart").onclick = () => {
   if (confirm("Начать заново?")) {
     wipeSave();
@@ -5458,14 +5875,15 @@ function resize() {
     });
 }
 window.addEventListener("resize", resize);
-function drawWeaponOverlay() {
-  renderWeapon({ ctx, P, S, SC });
+function drawWeaponOverlay({ rotation = 0, SC: effectiveSC = SC } = {}) {
+  renderWeapon({ ctx, P, S, SC: effectiveSC, rotation });
 }
 const renderWorld = createWorldRenderer({
   ctx,
   lx,
   LC,
   SC,
+  getSC: () => SC,
   cam,
   getW: () => W,
   getH: () => H,
@@ -5668,6 +6086,27 @@ function update(dt) {
   const bx = Math.floor(P.x / (CELL * 16)),
     by = Math.floor(P.y / (CELL * 16));
   if (currentFloorId === "outdoor") EX.add(K(bx, by));
+  const drivenCar = P.inCar ? CARS.get(P.inCar) : null,
+    speed = drivenCar?.speed || 0;
+  if (drivenCar && Math.abs(speed) > 8)
+    cam.heading = drivenCar.angle + (speed < 0 ? Math.PI : 0);
+  cam.zoom = lerp(
+    cam.zoom,
+    drivenCar
+      ? speedZoomFactor(speed, vehicleDefinition(drivenCar.type).maxSpeed)
+      : 1,
+    1 - Math.exp(-dt / 0.35),
+  );
+  cam.rotation = lerpAngle(
+    cam.rotation,
+    OPTIONS.rotateCamera && drivenCar ? -cam.heading - Math.PI / 2 : 0,
+    1 - Math.exp(-dt / 0.25),
+  );
+  cam.mapRotation = lerpAngle(
+    cam.mapRotation,
+    OPTIONS.rotateMinimap && drivenCar ? -cam.heading - Math.PI / 2 : 0,
+    1 - Math.exp(-dt / 0.25),
+  );
   cam.x = lerp(
     cam.x,
     P.inCar ? CARS.get(P.inCar).x : P.x,

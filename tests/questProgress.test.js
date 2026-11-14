@@ -35,11 +35,11 @@ describe("прогресс заданий", () => {
     expect(goalsComplete(quest, { can: 5, cloth: 2 })).toBe(true);
   });
 
-  it("учитывает чертёж и оружие, полученные раньше задания", () => {
+  it("учитывает арбалет, собранный раньше задания", () => {
     const quest = MAIN[1];
     const progress = syncQuestProgress(
       quest,
-      {},
+      { talk_bartender: 1, talk_gunstore: 1 },
       {
         learned: new Set(["crossbow"]),
         owned: { crossbow: true },
@@ -50,11 +50,11 @@ describe("прогресс заданий", () => {
     expect(goalsComplete(quest, progress)).toBe(true);
   });
 
-  it("учитывает построенный проект и пройденную дистанцию", () => {
-    const radioQuest = MAIN[4];
+  it("сохраняет синхронизацию проектов и дистанции для других заданий", () => {
+    const radioQuest = { goals: [["project_radio", 1]] };
     const progress = syncQuestProgress(
       radioQuest,
-      { radiopart: 2 },
+      {},
       {
         learned: new Set(),
         owned: {},
@@ -64,10 +64,10 @@ describe("прогресс заданий", () => {
     );
     expect(goalsComplete(radioQuest, progress)).toBe(true);
 
-    const carQuest = MAIN[3];
+    const carQuest = { goals: [["drive", 300]] };
     const carProgress = syncQuestProgress(
       carQuest,
-      { car_repair: 1 },
+      {},
       {
         learned: new Set(),
         owned: {},
@@ -76,5 +76,109 @@ describe("прогресс заданий", () => {
       },
     );
     expect(goalsComplete(carQuest, carProgress)).toBe(true);
+  });
+
+  it("принимает сюжетное событие только с точным way и этапом", () => {
+    const quest = {
+      id: "m1",
+      goals: [["visit_parents", 1]],
+      targets: [{ event: "visit", goal: "visit_parents", wayId: 112436180 }],
+    };
+    const progress = {};
+    applyQuestEvent(
+      progress,
+      "visit",
+      { stage: "m2", goal: "visit_parents", wayId: 112436180 },
+      quest,
+    );
+    applyQuestEvent(
+      progress,
+      "visit",
+      { stage: "m1", goal: "visit_parents", wayId: 112439402 },
+      quest,
+    );
+    expect(progress.visit_parents).toBeUndefined();
+    applyQuestEvent(
+      progress,
+      "visit",
+      { stage: "m1", goal: "visit_parents", wayId: 112436180 },
+      quest,
+    );
+    expect(goalsComplete(quest, progress)).toBe(true);
+  });
+
+  it("не завершает возвращение в школу до спасения", () => {
+    const quest = {
+      id: "m5",
+      goals: [
+        ["school_rescue", 1],
+        ["return_school", 1],
+      ],
+      targets: [
+        { event: "rescue", goal: "school_rescue", wayId: 112399694 },
+        {
+          event: "visit",
+          goal: "return_school",
+          camp: "camp_school",
+          requires: "school_rescue",
+        },
+      ],
+    };
+    const progress = {};
+    applyQuestEvent(
+      progress,
+      "visit",
+      { stage: "m5", goal: "return_school", camp: "camp_school" },
+      quest,
+    );
+    expect(progress.return_school).toBeUndefined();
+    applyQuestEvent(
+      progress,
+      "rescue",
+      { stage: "m5", goal: "school_rescue", wayId: 112399694 },
+      quest,
+    );
+    applyQuestEvent(
+      progress,
+      "visit",
+      { stage: "m5", goal: "return_school", camp: "camp_school" },
+      quest,
+    );
+    expect(goalsComplete(quest, progress)).toBe(true);
+  });
+
+  it("проверяет way и лагерь при выборе школьной ветки", () => {
+    const quest = {
+      id: "m6",
+      goals: [["school_branch", 1]],
+      targets: [
+        {
+          event: "camp",
+          goal: "school_branch",
+          camp: "camp_school",
+          wayId: 1273891052,
+        },
+      ],
+    };
+    const progress = {};
+    applyQuestEvent(
+      progress,
+      "camp",
+      { stage: "m6", goal: "school_branch", camp: "camp_school" },
+      quest,
+    );
+    expect(progress.school_branch).toBeUndefined();
+    applyQuestEvent(
+      progress,
+      "camp",
+      {
+        stage: "m6",
+        goal: "school_branch",
+        camp: "camp_school",
+        wayId: 1273891052,
+      },
+      quest,
+    );
+    expect(goalsComplete(quest, progress)).toBe(true);
   });
 });

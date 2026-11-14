@@ -17,6 +17,30 @@ export const VOLGOGRAD_SITES = {
     osmName: "Новоремесленная улица",
     kind: "residential",
   },
+  parents: {
+    ref: "way/112436180",
+    name: "Дом родителей",
+    osmName: "Библиотечная улица, 14",
+    kind: "residential",
+  },
+  friend: {
+    ref: "way/112439402",
+    name: "Дом Дениса",
+    osmName: "Библиотечная улица, 7",
+    kind: "residential",
+  },
+  girlfriend: {
+    ref: "way/112440509",
+    name: "Дом Лены",
+    osmName: "Библиотечная улица, 15",
+    kind: "residential",
+  },
+  bartender: {
+    ref: "way/403829122",
+    name: "Дом бармена Олега",
+    osmName: "улица им. Репина, 52",
+    kind: "bar",
+  },
   supermarket: {
     ref: "way/844049423",
     name: "Супермаркет «Калина»",
@@ -24,10 +48,52 @@ export const VOLGOGRAD_SITES = {
     kind: "supermarket",
   },
   gunstore: {
-    ref: "node/3710174147",
-    name: "Оружейный «Калибр»",
-    osmName: "Защита",
+    ref: "node/4100974890",
+    name: "Оружейный «Хищник»",
+    osmName: "Хищник",
     kind: "gunstore",
+  },
+  gunstore_host: {
+    ref: "way/1540800271",
+    name: "Хозяин «Хищника»",
+    osmName: "Хищник",
+    kind: "gunstore_host",
+  },
+  work: {
+    ref: "way/732739077",
+    name: "Работа Артёма",
+    osmName: "улица Канунникова, 15",
+    kind: "work",
+  },
+  school5: {
+    ref: "way/112438439",
+    name: "Школа № 5",
+    osmName: "Школа № 5",
+    kind: "school",
+  },
+  camp_school: {
+    ref: "way/1273891052",
+    name: "Лагерь школы № 5",
+    osmName: "Спортплощадка школы № 5",
+    kind: "camp",
+  },
+  school_medicine: {
+    ref: "way/679764136",
+    name: "Аптека № 31",
+    osmName: "Аптека № 31",
+    kind: "pharmacy",
+  },
+  school_food: {
+    ref: "way/112437649",
+    name: "Продукты для школы",
+    osmName: "Пятёрочка",
+    kind: "supermarket",
+  },
+  school_rescue: {
+    ref: "way/112399694",
+    name: "Выживший на Библиотечной",
+    osmName: "Библиотечная улица, 16",
+    kind: "rescue",
   },
   hospital: {
     ref: "way/123686711",
@@ -104,11 +170,12 @@ export const VOLGOGRAD_SITES = {
 };
 
 export const VOLGOGRAD_QUEST_TARGETS = {
-  m2: ["gunstore"],
-  m3: ["hospital"],
-  m4: ["gas"],
-  m5: ["police", "warehouse"],
-  m6: ["camp_bridge"],
+  m1: ["parents", "friend", "girlfriend"],
+  m2: ["bartender", "gunstore"],
+  m3: ["work"],
+  m4: ["police", "camp_school"],
+  m5: ["school_medicine", "school_food", "school_rescue", "camp_school"],
+  m6: ["camp_school"],
   m7: ["mamayev"],
   m10: ["mamayev"],
 };

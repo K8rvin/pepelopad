@@ -26,6 +26,7 @@ export function renderBuildingInterior({
   layout,
   S,
   SC,
+  rotation = 0,
   w2s,
 }) {
   if (!building || floorId === "outdoor") return;
@@ -52,7 +53,7 @@ export function renderBuildingInterior({
     if (!image) continue;
     ctx.save();
     ctx.translate(point.x, point.y);
-    ctx.rotate(fixture.angle || 0);
+    ctx.rotate((fixture.angle || 0) + rotation);
     ctx.drawImage(
       image,
       (-fixture.w * SC) / 2,
@@ -105,15 +106,19 @@ export function renderBuildingInterior({
   }
   for (const stair of stairs) {
     const point = w2s(stair.x, stair.y);
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.rotate(rotation);
     ctx.fillStyle = "#171d18";
-    ctx.fillRect(point.x - 18 * SC, point.y - 14 * SC, 36 * SC, 28 * SC);
+    ctx.fillRect(-18 * SC, -14 * SC, 36 * SC, 28 * SC);
     ctx.strokeStyle = "#ffb23e";
     ctx.lineWidth = 2 * SC;
     for (let index = 0; index < 4; index++) {
       ctx.beginPath();
-      ctx.moveTo(point.x - 12 * SC, point.y + (9 - index * 6) * SC);
-      ctx.lineTo(point.x + 12 * SC, point.y + (9 - index * 6) * SC);
+      ctx.moveTo(-12 * SC, (9 - index * 6) * SC);
+      ctx.lineTo(12 * SC, (9 - index * 6) * SC);
       ctx.stroke();
     }
+    ctx.restore();
   }
 }

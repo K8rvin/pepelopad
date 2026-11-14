@@ -9,6 +9,7 @@ export function renderActors({
   state,
   S,
   SC,
+  rotation = 0,
   now,
   w2s,
   drawWeaponOverlay,
@@ -30,7 +31,13 @@ export function renderActors({
         ctx.fill();
         ctx.save();
         ctx.translate(Math.round(s.x), Math.round(s.y));
-        if (zombie.vx < -2 || (zombie.st === "chase" && zombie.tx < zombie.x))
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        const screenVx = zombie.vx * cos - zombie.vy * sin;
+        const screenTargetX =
+          (zombie.tx - zombie.x) * cos -
+          ((zombie.ty ?? zombie.y) - zombie.y) * sin;
+        if (screenVx < -2 || (zombie.st === "chase" && screenTargetX < 0))
           ctx.scale(-1, 1);
         ctx.drawImage(image, -width / 2, -height + 5 * SC, width, height);
         ctx.restore();
@@ -66,10 +73,10 @@ export function renderActors({
         ctx.translate(Math.round(s.x), Math.round(s.y));
         if (P.iframe > 0 && Math.floor(now * 20) % 2) ctx.globalAlpha = 0.45;
         ctx.save();
-        if (Math.cos(P.aim) < 0) ctx.scale(-1, 1);
+        if (Math.cos(P.aim + rotation) < 0) ctx.scale(-1, 1);
         ctx.drawImage(S.player, -6 * SC, -9 * SC, 12 * SC, 14 * SC);
         ctx.restore();
-        if (P.owned[P.weapon]) drawWeaponOverlay();
+        if (P.owned[P.weapon]) drawWeaponOverlay({ rotation, SC });
         ctx.restore();
         if (P.rl > 0 && WEAPONS[P.weapon].auto) {
           const progress = 1 - P.rl / (P.rlMax || 1);

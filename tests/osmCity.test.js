@@ -140,4 +140,86 @@ describe("игровая модель статичного Волгограда"
       ).toBe(true);
     }
   });
+
+  it("использует шаблон Библиотечной 12 для похожего дома Репина 21", () => {
+    const building = city.buildings.get(112436656),
+      block = city.planBlock(building.bx, building.by, 42, new Map()),
+      ground = city.interiorFor(building, "ground"),
+      upper = city.interiorFor(building, "upper"),
+      planned = block.containers.filter(
+        (container) => container.wayId === building.wayId,
+      ),
+      detailed = [...ground.containers, ...upper.containers];
+    expect(ground.internalWalls.length).toBeGreaterThan(0);
+    expect(ground.doors.length).toBeGreaterThan(0);
+    expect(ground.fixtures.length).toBeGreaterThan(0);
+    expect(upper.containers.length).toBeGreaterThan(0);
+    expect(planned.map((container) => container.id).sort()).toEqual(
+      detailed.map((container) => container.id).sort(),
+    );
+    for (const container of planned) {
+      const original = detailed.find((item) => item.id === container.id);
+      expect(container.id).toMatch(/^osm:112436656:/);
+      expect(container.id).not.toContain("osm:112436182:");
+      expect(container.x).toBe(original.tileX);
+      expect(container.y).toBe(original.tileY);
+    }
+  });
+
+  it("оставляет обычные контейнеры у неподходящего жилого дома", () => {
+    const building = city.buildings.get(40699743),
+      block = city.planBlock(building.bx, building.by, 42, new Map()),
+      containers = block.containers.filter(
+        (container) => container.wayId === building.wayId,
+      );
+    expect(city.interiorFor(building, "ground")).toBeNull();
+    expect(city.interiorFor(building, "upper")).toBeNull();
+    expect(containers.length).toBeGreaterThan(0);
+    for (const container of containers) {
+      expect(container.id).toMatch(/^osm:40699743:\d+$/);
+      expect(container.floorId).toBe("ground");
+    }
+  });
+
+  it("возвращается к обычной добыче при недоступном подробном шаблоне", () => {
+    const building = city.buildings.get(112436656),
+      previousStairs = building.stairsByFloor,
+      previousLayouts = building.interiorLayouts;
+    try {
+      building.stairsByFloor = {
+        ground: [{ x: -1000000, y: -1000000 }],
+        upper: [{ x: -1000000, y: -1000000 }],
+      };
+      building.interiorLayouts = {};
+      const block = city.planBlock(building.bx, building.by, 42, new Map()),
+        containers = block.containers.filter(
+          (container) => container.wayId === building.wayId,
+        );
+      expect(city.interiorFor(building, "ground")).toBeNull();
+      expect(city.interiorFor(building, "upper")).toBeNull();
+      expect(containers.length).toBeGreaterThan(0);
+      expect(
+        containers.every(
+          (container) =>
+            container.floorId === "ground" &&
+            /^osm:112436656:\d+$/.test(container.id),
+        ),
+      ).toBe(true);
+    } finally {
+      building.stairsByFloor = previousStairs;
+      building.interiorLayouts = previousLayouts;
+    }
+  });
+
+  it("показывает полный адрес самого здания без подстановки соседнего", () => {
+    const addressed = city.buildings.get(112436182),
+      addressPoint = city.stairsFor(addressed, "ground")[0];
+    expect(city.placeNameAt(addressPoint.x, addressPoint.y)).toBe(
+      "Библиотечная улица, 12",
+    );
+    const unaddressed = city.buildings.get(73226746),
+      genericPoint = city.stairsFor(unaddressed, "ground")[0];
+    expect(unaddressed.tags["addr:street"]).toBeUndefined();
+    expect(city.placeNameAt(genericPoint.x, genericPoint.y)).toBe("Жилой дом");
+  });
 });

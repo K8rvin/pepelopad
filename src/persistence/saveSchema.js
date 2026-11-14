@@ -1,7 +1,13 @@
 import { VEHICLES } from "../data/vehicles.js";
+import { createStoryState, normalizeStoryState } from "../systems/story.js";
+import { campSnapshot } from "../systems/camps.js";
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 export const CITY_ID = "volgograd-osm-1";
+export const DEFAULT_OPTIONS = {
+  rotateCamera: false,
+  rotateMinimap: false,
+};
 
 const V8_MAX_FUEL = {
   sedan: 100,
@@ -88,12 +94,16 @@ export function createSaveData(snapshot) {
     learned: [...snapshot.learned],
     bench: snapshot.bench,
     Q: copy(snapshot.Q),
+    story: copy(normalizeStoryState(snapshot.story)),
+    options: { ...DEFAULT_OPTIONS, ...(snapshot.options || {}) },
     baseProj: copy(snapshot.baseProj),
     OV: copy([...snapshot.OV]),
     SM: copy([...snapshot.SMAP]),
     EX: [...snapshot.EX],
     cars: copy([...snapshot.CARS]),
-    camps: copy([...snapshot.CAMPS]),
+    camps: copy(
+      [...snapshot.CAMPS].map(([id, camp]) => [id, campSnapshot(camp)]),
+    ),
     stats: copy(snapshot.stats),
     J: copy(snapshot.J),
   };
@@ -113,7 +123,7 @@ export function validateSaveData(data) {
 
 export function migrateSave(data) {
   if (!data || typeof data !== "object") throw new Error("Corrupted save data");
-  if (![3, 4, 5, 6, 7, 8, SAVE_VERSION].includes(data.v))
+  if (![3, 4, 5, 6, 7, 8, 9, SAVE_VERSION].includes(data.v))
     throw new Error("Unsupported save version");
   const player = { ...data.P };
   let floor = data.floor || null;
@@ -132,14 +142,22 @@ export function migrateSave(data) {
         )
       : true,
   );
-  const fuel = data.v === 8 ? migrateV8Fuel(data) : data;
+  const fuel = data.v === 8 ? migrateV8Fuel(data) : data,
+    restartEarlyArc = data.v === 9 && data.Q?.main < 6,
+    Q = {
+      ...data.Q,
+      main: restartEarlyArc ? 0 : data.Q.main,
+      prog: restartEarlyArc ? {} : data.Q.prog || {},
+      targets: restartEarlyArc ? [] : data.Q.targets || [],
+      mainGiven: restartEarlyArc ? {} : data.Q.mainGiven || data.Q.given || {},
+      sideGiven: data.Q.sideGiven || {},
+      sideProg: data.Q?.sideProg || {},
+      forcedSiege: restartEarlyArc ? 0 : data.Q.forcedSiege || 0,
+    };
   const migrated = {
     ...data,
     v: SAVE_VERSION,
-    city:
-      [6, 7, 8, SAVE_VERSION].includes(data.v) && data.city === CITY_ID
-        ? CITY_ID
-        : "legacy-procedural",
+    city: data.v >= 6 && data.city === CITY_ID ? CITY_ID : "legacy-procedural",
     P: player,
     floor,
     SM: structures,
@@ -148,7 +166,11 @@ export function migrateSave(data) {
     invSlots: data.invSlots || 30,
     hasSpear: Boolean(data.hasSpear),
     J: data.J || [],
-    Q: { ...data.Q, sideProg: data.Q?.sideProg || {} },
+    Q,
+    story: restartEarlyArc
+      ? createStoryState()
+      : normalizeStoryState(data.story),
+    options: { ...DEFAULT_OPTIONS, ...(data.options || {}) },
   };
   return validateSaveData(migrated);
 }

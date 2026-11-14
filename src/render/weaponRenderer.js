@@ -1,6 +1,6 @@
-export function drawWeaponOverlay({ ctx, P, S, SC }) {
+export function drawWeaponOverlay({ ctx, P, S, SC, rotation = 0 }) {
   const weapon = P.weapon;
-  const aim = P.aim;
+  const aim = P.aim + rotation;
   const flip = Math.cos(aim) < 0;
   ctx.save();
   ctx.rotate(aim);

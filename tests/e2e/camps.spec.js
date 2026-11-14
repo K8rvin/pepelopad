@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 test("улучшение лагеря, поставка по поручению и сохранение", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(() => {
@@ -12,6 +13,11 @@ test("улучшение лагеря, поставка по поручению 
   await page.evaluate(async () => {
     const { createSaveData } = await import("/src/persistence/saveSchema.js");
     const { SKILLS } = await import("/src/data/skills.js");
+    const { loadOsmWorld } = await import("/src/world/osmMap.js");
+    const { createOsmGameProjection } = await import("/src/world/osmPois.js");
+    const world = await loadOsmWorld("/assets/maps/volgograd-center.json");
+    const projection = createOsmGameProjection(world);
+    const campPoint = projection.worldToGame(projection.sites.camp_bridge);
     const save = createSaveData({
       seed: 123,
       diff: "easy",
@@ -24,8 +30,8 @@ test("улучшение лагеря, поставка по поручению 
       dead: false,
       gateOpen: false,
       P: {
-        x: 1980,
-        y: 2016,
+        x: campPoint.x,
+        y: campPoint.y,
         r: 5,
         hp: 120,
         st: 100,
@@ -126,21 +132,17 @@ test("улучшение лагеря, поставка по поручению 
 
   await page
     .locator("#campList button")
-    .filter({ hasText: "Взять поручение" })
+    .filter({ hasText: "Мост: лекарства" })
     .click();
-  await expect(page.locator("#questList")).toContainText(
-    "Лагерь «Мост»: Тушёнка",
-  );
-  await page
-    .locator("#campList button")
-    .filter({ hasText: "×3" })
-    .first()
-    .click();
+  await expect(page.locator("#questList")).toContainText("Мост: лекарства");
+  for (let i = 0; i < 2; i++)
+    await page
+      .locator("#campList button")
+      .filter({ hasText: "Аптечка ×1" })
+      .click();
   await expect(page.locator("#toasts")).toContainText("ЗАДАНИЕ ВЫПОЛНЕНО");
   await expect(page.locator("#campInfo")).toContainText("доверие 9");
-  await expect(page.locator("#questList")).not.toContainText(
-    "Лагерь «Мост»: Тушёнка",
-  );
+  await expect(page.locator("#questList")).not.toContainText("Мост: лекарства");
 
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
@@ -156,7 +158,8 @@ test("улучшение лагеря, поставка по поручению 
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("ashfall_v4_city")),
   );
-  expect(saved.camps[0][1].proj.wall).toBe(1);
-  expect(saved.camps[0][1].trust).toBe(9);
+  const savedCamp = saved.camps.find(([id]) => id === "camp_bridge")[1];
+  expect(savedCamp.proj.wall).toBe(1);
+  expect(savedCamp.trust).toBe(9);
   expect(errors).toEqual([]);
 });

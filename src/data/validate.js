@@ -160,7 +160,11 @@ export function validateGameData({
       const special =
         specialGoals.has(goal) ||
         goal.startsWith("craft_") ||
-        goal.startsWith("project_");
+        goal.startsWith("project_") ||
+        goal.startsWith("visit_") ||
+        goal.startsWith("talk_") ||
+        goal.startsWith("school_") ||
+        goal === "return_school";
       if (!Object.hasOwn(ITEMS, goal) && !special)
         errors.push(`MAIN.${quest.id}: unknown goal "${goal}"`);
     }

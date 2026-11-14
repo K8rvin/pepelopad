@@ -1,13 +1,20 @@
 import { railVehicleParts } from "../world/railPopulation.js";
 
-export function renderRailVehicles({ ctx, vehicles, S, SC, cam, W, H, w2s }) {
+export function renderRailVehicles({
+  ctx,
+  vehicles,
+  S,
+  SC,
+  rotation = 0,
+  cam,
+  W,
+  H,
+  w2s,
+}) {
+  const visibleRadius = Math.hypot(W, H) / (2 * SC) + 40;
   for (const vehicle of vehicles) {
     for (const part of railVehicleParts(vehicle)) {
-      if (
-        Math.abs(part.x - cam.x) > W / (2 * SC) + 40 ||
-        Math.abs(part.y - cam.y) > H / (2 * SC) + 40
-      )
-        continue;
+      if (Math.hypot(part.x - cam.x, part.y - cam.y) > visibleRadius) continue;
       const image = S[part.kind === "carriage" ? "train_carriage" : part.kind];
       if (!image) continue;
       const point = w2s(part.x, part.y),
@@ -15,7 +22,7 @@ export function renderRailVehicles({ ctx, vehicles, S, SC, cam, W, H, w2s }) {
         height = 16;
       ctx.save();
       ctx.translate(point.x, point.y);
-      ctx.rotate(part.angle);
+      ctx.rotate(part.angle + rotation);
       ctx.drawImage(
         image,
         (-width * SC) / 2,

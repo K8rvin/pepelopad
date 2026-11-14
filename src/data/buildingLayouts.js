@@ -73,6 +73,23 @@ const APARTMENT_CONTAINERS = [
 export const BUILDING_LAYOUTS = {
   112436182: {
     id: "pilot-apartment",
+    sourceWayId: 112436182,
+    minLevels: 2,
+    footprint: {
+      pixelsPerMeter: 1,
+      points: [
+        [0, 0],
+        [0.800360695, 7.881456],
+        [1.453866216, 14.349148],
+        [67.663521111, 6.912972],
+        [67.076099418, 0.534336],
+        [72.208688725, -2.426776],
+        [77.862612898, -6.022412],
+        [71.657981825, -9.673708],
+        [68.757592152, -8.01504],
+        [66.569450072, -6.890708],
+      ],
+    },
     floors: {
       ground: {
         walls: APARTMENT_WALLS,

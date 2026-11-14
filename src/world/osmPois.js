@@ -1,4 +1,5 @@
 import { VOLGOGRAD_QUEST_TARGETS, VOLGOGRAD_SITES } from "../data/volgograd.js";
+import { STORY_TARGET_DETAILS } from "../data/story.js";
 import { boundsOfWays } from "./osmMap.js";
 
 export function centerOfPoints(points) {
@@ -94,15 +95,28 @@ export function createOsmGameProjection(
           questId,
           siteIds.map((siteId) => {
             const site = sites[siteId],
+              detail = STORY_TARGET_DETAILS[questId]?.[siteId] || {},
+              interactionSite = detail.hostSiteId
+                ? sites[detail.hostSiteId]
+                : site,
               block = this.blockForSite(siteId),
-              point = worldToGame(site);
+              point = worldToGame(site),
+              interactionPoint = worldToGame(interactionSite),
+              wayId = interactionSite.ref.startsWith("way/")
+                ? Number(interactionSite.ref.split("/")[1])
+                : null;
             return {
               ...block,
               x: point.x,
               y: point.y,
+              interactionX: interactionPoint.x,
+              interactionY: interactionPoint.y,
               label: site.name,
               osmName: site.osmName,
               siteId,
+              ...detail,
+              wayId,
+              camp: detail.camp || (site.kind === "camp" ? siteId : undefined),
             };
           }),
         ]),

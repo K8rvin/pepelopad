@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { collectQuestGrants } from "../src/systems/questGrants.js";
+import {
+  collectQuestGrants,
+  questGrantLedger,
+} from "../src/systems/questGrants.js";
 
 const quests = [
   { id: "main", targets: [{ bx: 2, by: 0 }], grant: [["can", 4]] },
@@ -118,5 +121,35 @@ describe("выдача сюжетных предметов", () => {
     collectQuestGrants(quest, given, () => true, { wayId: 101 });
     expect(given).toEqual({ "legacy:3,4": true });
     expect(collectQuestGrants(quest, given, () => true).items).toEqual({});
+  });
+
+  it("хранит выдачи основного и побочного заданий в разных журналах", () => {
+    const Q = {};
+    const main = questGrantLedger(Q, "main"),
+      side = questGrantLedger(Q, "side");
+    const quest = [
+      { id: "same", targets: [{ bx: 1, by: 1 }], grant: [["can", 1]] },
+    ];
+    collectQuestGrants(quest, main, () => true);
+    expect(collectQuestGrants(quest, side, () => true).items).toEqual({
+      can: 1,
+    });
+    expect(Q.mainGiven).not.toBe(Q.sideGiven);
+  });
+
+  it("поддерживает выдачу конкретной сюжетной цели", () => {
+    const quest = [
+      {
+        id: "story",
+        targets: [
+          { wayId: 1540800271, grant: [["bp_crossbow", 1]] },
+          { wayId: 403829122, grant: [["bandage", 1]] },
+        ],
+      },
+    ];
+    const result = collectQuestGrants(quest, {}, () => true, {
+      wayId: 1540800271,
+    });
+    expect(result.items).toEqual({ bp_crossbow: 1 });
   });
 });

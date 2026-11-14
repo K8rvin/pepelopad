@@ -9,6 +9,7 @@ export function renderParticles({
   ash,
   S,
   SC,
+  rotation = 0,
   now,
   w2s,
   rnd,
@@ -17,7 +18,7 @@ export function renderParticles({
 }) {
   for (const projectile of PR) {
     const s = w2s(projectile.x, projectile.y);
-    const angle = Math.atan2(projectile.vy, projectile.vx);
+    const angle = Math.atan2(projectile.vy, projectile.vx) + rotation;
     if (projectile.type === "arrow" || projectile.type === "crossbow") {
       ctx.save();
       ctx.translate(s.x, s.y);
@@ -82,7 +83,13 @@ export function renderParticles({
       ctx.strokeStyle = "rgba(236,229,208," + alpha + ")";
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, 1.3 * 16 * SC, particle.a - 1, particle.a + 1);
+      ctx.arc(
+        s.x,
+        s.y,
+        1.3 * 16 * SC,
+        particle.a + rotation - 1,
+        particle.a + rotation + 1,
+      );
       ctx.stroke();
     }
   }

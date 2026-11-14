@@ -94,21 +94,37 @@ function buildingRecord(
   };
 }
 
-function addContainers(block, building, random) {
-  const apartmentLayouts = getBuildingLayouts(building),
+function isSupermarket(building) {
+  return (
+    building.type === "supermarket" ||
+    ["supermarket", "convenience"].includes(building.tags?.shop)
+  );
+}
+
+function addContainers(block, building, random, stairsForBuilding) {
+  const apartmentLayouts =
+      building.type === "apartments"
+        ? getBuildingLayouts(building, {
+            stairsFor: (floorId) => stairsForBuilding(building, floorId),
+          })
+        : [],
     apartmentContainers = apartmentLayouts.flatMap(
       (layout) => layout.containers,
     );
-  if (apartmentContainers.length) {
-    for (const container of apartmentContainers)
-      block.containers.push({
-        ...container,
-        x: container.tileX,
-        y: container.tileY,
-      });
-    return;
+  if (building.type === "apartments") {
+    building.interiorLayouts ||= {};
+    for (const floorId of ["ground", "upper"])
+      building.interiorLayouts[floorId] =
+        apartmentLayouts.find((layout) => layout.floorId === floorId) || null;
   }
-  if (building.type === "supermarket") {
+  for (const container of apartmentContainers)
+    block.containers.push({
+      ...container,
+      x: container.tileX,
+      y: container.tileY,
+    });
+  if (apartmentLayouts.some((layout) => layout.floorId === "ground")) return;
+  if (isSupermarket(building)) {
     const layout = generateSupermarketInterior(building);
     if (layout.containers.length) {
       for (const container of layout.containers)
@@ -208,7 +224,26 @@ export function createOsmCityModel(world, projection) {
     if (!buildingsByBlock.has(key)) buildingsByBlock.set(key, []);
     buildingsByBlock.get(key).push(building);
   }
+  const specialSiteIds = new Set([
+    "origin",
+    "residential",
+    "novoremeslennaya",
+    "supermarket",
+    "gunstore",
+    "hospital",
+    "gas",
+    "garage",
+    "police",
+    "warehouse",
+    "camp_school",
+    "camp_bridge",
+    "camp_farm",
+    "camp_depot",
+    "mamayev",
+    "riverport",
+  ]);
   for (const [siteId, site] of Object.entries(projection.sites)) {
+    if (!specialSiteIds.has(siteId)) continue;
     const block = projection.blockForSite(siteId),
       key = K(block.bx, block.by),
       special = siteId === "mamayev" ? "quarry" : siteId;
@@ -229,6 +264,8 @@ export function createOsmCityModel(world, projection) {
       )
         building = buildingRecord(way, projection);
     }
+    if (!building && siteId === "gunstore")
+      building = buildings.get(1540800271);
     if (
       !building &&
       [
@@ -398,6 +435,9 @@ export function createOsmCityModel(world, projection) {
   function placeNameAt(x, y) {
     const building = buildingAt(x, y);
     if (building?.name) return building.name;
+    const street = building?.tags?.["addr:street"],
+      houseNumber = building?.tags?.["addr:housenumber"];
+    if (street && houseNumber) return `${street}, ${houseNumber}`;
     if (building?.type && POI[building.type]) return POI[building.type].name;
     return (
       nearestRoadAt(x, y, 0, true)?.tags?.name ||
@@ -441,9 +481,11 @@ export function createOsmCityModel(world, projection) {
     building.interiorLayouts ||= {};
     if (Object.hasOwn(building.interiorLayouts, floorId))
       return building.interiorLayouts[floorId];
-    const options = { stairs: stairsFor(building, floorId) },
+    const options = {
+        stairsFor: (requestedFloor) => stairsFor(building, requestedFloor),
+      },
       layout =
-        building.type === "supermarket" && floorId === "ground"
+        isSupermarket(building) && floorId === "ground"
           ? generateSupermarketInterior(building, options)
           : getBuildingLayout(building, floorId, options);
     building.interiorLayouts[floorId] = layout;
@@ -527,11 +569,7 @@ export function createOsmCityModel(world, projection) {
       for (const building of buildingsByBlock.get(key) || [])
         block.buildings.push(building);
     for (const building of block.buildings) {
-      if (building.wayId === 112436182) {
-        stairsFor(building, "ground");
-        stairsFor(building, "upper");
-      }
-      addContainers(block, building, random);
+      addContainers(block, building, random, stairsFor);
       if (!block.name && building.name) {
         block.name = building.name;
         block.poi = building.type;

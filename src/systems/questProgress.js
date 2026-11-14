@@ -1,4 +1,6 @@
-export function applyQuestEvent(progress, type, data) {
+import { eventMatchesTarget } from "./story.js";
+
+export function applyQuestEvent(progress, type, data, quest = null) {
   const add = (key, value) => (progress[key] = (progress[key] || 0) + value);
   if (type === "loot") add(data.id, data.n);
   if (type === "kill") add("kills", 1);
@@ -21,6 +23,18 @@ export function applyQuestEvent(progress, type, data) {
   if (type === "drive") add("drive", data.m);
   if (type === "deliver") add("deliver", 1);
   if (type === "rescue") add("rescue", 1);
+  if (quest && ["visit", "talk", "rescue", "camp"].includes(type)) {
+    const target = (quest.targets || []).find((candidate) =>
+      eventMatchesTarget(quest, candidate, type, data),
+    );
+    if (
+      target &&
+      (!target.requires ||
+        (progress[target.requires] || 0) >=
+          (quest.goals.find(([id]) => id === target.requires)?.[1] || 1))
+    )
+      progress[target.goal] = Math.max(1, progress[target.goal] || 0);
+  }
   return progress;
 }
 

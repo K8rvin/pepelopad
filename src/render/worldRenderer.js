@@ -14,6 +14,7 @@ export function createWorldRenderer(deps) {
     lx,
     LC,
     SC,
+    getSC,
     cam,
     getW,
     getH,
@@ -67,6 +68,8 @@ export function createWorldRenderer(deps) {
   return function renderWorld() {
     const W = getW();
     const H = getH();
+    const scale = (getSC ? getSC() : SC) * (cam.zoom ?? 1);
+    const rotation = cam.rotation ?? 0;
     const state = getState();
     const P = getP();
     const shake = getShake();
@@ -84,23 +87,38 @@ export function createWorldRenderer(deps) {
     const saveCam = { x: cam.x, y: cam.y };
     cam.x += sx;
     cam.y += sy;
-    const x0 = Math.floor((cam.x - W / 2 / SC) / 256) - 1;
-    const x1 = Math.floor((cam.x + W / 2 / SC) / 256) + 1;
-    const y0 = Math.floor((cam.y - H / 2 / SC) / 256) - 1;
-    const y1 = Math.floor((cam.y + H / 2 / SC) / 256) + 1;
+    const chunkRadius = 256 * Math.SQRT1_2;
+    const visibleRadius = Math.hypot(W, H) / (2 * scale) + chunkRadius;
+    const x0 = Math.floor((cam.x - visibleRadius) / 256);
+    const x1 = Math.ceil((cam.x + visibleRadius) / 256);
+    const y0 = Math.floor((cam.y - visibleRadius) / 256);
+    const y1 = Math.ceil((cam.y + visibleRadius) / 256);
 
     for (let gy = y0; gy <= y1; gy++) {
       for (let gx = x0; gx <= x1; gx++) {
+        if (
+          Math.hypot(gx * 256 + 128 - cam.x, gy * 256 + 128 - cam.y) >
+          visibleRadius
+        )
+          continue;
         const chunk = getChunk(gx, gy);
         visChunks.push(chunk);
         const s = w2s(gx * 256, gy * 256);
-        ctx.drawImage(
-          chunk.canvas,
-          Math.round(s.x),
-          Math.round(s.y),
-          256 * SC,
-          256 * SC,
-        );
+        if (rotation) {
+          ctx.save();
+          ctx.translate(s.x, s.y);
+          ctx.rotate(rotation);
+          ctx.drawImage(chunk.canvas, 0, 0, 256 * scale, 256 * scale);
+          ctx.restore();
+        } else {
+          ctx.drawImage(
+            chunk.canvas,
+            Math.round(s.x),
+            Math.round(s.y),
+            256 * scale,
+            256 * scale,
+          );
+        }
       }
     }
 
@@ -111,7 +129,8 @@ export function createWorldRenderer(deps) {
       stairs: getStairs(),
       layout: getInteriorLayout(),
       S,
-      SC,
+      SC: scale,
+      rotation,
       w2s,
     });
 
@@ -126,10 +145,10 @@ export function createWorldRenderer(deps) {
         const pulse = 1 + Math.sin(now * 3 + i) * 0.1;
         ctx.drawImage(
           S.pod,
-          s.x - 5 * SC * pulse,
-          s.y - 5 * SC * pulse,
-          10 * SC * pulse,
-          10 * SC * pulse,
+          s.x - 5 * scale * pulse,
+          s.y - 5 * scale * pulse,
+          10 * scale * pulse,
+          10 * scale * pulse,
         );
       }
     }
@@ -144,10 +163,10 @@ export function createWorldRenderer(deps) {
       }
       ctx.drawImage(
         ICONS[drop.id] || ICONS.scrap,
-        s.x - 6 * SC,
-        s.y - 6 * SC,
-        12 * SC,
-        12 * SC,
+        s.x - 6 * scale,
+        s.y - 6 * scale,
+        12 * scale,
+        12 * scale,
       );
     }
 
@@ -157,7 +176,8 @@ export function createWorldRenderer(deps) {
         visChunks,
         SMAP,
         S,
-        SC,
+        SC: scale,
+        rotation,
         now,
         w2s,
         mainQuest,
@@ -176,7 +196,9 @@ export function createWorldRenderer(deps) {
         NPCS,
         cam,
         W,
-        SC,
+        H,
+        SC: scale,
+        rotation,
         w2s,
         S,
         now,
@@ -184,7 +206,18 @@ export function createWorldRenderer(deps) {
         PT,
         rnd,
       }),
-      ...renderActors({ ctx, Z, P, state, S, SC, now, w2s, drawWeaponOverlay }),
+      ...renderActors({
+        ctx,
+        Z,
+        P,
+        state,
+        S,
+        SC: scale,
+        rotation,
+        now,
+        w2s,
+        drawWeaponOverlay,
+      }),
     ];
     entities.sort((a, b) => a.y - b.y);
     for (const entity of entities) entity.f();
@@ -192,7 +225,8 @@ export function createWorldRenderer(deps) {
       ctx,
       vehicles: RAIL_VEHICLES,
       S,
-      SC,
+      SC: scale,
+      rotation,
       cam,
       W,
       H,
@@ -207,14 +241,15 @@ export function createWorldRenderer(deps) {
       TX: [],
       ash: [],
       S,
-      SC,
+      SC: scale,
+      rotation,
       now,
       w2s,
       rnd,
       W,
       H,
     });
-    renderVfx({ ctx, effects: VFX, assets: VFX_ASSETS, now, w2s, SC });
+    renderVfx({ ctx, effects: VFX, assets: VFX_ASSETS, now, w2s, SC: scale });
 
     if (buildSel && state === "play") {
       const w = screenToWorld(mouse.x, mouse.y);
@@ -223,12 +258,26 @@ export function createWorldRenderer(deps) {
       const ok =
         !solidAt(tx, ty) && tileAt(tx, ty) !== 10 && !buildLocked(buildSel);
       const s = w2s(tx * 16, ty * 16);
+      const size = 16 * scale;
       ctx.globalAlpha = 0.55;
-      ctx.drawImage(S[buildSel], s.x, s.y, 16 * SC, 16 * SC);
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = ok ? "rgba(166,232,60,.9)" : "rgba(224,67,56,.9)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(s.x, s.y, 16 * SC, 16 * SC);
+      if (rotation) {
+        const center = w2s(tx * 16 + 8, ty * 16 + 8);
+        ctx.save();
+        ctx.translate(center.x, center.y);
+        ctx.rotate(rotation);
+        ctx.drawImage(S[buildSel], -size / 2, -size / 2, size, size);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = ok ? "rgba(166,232,60,.9)" : "rgba(224,67,56,.9)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-size / 2, -size / 2, size, size);
+        ctx.restore();
+      } else {
+        ctx.drawImage(S[buildSel], s.x, s.y, size, size);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = ok ? "rgba(166,232,60,.9)" : "rgba(224,67,56,.9)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(s.x, s.y, size, size);
+      }
     }
 
     renderLighting({
@@ -237,7 +286,7 @@ export function createWorldRenderer(deps) {
       LC,
       W,
       H,
-      SC,
+      SC: scale,
       dark: darkness(),
       state,
       P,
@@ -257,7 +306,8 @@ export function createWorldRenderer(deps) {
       TX,
       ash,
       S,
-      SC,
+      SC: scale,
+      rotation,
       now,
       w2s,
       rnd,
@@ -270,7 +320,8 @@ export function createWorldRenderer(deps) {
       P,
       W,
       H,
-      SC,
+      SC: scale,
+      rotation,
       w2s,
       target: questTargetWorld(),
       mouse,

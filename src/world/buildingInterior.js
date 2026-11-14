@@ -1,4 +1,4 @@
-import { BUILDING_LAYOUTS } from "../data/buildingLayouts.js";
+import { matchBuildingLayout } from "./buildingLayoutMatcher.js";
 import {
   distanceToBuildingWalls,
   pointInPolygon,
@@ -105,6 +105,9 @@ function interiorFrame(points) {
 }
 
 function stairsFor(building, floorId, options) {
+  if (typeof options.stairsFor === "function")
+    return options.stairsFor(floorId) || [];
+  if (options.stairsByFloor?.[floorId]) return options.stairsByFloor[floorId];
   if (Array.isArray(options.stairs)) return options.stairs;
   return (
     building.stairsByFloor?.[floorId] ||
@@ -507,7 +510,17 @@ function createTemplateLayout(building, template, floorId, options) {
     floor = template.floors[floorId];
   if (!points || !floor) return null;
   const frame = interiorFrame(points);
-  if (!frame) return null;
+  if (!frame || !(frame.length > 0) || !(frame.width > 0)) return null;
+  const floorStairs = stairsFor(building, floorId, options);
+  if (
+    floorStairs.some(
+      (stair) =>
+        !Number.isFinite(stair.x) ||
+        !Number.isFinite(stair.y) ||
+        !pointInPolygon(stair.x, stair.y, points),
+    )
+  )
+    return null;
   const config = { ...APARTMENT, ...options },
     prefix = building.id || `osm:${building.wayId}`,
     context = {
@@ -527,6 +540,13 @@ function createTemplateLayout(building, template, floorId, options) {
     containers = (floor.containers || [])
       .map((definition) => apartmentContainer(definition, fixtureContext))
       .filter(Boolean);
+  if (
+    !internalWalls.length ||
+    !doors.length ||
+    !fixtures.length ||
+    !containers.length
+  )
+    return null;
   return {
     ...emptyLayout(building, floorId, template.id),
     fixtures,
@@ -537,14 +557,14 @@ function createTemplateLayout(building, template, floorId, options) {
 }
 
 export function getBuildingLayout(building, floorId = "ground", options = {}) {
-  const template = BUILDING_LAYOUTS[building?.wayId];
-  if (!template || !template.floors[floorId]) return null;
+  const match = matchBuildingLayout(building, undefined, options);
+  if (!match || !match.template.floors[floorId]) return null;
   if (
     floorId === "upper" &&
     Number(building.tags?.["building:levels"] || 1) <= 1
   )
     return null;
-  return createTemplateLayout(building, template, floorId, options);
+  return createTemplateLayout(building, match.template, floorId, options);
 }
 
 export function getBuildingLayouts(building, options = {}) {

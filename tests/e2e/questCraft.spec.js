@@ -11,14 +11,10 @@ test("m2 требует чертёж и сборку арбалета", async ({
         lootGunstore: () => {
           Q.main = 1;
           setupMain();
-          const block = OSM_PROJECTION.blockForSite("gunstore"),
-            container = planBlock(block.bx, block.by).containers[0];
-          searching = {
-            o: { ...container, looted: false },
-            t: 0,
-            dur: 0,
-          };
-          finishSearch();
+          for (const target of Q.targets) {
+            grantStoryTarget(target);
+            completeStoryInteraction(target);
+          }
           return { main: Q.main, hint: $("qHint").textContent, blueprint: learned.has("crossbow") };
         },
         buildBench: () => {

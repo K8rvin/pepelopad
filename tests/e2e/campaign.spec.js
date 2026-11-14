@@ -20,6 +20,16 @@ async function installCampaignDriver(page) {
           const quest = mainQuest();
           if (!quest) return;
           for (const [goal, target] of quest.goals) {
+            const storyTarget = quest.targets?.find((item) => item.goal === goal);
+            if (storyTarget) {
+              qEvent(storyTarget.event, {
+                stage: quest.id,
+                goal,
+                wayId: storyTarget.wayId,
+                camp: storyTarget.camp,
+              });
+              continue;
+            }
             const repeat = goal === "nest" || goal === "kills" ? target : 1;
             for (let i = 0; i < repeat; i++) {
               if (goal === "mega") qEvent("nest", { mega: true });

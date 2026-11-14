@@ -7,6 +7,7 @@ export function renderGuidance({
   W,
   H,
   SC,
+  rotation = 0,
   w2s,
   target,
   mouse,
@@ -19,7 +20,7 @@ export function renderGuidance({
   if (target) {
     const s = w2s(target.x, target.y);
     if (s.x < 40 || s.x > W - 40 || s.y < 40 || s.y > H - 40) {
-      const angle = Math.atan2(target.y - P.y, target.x - P.x);
+      const angle = Math.atan2(target.y - P.y, target.x - P.x) + rotation;
       const ex = clamp(W / 2 + Math.cos(angle) * (W / 2 - 60), 50, W - 50);
       const ey = clamp(H / 2 + Math.sin(angle) * (H / 2 - 70), 60, H - 90);
       ctx.save();
