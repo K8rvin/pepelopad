@@ -7,6 +7,23 @@ import {
   stampBase,
 } from "./tiles.js";
 
+function registerContainer(CMAP, container) {
+  CMAP.set(K(container.x, container.y), container);
+  if (container.wayId)
+    CMAP.set(
+      `${K(container.x, container.y)}:${container.floorId || "ground"}:${container.wayId}`,
+      container,
+    );
+}
+
+function unregisterContainer(CMAP, container) {
+  CMAP.delete(K(container.x, container.y));
+  if (container.wayId)
+    CMAP.delete(
+      `${K(container.x, container.y)}:${container.floorId || "ground"}:${container.wayId}`,
+    );
+}
+
 export function createChunkManager(deps) {
   const {
     chunks,
@@ -103,7 +120,7 @@ export function createChunkManager(deps) {
               looted: OV.get("L" + o.id) === true,
             });
             c.containers.push(obj);
-            CMAP.set(K(o.x, o.y), obj);
+            registerContainer(CMAP, obj);
           }
         }
         ensureCars(p);
@@ -130,7 +147,7 @@ export function createChunkManager(deps) {
     if (c) return c;
     c = genChunk(cx, cy);
     chunks.set(k, c);
-    for (const o of c.containers) CMAP.set(K(o.x, o.y), o);
+    for (const o of c.containers) registerContainer(CMAP, o);
 
     if (!c.seen && c.poi && c.poi !== "base" && getState() === "play") {
       c.seen = true;
@@ -168,7 +185,7 @@ export function createChunkManager(deps) {
       }
       if (far && fd > 20) {
         const cc = chunks.get(far);
-        for (const o of cc.containers) CMAP.delete(K(o.x, o.y));
+        for (const o of cc.containers) unregisterContainer(CMAP, o);
         chunks.delete(far);
       }
     }

@@ -1,9 +1,23 @@
 import { h2 } from "../core/rng.js";
+import { normalizeVehicle } from "../systems/vehicles.js";
 import { osmSolidAt } from "./osmCollision.js";
 import { osmWayWidth } from "./osmMap.js";
 
 const ROAD_BLOCK = 448;
-const TYPES = ["sedan", "blue", "taxi", "sedan", "truck"];
+const TYPES = [
+  "sedan",
+  "blue",
+  "taxi",
+  "sedan",
+  "truck",
+  "police",
+  "ambulance",
+  "motorcycle",
+  "motorcycle",
+  "bicycle",
+  "bicycle",
+  "scooter",
+];
 
 export function populationTarget({
   day,
@@ -60,7 +74,11 @@ export function createRoadPopulation(world) {
         ty = dy / length,
         angle = Math.atan2(dy, dx);
       for (let distance = 48; distance < length - 24; distance += 64) {
-        const point = { x: a[0] + tx * distance, y: a[1] + ty * distance },
+        const point = {
+            x: a[0] + tx * distance,
+            y: a[1] + ty * distance,
+            angle,
+          },
           key = blockKey(point.x, point.y);
         if (!osmSolidAt(point.x, point.y, world, 7))
           add(spawnByBlock, key, point);
@@ -78,7 +96,7 @@ export function createRoadPopulation(world) {
         continue;
       for (let distance = 160; distance < length - 48; distance += 560) {
         const value = h2(way.id, edge, Math.floor(distance));
-        if (value > 0.58) continue;
+        if (value > 0.72) continue;
         const side = value < 0.29 ? -1 : 1,
           offset = Math.max(8, osmWayWidth(way) / 2 - 16),
           x = a[0] + tx * distance - ty * offset * side,
@@ -95,19 +113,21 @@ export function createRoadPopulation(world) {
           ],
           locked: h2(way.id, edge, distance + 13) < 0.28,
           broken: h2(way.id, edge, distance + 19) < 0.35,
-          fuel: 20 + h2(way.id, edge, distance + 23) * 65,
-          hp: 55 + h2(way.id, edge, distance + 29) * 45,
         };
+        normalizeVehicle(car);
+        car.fuel =
+          car.maxFuel * (0.08 + h2(way.id, edge, distance + 23) * 0.67);
+        car.hp = car.maxHp * (0.55 + h2(way.id, edge, distance + 29) * 0.45);
         cars.push(car);
         add(occupied, `${Math.floor(x / 64)},${Math.floor(y / 64)}`, car);
         add(byBlock, blockKey(x, y), car);
       }
     }
   }
-  if (cars.length > 2000) {
+  if (cars.length > 4000) {
     const selected = Array.from(
-      { length: 2000 },
-      (_, index) => cars[Math.floor((index * cars.length) / 2000)],
+      { length: 4000 },
+      (_, index) => cars[Math.floor((index * cars.length) / 4000)],
     );
     cars.splice(0, cars.length, ...selected);
     byBlock.clear();

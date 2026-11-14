@@ -11,6 +11,7 @@ export function renderWorldObjects({
   w2s,
   mainQuest,
   searching,
+  isContainerActive,
   bench,
   cam,
   W,
@@ -20,6 +21,7 @@ export function renderWorldObjects({
 
   for (const chunk of visChunks) {
     for (const container of chunk.containers) {
+      if (!isContainerActive(container)) continue;
       entities.push({
         y: container.y * 16 + 16,
         f: () => {
@@ -38,10 +40,11 @@ export function renderWorldObjects({
           if (
             quest &&
             !container.looted &&
-            quest.targets?.some(
-              (target) =>
-                Math.floor(container.x / CELL) === target.bx &&
-                Math.floor(container.y / CELL) === target.by,
+            quest.targets?.some((target) =>
+              target.wayId != null
+                ? target.wayId === container.wayId
+                : Math.floor(container.x / CELL) === target.bx &&
+                  Math.floor(container.y / CELL) === target.by,
             )
           ) {
             ctx.strokeStyle =

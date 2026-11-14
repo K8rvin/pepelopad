@@ -18,6 +18,10 @@ test("жилой спавн без базы и рельсовый транспо
           hasCore: Boolean($("coreChip")),
           rail: RAIL_VEHICLES.map((vehicle) => ({ kind: vehicle.kind, distance: vehicle.distance, x: vehicle.x, y: vehicle.y })),
           assets: { train: Boolean(S.train), carriage: Boolean(S.train_carriage), tram: Boolean(S.tram), truck: Boolean(S.car_truck) },
+          starter: (() => {
+            const car = CARS.get("starter:residential");
+            return car && { distance: Math.hypot(car.x - SPAWN.x, car.y - SPAWN.y) / 16, locked: car.locked, broken: car.broken, fuel: car.fuel, free: !circleHit(car.x, car.y, 12, car.id) };
+          })(),
         }),
         moveRail: () => {
           const before = RAIL_VEHICLES.map((vehicle) => vehicle.distance);
@@ -41,6 +45,13 @@ ${marker}`;
   expect(snapshot.player).toEqual({ x: snapshot.spawn.x, y: snapshot.spawn.y });
   expect(snapshot.buildings).toBe(0);
   expect(snapshot.hasCore).toBe(false);
+  expect(snapshot.starter).toMatchObject({
+    locked: false,
+    broken: false,
+    free: true,
+  });
+  expect(snapshot.starter.distance).toBeLessThan(40);
+  expect(snapshot.starter.fuel).toBeGreaterThan(40);
   expect(
     [...new Set(snapshot.rail.map((vehicle) => vehicle.kind))].sort(),
   ).toEqual(["train", "tram"]);

@@ -1,18 +1,30 @@
 import { clamp, d2, K } from "../core/math.js";
+import { vehicleDefinition } from "./vehicles.js";
+
+function collisionHalfExtents(car) {
+  const def = vehicleDefinition(car.type);
+  return {
+    x: def.collisionLength / 2,
+    y: def.collisionWidth / 2,
+  };
+}
 
 export function getSolid(tx, ty, context, exCar) {
   const key = K(tx, ty);
   const structure = context.structures.get(key);
   if (structure && !(structure.t === "gate" && structure.open))
     return { kind: "struct", o: structure };
-  const container = context.containers.get(key);
+  const container = context.containerAt
+    ? context.containerAt(tx, ty)
+    : context.containers.get(key);
   if (container) return { kind: "cont", o: container };
 
-  for (const car of context.carsNear(tx * 16 + 8, ty * 16 + 8, 24)) {
+  for (const car of context.carsNear(tx * 16 + 8, ty * 16 + 8, 40)) {
     if (car.id === exCar || car.dead) continue;
-    const px = clamp(tx * 16 + 8, car.x - 16, car.x + 16);
-    const py = clamp(ty * 16 + 8, car.y - 10, car.y + 10);
-    if (d2(tx * 16 + 8, ty * 16 + 8, px, py) < 100)
+    const half = collisionHalfExtents(car),
+      px = clamp(tx * 16 + 8, car.x - half.x, car.x + half.x),
+      py = clamp(ty * 16 + 8, car.y - half.y, car.y + half.y);
+    if (d2(tx * 16 + 8, ty * 16 + 8, px, py) < half.y * half.y)
       return { kind: "car", o: car };
   }
 
@@ -33,8 +45,9 @@ export function circleHit(x, y, radius, context, exCar) {
       let px = clamp(x, tx * 16, tx * 16 + 16);
       let py = clamp(y, ty * 16, ty * 16 + 16);
       if (solid.kind === "car") {
-        px = clamp(x, solid.o.x - 16, solid.o.x + 16);
-        py = clamp(y, solid.o.y - 10, solid.o.y + 10);
+        const half = collisionHalfExtents(solid.o);
+        px = clamp(x, solid.o.x - half.x, solid.o.x + half.x);
+        py = clamp(y, solid.o.y - half.y, solid.o.y + half.y);
       }
       if (d2(x, y, px, py) < radius * radius) return solid;
     }
@@ -42,6 +55,8 @@ export function circleHit(x, y, radius, context, exCar) {
 
   const osm = context.osmSolidAt?.(x, y, radius);
   if (osm) return { kind: "tile", o: osm };
+  const interior = context.interiorSolidAt?.(x, y, radius);
+  if (interior) return { kind: "tile", o: interior };
   return null;
 }
 

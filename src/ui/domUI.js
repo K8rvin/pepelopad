@@ -1,6 +1,16 @@
 import { clamp } from "../core/math.js";
 
-const TABS = ["inv", "craft", "skill", "quest", "base", "camp", "trunk", "log"];
+const TABS = [
+  "inv",
+  "craft",
+  "skill",
+  "quest",
+  "base",
+  "camp",
+  "trunk",
+  "log",
+  "map",
+];
 const TITLES = {
   inv: "РЮКЗАК",
   craft: "КРАФТ",
@@ -10,6 +20,7 @@ const TITLES = {
   camp: "ЛАГЕРЬ",
   trunk: "БАГАЖНИК",
   log: "ЖУРНАЛ",
+  map: "КАРТА ГОРОДА",
 };
 
 export function createDomUI({
@@ -49,7 +60,7 @@ export function createDomUI({
     mouse.down = false;
     $("panel").classList.remove("hid");
     $("pauseChip").classList.remove("hid");
-    setTab(tab || "inv");
+    setTab(tab || curTab);
     playUi();
     saveGame();
   }

@@ -23,6 +23,8 @@ export function renderBuildingInterior({
   building,
   floorId,
   stairs,
+  layout,
+  S,
   SC,
   w2s,
 }) {
@@ -35,6 +37,37 @@ export function renderBuildingInterior({
         : "#343a2f";
   tracePolygon(ctx, building.points, w2s);
   ctx.fill();
+  for (const fixture of layout?.fixtures || []) {
+    const point = w2s(fixture.x, fixture.y),
+      spriteKey =
+        fixture.type === "shelf"
+          ? "cont_shelf"
+          : {
+              bed: "h_bed",
+              sofa: "h_sofa",
+              table: "h_table",
+              kitchen: "h_counter",
+            }[fixture.type] || "cont_cabinet",
+      image = S[spriteKey];
+    if (!image) continue;
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.rotate(fixture.angle || 0);
+    ctx.drawImage(
+      image,
+      (-fixture.w * SC) / 2,
+      (-fixture.h * SC) / 2,
+      fixture.w * SC,
+      fixture.h * SC,
+    );
+    ctx.restore();
+  }
+  ctx.strokeStyle = "#777465";
+  ctx.lineWidth = 8 * SC;
+  for (const wall of layout?.internalWalls || []) {
+    ctx.lineWidth = (wall.thickness || 8) * SC;
+    strokeWallPart(ctx, [w2s(wall.x1, wall.y1), w2s(wall.x2, wall.y2)], w2s);
+  }
   ctx.strokeStyle = "#8a8574";
   ctx.lineWidth = 8 * SC;
   ctx.lineCap = "butt";

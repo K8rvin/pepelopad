@@ -21,18 +21,19 @@ export function normalizeVehicle(car) {
     0,
     car.maxFuel,
   );
-  car.broken = car.engineHp <= 0;
+  car.broken = def.humanPowered ? false : car.engineHp <= 0;
   return car;
 }
 
 export function damageVehicle(car, amount, collision = false) {
   normalizeVehicle(car);
+  const def = vehicleDefinition(car.type);
   car.hp = Math.max(0, car.hp - amount);
   if (collision) {
     car.engineHp = clamp(car.engineHp - amount * 0.8, 0, 100);
     car.tireHp = clamp(car.tireHp - amount * 1.1, 0, 100);
   }
-  car.broken = car.engineHp <= 0;
+  car.broken = def.humanPowered ? false : car.engineHp <= 0;
   car.dead = car.hp <= 0;
   if (car.dead) car.speed = 0;
   return { dead: car.dead, broken: car.broken };
@@ -46,9 +47,9 @@ export function advanceVehicle(car, controls, dt) {
 
   normalizeVehicle(car);
   const def = vehicleDefinition(car.type);
-  const enginePower = 0.55 + car.engineHp * 0.0045;
+  const enginePower = def.humanPowered ? 1 : 0.55 + car.engineHp * 0.0045;
   const tireControl = 0.45 + car.tireHp * 0.0055;
-  if (car.fuel > 0 && !car.broken)
+  if (def.humanPowered || (car.fuel > 0 && !car.broken))
     car.speed += controls.accel * def.acceleration * enginePower * dt;
   const maxSpeed = def.maxSpeed * tireControl * (controls.boost ? 1.22 : 1);
   car.speed = clamp(car.speed, -def.reverseSpeed, maxSpeed);
@@ -69,11 +70,17 @@ export function advanceVehicle(car, controls, dt) {
   };
 }
 
-export function consumeVehicleFuel(car, dt, mechanicLevel = 0) {
+export function consumeVehicleFuel(car, distance, mechanicLevel = 0) {
   const def = vehicleDefinition(car.type);
+  normalizeVehicle(car);
+  if (def.humanPowered || def.fuelUse === 0) return 0;
+  const previousFuel = car.fuel;
   car.fuel = Math.max(
     0,
     car.fuel -
-      Math.abs(car.speed) * dt * def.fuelUse * (1 - mechanicLevel * 0.08),
+      Math.abs(Number.isFinite(distance) ? distance : 0) *
+        def.fuelUse *
+        Math.max(0, 1 - mechanicLevel * 0.08),
   );
+  return previousFuel - car.fuel;
 }

@@ -1138,9 +1138,14 @@
         color: var(--dim);
         line-height: 1.55;
       }
+      #tab-map {
+        padding: 12px;
+      }
       #mapOv {
+        display: flex;
         flex-direction: column;
-        gap: 12px;
+        align-items: center;
+        gap: 10px;
       }
       .mtitle {
         font-size: 11px;
@@ -1155,8 +1160,8 @@
           0 0 0 2px #000,
           0 20px 60px rgba(0, 0, 0, 0.8);
         image-rendering: pixelated;
-        max-width: 92vw;
-        max-height: 70vh;
+        width: min(504px, 48vh, 100%);
+        height: auto;
       }
       #mapLeg {
         display: flex;
@@ -1703,7 +1708,8 @@
         ><button data-tab="base" class="tab">Постройки</button
         ><button data-tab="camp" class="tab">Лагерь</button
         ><button data-tab="trunk" class="tab">Багажник</button
-        ><button data-tab="log" class="tab">Журнал</button>
+        ><button data-tab="log" class="tab">Журнал</button
+        ><button data-tab="map" class="tab">Карта</button>
       </div>
       <div class="pbody">
         <div id="tab-inv" class="tabc">
@@ -1768,36 +1774,38 @@
           <div id="statsGrid"></div>
           <div id="logList"></div>
         </div>
-      </div>
-    </div>
-    <div id="mapOv" class="ov hid">
-      <div class="mtitle px">КАРТА ГОРОДА</div>
-      <canvas id="bmap" width="504" height="504"></canvas>
-      <div id="mapFloorNav" class="mhint hid">
-        <button id="mapFloorPrev" class="btn">← Этаж</button>
-        <b id="mapFloorName"></b>
-        <button id="mapFloorNext" class="btn">Этаж →</button>
-      </div>
-      <div id="mapLeg">
-        <span><i style="background: #ffb23e"></i>места и машины</span
-        ><span><i style="background: #a6e83c"></i>рассадники</span
-        ><span><i style="background: #7fb8d8"></i>лагеря</span
-        ><span><i style="background: #ece5d0"></i>цель</span
-        ><span><i style="background: #e58cff"></i>метка</span>
-      </div>
-      <div id="mapDistrict" class="mhint"></div>
-      <div class="mhint">
-        M — закрыть · колесо — масштаб · drag — обзор · ЛКМ — метка · ПКМ —
-        удалить · сид: <span id="seedShow"></span>
-      </div>
-      <div class="mhint">
-        <a
-          href="https://www.openstreetmap.org/copyright"
-          target="_blank"
-          rel="noreferrer"
-          >© OpenStreetMap contributors</a
-        >
-        · данные ODbL
+        <div id="tab-map" class="tabc hid">
+          <div id="mapOv">
+            <div class="mtitle px">КАРТА ГОРОДА</div>
+            <canvas id="bmap" width="504" height="504"></canvas>
+            <div id="mapFloorNav" class="mhint hid">
+              <button id="mapFloorPrev" class="btn">← Этаж</button>
+              <b id="mapFloorName"></b>
+              <button id="mapFloorNext" class="btn">Этаж →</button>
+            </div>
+            <div id="mapLeg">
+              <span><i style="background: #ffb23e"></i>места и машины</span
+              ><span><i style="background: #a6e83c"></i>рассадники</span
+              ><span><i style="background: #7fb8d8"></i>лагеря</span
+              ><span><i style="background: #ece5d0"></i>цель</span
+              ><span><i style="background: #e58cff"></i>метка</span>
+            </div>
+            <div id="mapDistrict" class="mhint"></div>
+            <div class="mhint">
+              M — закрыть · колесо — масштаб · drag — обзор · ЛКМ — метка · ПКМ
+              — удалить · сид: <span id="seedShow"></span>
+            </div>
+            <div class="mhint">
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noreferrer"
+                >© OpenStreetMap contributors</a
+              >
+              · данные ODbL
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="pauseOv" class="ov hid">

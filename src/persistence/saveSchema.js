@@ -1,7 +1,49 @@
-export const SAVE_VERSION = 8;
+import { VEHICLES } from "../data/vehicles.js";
+
+export const SAVE_VERSION = 9;
 export const CITY_ID = "volgograd-osm-1";
 
+const V8_MAX_FUEL = {
+  sedan: 100,
+  blue: 110,
+  taxi: 120,
+  police: 100,
+  ambulance: 130,
+  truck: 160,
+};
+
 const copy = (value) => JSON.parse(JSON.stringify(value));
+
+function migrateV8Vehicle(vehicle, base) {
+  if (!vehicle || typeof vehicle !== "object") return vehicle;
+  const type = vehicle.type || base?.type,
+    def = VEHICLES[type] || VEHICLES.sedan,
+    legacyMaxFuel = V8_MAX_FUEL[type] || V8_MAX_FUEL.sedan,
+    oldMaxFuel =
+      Number.isFinite(vehicle.maxFuel) && vehicle.maxFuel > 0
+        ? vehicle.maxFuel
+        : Number.isFinite(base?.maxFuel) && base.maxFuel > 0
+          ? base.maxFuel
+          : legacyMaxFuel,
+    migrated = { ...vehicle, maxFuel: def.maxFuel };
+  if (Number.isFinite(vehicle.fuel))
+    migrated.fuel =
+      Math.max(0, Math.min(1, vehicle.fuel / oldMaxFuel)) * def.maxFuel;
+  return migrated;
+}
+
+function migrateV8Fuel(data) {
+  const carsById = new Map(data.cars || []);
+  return {
+    cars: (data.cars || []).map(([id, car]) => [id, migrateV8Vehicle(car)]),
+    OV: (data.OV || []).map(([key, override]) => [
+      key,
+      typeof key === "string" && key.startsWith("CAR")
+        ? migrateV8Vehicle(override, carsById.get(key.slice(3)))
+        : override,
+    ]),
+  };
+}
 
 function playerSnapshot(P) {
   return {
@@ -71,7 +113,7 @@ export function validateSaveData(data) {
 
 export function migrateSave(data) {
   if (!data || typeof data !== "object") throw new Error("Corrupted save data");
-  if (![3, 4, 5, 6, 7, SAVE_VERSION].includes(data.v))
+  if (![3, 4, 5, 6, 7, 8, SAVE_VERSION].includes(data.v))
     throw new Error("Unsupported save version");
   const player = { ...data.P };
   let floor = data.floor || null;
@@ -90,16 +132,19 @@ export function migrateSave(data) {
         )
       : true,
   );
+  const fuel = data.v === 8 ? migrateV8Fuel(data) : data;
   const migrated = {
     ...data,
     v: SAVE_VERSION,
     city:
-      [6, 7, SAVE_VERSION].includes(data.v) && data.city === CITY_ID
+      [6, 7, 8, SAVE_VERSION].includes(data.v) && data.city === CITY_ID
         ? CITY_ID
         : "legacy-procedural",
     P: player,
     floor,
     SM: structures,
+    cars: fuel.cars,
+    OV: fuel.OV,
     invSlots: data.invSlots || 30,
     hasSpear: Boolean(data.hasSpear),
     J: data.J || [],

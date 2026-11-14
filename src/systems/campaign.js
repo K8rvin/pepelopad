@@ -30,8 +30,13 @@ export function prepareMegaQuest(OV, PLAN, chunks, CMAP) {
       QUARRY.by > by1
     )
       continue;
-    for (const container of chunk.containers)
+    for (const container of chunk.containers) {
       CMAP.delete(K(container.x, container.y));
+      if (container.wayId)
+        CMAP.delete(
+          `${K(container.x, container.y)}:${container.floorId || "ground"}:${container.wayId}`,
+        );
+    }
     chunks.delete(key);
   }
 

@@ -141,6 +141,7 @@ import { createOsmGameProjection } from "/src/world/osmPois.js";
 import { createOsmCityModel } from "/src/world/osmCity.js";
 import { populationTarget } from "/src/world/roadPopulation.js";
 import { osmSolidAt } from "/src/world/osmCollision.js";
+import { circleHitsInternalWalls } from "/src/world/buildingInterior.js";
 import { renderOsmMap } from "/src/render/osmMapRenderer.js";
 import { renderDistrictBoundaries } from "/src/render/districtBoundaries.js";
 import {
@@ -610,8 +611,7 @@ let state = "menu",
   DIFF = DIFFS.easy,
   newDiff = "easy";
 const mapController = createMapController({ minZoom: 0.5, maxZoom: 4 });
-let mapReturnState = "play",
-  pauseReturnState = "play",
+let pauseReturnState = "play",
   mapFloorId = "ground",
   mapHoverName = "";
 let P,
@@ -708,12 +708,35 @@ let shake = 0,
   curCar = null,
   driveAcc = 0;
 const SOLID = new Set([6, 7, 8, 14, 15, 16, 17, 18, 22, 23]);
+function isContainerActive(container) {
+  return (
+    currentFloorId !== "outdoor" &&
+    activeBuilding &&
+    container.wayId === activeBuilding.wayId &&
+    (container.floorId || "ground") === currentFloorId
+  );
+}
+function activeInterior() {
+  return activeBuilding
+    ? OSM_CITY.interiorFor(activeBuilding, currentFloorId)
+    : null;
+}
+function interiorSolidAt(x, y, radius) {
+  return circleHitsInternalWalls(x, y, radius, activeInterior()?.internalWalls);
+}
 const collisionContext = {
   structures: SMAP,
   containers: CMAP,
+  containerAt: (tx, ty) => {
+    const container = CMAP.get(
+      `${K(tx, ty)}:${currentFloorId}:${activeBuilding?.wayId}`,
+    );
+    return container && isContainerActive(container) ? container : null;
+  },
   solidTiles: SOLID,
   tileAt,
   osmSolidAt: (x, y, radius) => osmSolidAt(x, y, OSM_CITY.gameWorld, radius),
+  interiorSolidAt,
   carsNear,
 };
 const { genChunk, getChunk } = createChunkManager({
@@ -838,6 +861,34 @@ function ensureCars(p) {
     carGridAdd(v);
   }
 }
+function ensureStarterVehicle() {
+  const id = "starter:residential";
+  if (CARS.has(id)) return;
+  const point = OSM_CITY.spawnPointsNear(SPAWN.x, SPAWN.y, 40 * 16)
+    .filter((candidate) => !circleHit(candidate.x, candidate.y, 12, id))
+    .sort(
+      (a, b) => d2(SPAWN.x, SPAWN.y, a.x, a.y) - d2(SPAWN.x, SPAWN.y, b.x, b.y),
+    )[0];
+  if (!point) return;
+  const car = normalizeVehicle({
+    id,
+    type: "sedan",
+    x: point.x,
+    y: point.y,
+    angle: point.angle,
+    fuel: VEHICLES.sedan.maxFuel * 0.85,
+    hp: VEHICLES.sedan.maxHp,
+    engineHp: 100,
+    tireHp: 100,
+    locked: false,
+    broken: false,
+    dead: false,
+    speed: 0,
+    trunk: [],
+  });
+  CARS.set(id, car);
+  carGridAdd(car);
+}
 function carGridKey(x, y) {
   return spatialKey(x, y);
 }
@@ -885,7 +936,9 @@ function solidAt(tx, ty, exCar) {
   const solid = getSolid(tx, ty, collisionContext, exCar);
   if (solid) return solid;
   const osm = collisionContext.osmSolidAt?.(tx * 16 + 8, ty * 16 + 8, 0);
-  return osm ? { kind: "tile", o: osm } : null;
+  if (osm) return { kind: "tile", o: osm };
+  const interior = interiorSolidAt(tx * 16 + 8, ty * 16 + 8, 0);
+  return interior ? { kind: "tile", o: interior } : null;
 }
 function circleHit(x, y, r, exCar) {
   return testCircleHit(x, y, r, collisionContext, exCar);
@@ -1237,6 +1290,7 @@ function enterWorld() {
       "Краснооктябрьский район. Библиотечная и Новоремесленная улицы. Цели отмечены на карте.",
     );
     setupMain();
+    ensureStarterVehicle();
     buildHotbar();
     buildResRow();
     refreshHUD();
@@ -2232,9 +2286,10 @@ function enterCar(c) {
       return;
     }
   }
-  if (c.fuel <= 0 && countItem("fuelcan")) {
+  const humanPowered = vehicleDefinition(c.type).humanPowered;
+  if (!humanPowered && c.fuel <= 0 && countItem("fuelcan")) {
     removeItem("fuelcan", 1);
-    c.fuel = 45;
+    c.fuel = Math.min(c.maxFuel, 45);
     toast("Заправлено из канистры", "loot");
   }
   P.inCar = c.id;
@@ -2244,9 +2299,11 @@ function enterCar(c) {
   mouse.down = false;
   SFX.engine();
   toast(
-    c.fuel <= 0
-      ? "Бак пуст. F — заправить канистрой."
-      : "За рулём. W — газ, S — тормоз, A/D — руль.",
+    humanPowered
+      ? "W — движение, S — тормоз, A/D — руль."
+      : c.fuel <= 0
+        ? "Бак пуст. F — заправить канистрой."
+        : "За рулём. W — газ, S — тормоз, A/D — руль.",
     "info",
   );
   qEvent("car", { action: "enter" });
@@ -2281,6 +2338,10 @@ function exitCar() {
 }
 function refuelCar(c) {
   if (!c) return false;
+  if (vehicleDefinition(c.type).humanPowered) {
+    toast("Этот транспорт не использует бензин", "info");
+    return false;
+  }
   if (countItem("fuelcan")) {
     removeItem("fuelcan", 1);
     c.fuel = clamp(c.fuel + 45, 0, c.maxFuel);
@@ -2357,7 +2418,11 @@ function updateCars(dt) {
     };
     const { dx, dy } = advanceVehicle(c, controls, dt);
     if (!controls.active) continue;
-    const body = { x: c.x, y: c.y, r: 12 },
+    const body = {
+        x: c.x,
+        y: c.y,
+        r: vehicleDefinition(c.type).collisionRadius,
+      },
       res = moveBody(body, dx, dy, c.id);
     const moved = Math.hypot(body.x - c.x, body.y - c.y),
       intended = Math.hypot(dx, dy);
@@ -2382,7 +2447,7 @@ function updateCars(dt) {
     P.x = c.x;
     P.y = c.y;
     P.aim = c.angle;
-    consumeVehicleFuel(c, dt, P.skills.mechanic);
+    consumeVehicleFuel(c, moved, P.skills.mechanic);
     const m = moved / 16;
     stats.drive += m;
     driveAcc += m;
@@ -2858,7 +2923,7 @@ function finishSearch() {
   searching = null;
   o.looted = true;
   OV.set("L" + o.id, true);
-  const table = LOOT[o.type] || LOOT.shelf,
+  const table = LOOT[o.lootTable || o.type] || LOOT.shelf,
     luck = 0.18 + P.skills.scav * 0.1;
   let rolls = ["cache", "garden"].includes(o.type)
     ? table.length
@@ -2890,6 +2955,7 @@ function finishSearch() {
     [mainQuest(), ...Q.side],
     Q.given,
     (target) => {
+      if (target.wayId != null) return true;
       if (target.siteId) {
         const special = OSM_CITY.specials.get(K(target.bx, target.by));
         return special?.building?.wayId === o.wayId;
@@ -2899,6 +2965,7 @@ function finishSearch() {
         Math.floor(o.y / CELL) === target.by
       );
     },
+    o,
   );
   for (const [id, n] of Object.entries(grants.items))
     got[id] = (got[id] || 0) + n;
@@ -2963,8 +3030,11 @@ function updateInteract() {
     const c = CARS.get(P.inCar);
     $("prompt").classList.remove("hid");
     $("promptT").textContent = "E — выйти · T — багажник · H — сигнал";
-    $("promptS").textContent =
-      c.fuel < 15 ? "Мало топлива!" : "W — газ · S — тормоз/задний ход";
+    $("promptS").textContent = vehicleDefinition(c.type).humanPowered
+      ? "W — движение · S — тормоз/задний ход"
+      : c.fuel < 5
+        ? "Мало топлива!"
+        : "W — газ · S — тормоз/задний ход";
     return;
   }
   const stair = nearbyStair();
@@ -2972,6 +3042,7 @@ function updateInteract() {
     bd = (1.8 * 16) ** 2;
   for (const c of visChunks)
     for (const o of c.containers) {
+      if (!isContainerActive(o)) continue;
       const d = d2(P.x, P.y, o.x * 16 + 8, o.y * 16 + 8);
       if (d < bd) {
         bd = d;
@@ -3130,10 +3201,12 @@ function setupMain() {
   if (!q) return;
   Q.prog = {};
   Q.given = {};
-  Q.targets = (OSM_QUEST_TARGETS[q.id] || q.targets || []).map((target) => ({
-    ...target,
-  }));
-  if (OSM_QUEST_TARGETS[q.id]) q.targets = Q.targets;
+  const targets =
+    q.id === "m1"
+      ? [OSM_CITY.nearestSupermarketTarget(SPAWN.x, SPAWN.y)].filter(Boolean)
+      : OSM_QUEST_TARGETS[q.id] || q.targets || [];
+  Q.targets = targets.map((target) => ({ ...target }));
+  q.targets = Q.targets;
   syncQuestProgress(q, Q.prog, {
     learned,
     owned: P.owned,
@@ -3668,6 +3741,7 @@ const domUI = createDomUI({
       camp: buildCamp,
       trunk: buildTrunk,
       log: buildLog,
+      map: activateMap,
     })[tab]();
   },
   getViewport: () => ({ W, H }),
@@ -4141,11 +4215,13 @@ function buildTrunk() {
   $("trunkInfo").innerHTML =
     '<b style="color:var(--steel)">' +
     def.name +
-    "</b> · топливо " +
-    Math.round(c.fuel) +
-    "/" +
-    c.maxFuel +
-    " · прочность " +
+    (def.humanPowered
+      ? "</b> · мускульная тяга · прочность "
+      : "</b> · топливо " +
+        c.fuel.toFixed(1) +
+        "/" +
+        c.maxFuel +
+        " л · прочность ") +
     Math.round(c.hp) +
     "/" +
     c.maxHp +
@@ -4366,10 +4442,16 @@ function refreshHUD() {
   refreshHotbar();
   $("carHud").classList.toggle("hid", !P.inCar);
   if (P.inCar) {
-    const c = CARS.get(P.inCar);
-    $("carName").textContent = vehicleDefinition(c.type).name;
-    $("carSpeed").textContent = Math.round(Math.abs(c.speed) * 0.9);
-    $("carFuel").style.width = (c.fuel / c.maxFuel) * 100 + "%";
+    const c = CARS.get(P.inCar),
+      def = vehicleDefinition(c.type);
+    $("carName").textContent = def.name;
+    $("carSpeed").textContent = Math.round((Math.abs(c.speed) * 3.6) / 16);
+    $("carFuel").parentElement.previousElementSibling.textContent =
+      def.humanPowered
+        ? "Мускульная тяга"
+        : `Топливо ${c.fuel.toFixed(1)} / ${c.maxFuel} л`;
+    $("carFuel").style.width =
+      (def.humanPowered ? 100 : (c.fuel / c.maxFuel) * 100) + "%";
     $("carHp").style.width = (c.hp / c.maxHp) * 100 + "%";
     $("carEngine").textContent = Math.round(c.engineHp);
     $("carTires").textContent = Math.round(c.tireHp);
@@ -4592,8 +4674,11 @@ function mapCanvasPoint(point) {
     y: view.center.y + (point.y - bm.canvas.height / 2) / cell,
   };
 }
+function mapActive() {
+  return state === "panel" && domUI.getTab() === "map";
+}
 function selectMapFloor(direction) {
-  if (!activeBuilding) return;
+  if (!activeBuilding || !mapActive()) return;
   const floors = Object.keys(FLOOR_DEFINITIONS[activeBuilding.type] || {}),
     index = floors.indexOf(mapFloorId),
     next = clamp(index + direction, 0, floors.length - 1);
@@ -4633,26 +4718,17 @@ function drawBigmap() {
   if (raidRules) $("mapDistrict").textContent += " · " + raidRules.label;
   $("seedShow").textContent = SEED;
 }
-function openMap() {
-  if (state !== "play") return;
-  mapReturnState = state;
+function activateMap() {
   mapFloorId = currentFloorId === "outdoor" ? "ground" : currentFloorId;
   mapHoverName = "";
   mapController.panBy(
     P.x / (CELL * 16) - mapController.getState().center.x,
     P.y / (CELL * 16) - mapController.getState().center.y,
   );
-  state = "map";
-  mouse.down = false;
-  $("mapOv").classList.remove("hid");
-  $("pauseChip").classList.remove("hid");
   drawBigmap();
-  SFX.ui();
 }
-function closeMap() {
-  $("mapOv").classList.add("hid");
-  $("pauseChip").classList.add("hid");
-  if (state === "map") state = mapReturnState;
+function openMap() {
+  openPanel("map");
 }
 function openPause() {
   if (state !== "play") return;
@@ -4812,6 +4888,12 @@ function loadGame() {
   Q = d.Q;
   Q.sideProg = Q.sideProg || {};
   Q.raids = Q.raids || {};
+  if (Q.main === 0) {
+    Q.targets = [OSM_CITY.nearestSupermarketTarget(SPAWN.x, SPAWN.y)].filter(
+      Boolean,
+    );
+    MAIN[0].targets = Q.targets;
+  }
   baseProj = d.baseProj;
   stats = d.stats;
   J = d.J || [];
@@ -5023,7 +5105,8 @@ function keyAction(code) {
     } else if (code === "KeyV") recoverFromStuck();
     else if (code === "KeyX") tryRemove();
     else if (code === "KeyB") toggleBuild();
-    else if (code === "Tab" || code === "KeyI") openPanel("inv");
+    else if (code === "Tab") openPanel();
+    else if (code === "KeyI") openPanel("inv");
     else if (code === "KeyC") openPanel("craft");
     else if (code === "KeyK") openPanel("skill");
     else if (code === "KeyJ") openPanel("quest");
@@ -5045,12 +5128,16 @@ function keyAction(code) {
       }
     }
   } else if (state === "panel") {
-    if (code === "Escape" || code === "Tab" || code === "KeyI") closePanel();
-    else if (code === "KeyC") setTab("craft");
+    if (code === "Escape" || code === "Tab") closePanel();
+    else if (code === "KeyI") {
+      if (domUI.getTab() === "inv") closePanel();
+      else setTab("inv");
+    } else if (code === "KeyM") {
+      if (mapActive()) closePanel();
+      else setTab("map");
+    } else if (code === "KeyC") setTab("craft");
     else if (code === "KeyK") setTab("skill");
     else if (code === "KeyJ") setTab("quest");
-  } else if (state === "map") {
-    if (code === "Escape" || code === "KeyM") closeMap();
   } else if (state === "pause") {
     if (code === "Escape") closePause();
   }
@@ -5077,13 +5164,15 @@ attachMapInteractions({
   canvas: $("bmap"),
   controller: mapController,
   cellSize: () => 24 * mapController.getState().zoom,
-  isEnabled: () => state === "map" && currentFloorId === "outdoor",
+  isEnabled: () => mapActive() && currentFloorId === "outdoor",
   onSelect: (point) => {
+    if (!mapActive()) return;
     const target = mapCanvasPoint(point);
     mapController.setWaypoint({ ...target, label: "Метка" });
     drawBigmap();
   },
   onClear: () => {
+    if (!mapActive()) return;
     mapController.clearWaypoint();
     drawBigmap();
   },
@@ -5182,7 +5271,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden && state === "play") openPause();
 });
 window.addEventListener("beforeunload", () => {
-  if (["play", "panel", "pause", "map"].includes(state)) saveGame();
+  if (["play", "panel", "pause"].includes(state)) saveGame();
 });
 const isTouch = "ontouchstart" in window;
 let stickId = null,
@@ -5405,6 +5494,8 @@ const renderWorld = createWorldRenderer({
   getFloorId: () => currentFloorId,
   getStairs: () =>
     activeBuilding ? OSM_CITY.stairsFor(activeBuilding, currentFloorId) : [],
+  getInteriorLayout: activeInterior,
+  isContainerActive,
   getBuildSel: () => buildSel,
   mouse,
   screenToWorld,
@@ -5655,7 +5746,7 @@ function frame(now) {
     shake = Math.max(0, shake - dt * 22);
   }
   render();
-  if (state === "map") drawBigmap();
+  if (mapActive()) drawBigmap();
 }
 $("btnNew").disabled = false;
 $("btnNew").textContent = "НОВАЯ ИСТОРИЯ";

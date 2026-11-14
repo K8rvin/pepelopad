@@ -27,6 +27,36 @@ function carSprite(type, col) {
   });
 }
 
+function twoWheelSprite(type, col) {
+  const w = type === "motorcycle" ? 20 : 18,
+    h = type === "motorcycle" ? 8 : type === "bicycle" ? 6 : 7;
+  return spr(w, h, (g) => {
+    R(g, 1, h - 1, w - 2, 1, "rgba(0,0,0,.35)");
+    if (type === "motorcycle") {
+      R(g, 1, 2, 3, 4, "#111");
+      R(g, 16, 2, 3, 4, "#111");
+      R(g, 4, 3, 12, 3, col);
+      R(g, 7, 2, 5, 1, "#33383d");
+      R(g, 15, 1, 1, 6, "#8a8f84");
+      R(g, 18, 3, 1, 2, "#ffe87a");
+      R(g, 3, 3, 1, 2, "#e04338");
+    } else if (type === "bicycle") {
+      R(g, 1, 1, 3, 4, "#111");
+      R(g, 14, 1, 3, 4, "#111");
+      R(g, 4, 2, 10, 2, col);
+      R(g, 7, 1, 4, 1, "#33383d");
+      R(g, 8, 4, 3, 1, "#8a8f84");
+      R(g, 14, 0, 1, 6, "#8a8f84");
+    } else {
+      R(g, 1, 2, 3, 3, "#111");
+      R(g, 14, 2, 3, 3, "#111");
+      R(g, 4, 4, 10, 2, col);
+      R(g, 14, 1, 1, 4, "#8a8f84");
+      R(g, 13, 0, 3, 1, "#33383d");
+    }
+  });
+}
+
 export function createStructureSprites(S) {
   S.car_sedan = carSprite("sedan", "#8a4520");
   S.car_blue = carSprite("sedan", "#3a5a7a");
@@ -34,6 +64,9 @@ export function createStructureSprites(S) {
   S.car_police = carSprite("police", "#3a4a5a");
   S.car_ambulance = carSprite("ambulance", "#c8cdc2");
   S.car_truck = carSprite("truck", "#5d646b");
+  S.car_motorcycle = twoWheelSprite("motorcycle", "#8a4520");
+  S.car_bicycle = twoWheelSprite("bicycle", "#6f9c52");
+  S.car_scooter = twoWheelSprite("scooter", "#4a7a8a");
   S.car_wreck = carSprite("sedan", "#3a3a32");
   S.barricade = spr(16, 16, (g) => {
     R(g, 1, 4, 14, 9, "#6b5638");

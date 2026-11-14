@@ -104,7 +104,6 @@ export const VOLGOGRAD_SITES = {
 };
 
 export const VOLGOGRAD_QUEST_TARGETS = {
-  m1: ["supermarket"],
   m2: ["gunstore"],
   m3: ["hospital"],
   m4: ["gas"],

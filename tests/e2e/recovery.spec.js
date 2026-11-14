@@ -9,6 +9,8 @@ test("V освобождает из стены и автомобиля без ш
     const marker = "startAttract();\nrequestAnimationFrame(frame);";
     const driver = `      window.__recoveryTest = {
         wall: () => {
+          P.lvl = 99;
+          Z.length = 0;
           const block = OSM_PROJECTION.blockForSite("hospital"),
             building = OSM_CITY.specials.get(K(block.bx, block.by)).building;
           for (let edge = 1; edge < building.points.length; edge++) {

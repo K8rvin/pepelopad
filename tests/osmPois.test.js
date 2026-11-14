@@ -40,7 +40,7 @@ describe("реальные POI Волгограда", () => {
     );
     expect(projection.blockForSite("origin")).toEqual({ bx: 0, by: 0 });
     const targets = projection.campaignTargets();
-    expect(targets.m1[0].siteId).toBe("supermarket");
+    expect(targets.m1).toBeUndefined();
     expect(targets.m5.map((target) => target.siteId)).toEqual([
       "police",
       "warehouse",

@@ -4,6 +4,7 @@ import {
   populationTarget,
 } from "../src/world/roadPopulation.js";
 import { distanceToSegmentSquared } from "../src/world/osmCollision.js";
+import { vehicleDefinition } from "../src/systems/vehicles.js";
 
 const world = {
   ways: [
@@ -37,12 +38,36 @@ describe("население дорог", () => {
       population.cars.length,
     );
     for (const car of population.cars) {
+      const def = vehicleDefinition(car.type);
       expect(car.angle).toBe(0);
       expect(
         distanceToSegmentSquared(car.x, car.y, 0, 0, 1500, 0),
       ).toBeLessThanOrEqual(48 ** 2);
+      expect(car.maxFuel).toBe(def.maxFuel);
+      expect(car.fuel).toBeGreaterThanOrEqual(0);
+      expect(car.fuel).toBeLessThanOrEqual(car.maxFuel * 0.75);
+      if (def.humanPowered) expect(car.fuel).toBe(0);
+      else expect(car.fuel).toBeGreaterThan(car.maxFuel * 0.08);
     }
     expect(population.spawnPointsNear(500, 0, 300).length).toBeGreaterThan(0);
+  });
+
+  it("распределяет по дорогам все классы транспорта", () => {
+    const populatedWorld = {
+      ways: Array.from({ length: 40 }, (_, index) => ({
+        id: 100 + index,
+        tags: { highway: "residential", lanes: "2" },
+        points: [
+          [0, index * 100],
+          [3000, index * 100],
+        ],
+      })),
+    };
+    const types = new Set(
+      createRoadPopulation(populatedWorld).cars.map((car) => car.type),
+    );
+    for (const type of ["motorcycle", "bicycle", "scooter"])
+      expect(types.has(type)).toBe(true);
   });
 
   it("усиливает ночной и плотный город, но ограничивает нагрузку", () => {

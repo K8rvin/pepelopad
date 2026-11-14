@@ -17,6 +17,11 @@ import {
 } from "./buildingGeometry.js";
 import { createRoadPopulation } from "./roadPopulation.js";
 import {
+  generateSupermarketInterior,
+  getBuildingLayout,
+  getBuildingLayouts,
+} from "./buildingInterior.js";
+import {
   createDistrictBoundaries,
   districtNameAt as findDistrictName,
 } from "./districtBoundaries.js";
@@ -90,6 +95,31 @@ function buildingRecord(
 }
 
 function addContainers(block, building, random) {
+  const apartmentLayouts = getBuildingLayouts(building),
+    apartmentContainers = apartmentLayouts.flatMap(
+      (layout) => layout.containers,
+    );
+  if (apartmentContainers.length) {
+    for (const container of apartmentContainers)
+      block.containers.push({
+        ...container,
+        x: container.tileX,
+        y: container.tileY,
+      });
+    return;
+  }
+  if (building.type === "supermarket") {
+    const layout = generateSupermarketInterior(building);
+    if (layout.containers.length) {
+      for (const container of layout.containers)
+        block.containers.push({
+          ...container,
+          x: container.tileX,
+          y: container.tileY,
+        });
+      return;
+    }
+  }
   const definition = POI[building.type] || POI.house,
     count = Math.min(
       Math.max(1, building.w - 2),
@@ -316,6 +346,37 @@ export function createOsmCityModel(world, projection) {
     }
     return nearest;
   }
+  function nearestSupermarketTarget(x, y) {
+    let nearest = null,
+      best = Infinity;
+    for (const building of buildings.values()) {
+      if (building.type !== "supermarket") continue;
+      const distance = pointInPolygon(x, y, building.points)
+        ? 0
+        : distanceToBuildingWalls(x, y, building.points) ** 2;
+      if (
+        distance < best ||
+        (distance === best && building.wayId < nearest?.wayId)
+      ) {
+        best = distance;
+        nearest = building;
+      }
+    }
+    if (!nearest) return null;
+    const center = centerOfPoints(nearest.points);
+    return {
+      wayId: nearest.wayId,
+      bx: nearest.bx,
+      by: nearest.by,
+      x: center.x,
+      y: center.y,
+      label: nearest.osmName
+        ? `Супермаркет «${nearest.osmName}»`
+        : "Супермаркет",
+      osmName: nearest.osmName,
+      distance: Math.sqrt(best),
+    };
+  }
   function addressAt(x, y) {
     const building = nearestBuildingAt(x, y),
       road = building?.tags?.["addr:street"] ? null : nearestRoadAt(x, y),
@@ -374,6 +435,19 @@ export function createOsmCityModel(world, projection) {
     }));
     building.stairsByFloor = { ...building.stairsByFloor, [floorId]: stairs };
     return stairs;
+  }
+  function interiorFor(building, floorId = "ground") {
+    if (!building || floorId === "outdoor") return null;
+    building.interiorLayouts ||= {};
+    if (Object.hasOwn(building.interiorLayouts, floorId))
+      return building.interiorLayouts[floorId];
+    const options = { stairs: stairsFor(building, floorId) },
+      layout =
+        building.type === "supermarket" && floorId === "ground"
+          ? generateSupermarketInterior(building, options)
+          : getBuildingLayout(building, floorId, options);
+    building.interiorLayouts[floorId] = layout;
+    return layout;
   }
   function vegetationAt(x, y) {
     const chunk = gameWorld.chunks.get(
@@ -453,6 +527,10 @@ export function createOsmCityModel(world, projection) {
       for (const building of buildingsByBlock.get(key) || [])
         block.buildings.push(building);
     for (const building of block.buildings) {
+      if (building.wayId === 112436182) {
+        stairsFor(building, "ground");
+        stairsFor(building, "upper");
+      }
       addContainers(block, building, random);
       if (!block.name && building.name) {
         block.name = building.name;
@@ -553,11 +631,13 @@ export function createOsmCityModel(world, projection) {
     districtBoundaries,
     districtNameAt: (x, y) => findDistrictName(districtBoundaries, x, y),
     buildingAt,
+    nearestSupermarketTarget,
     addressAt,
     placeNameAt,
     populationDensityAt,
     spawnPointsNear,
     stairsFor,
+    interiorFor,
     planBlock,
     propSiteFree,
     vegetationAt,

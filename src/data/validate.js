@@ -119,9 +119,15 @@ export function validateGameData({
       "handling",
       "fuelUse",
       "trunkSlots",
-    ])
-      if (!Number.isFinite(vehicle[field]) || vehicle[field] <= 0)
+    ]) {
+      const zeroAllowed =
+        vehicle.humanPowered && ["maxFuel", "fuelUse"].includes(field);
+      if (
+        !Number.isFinite(vehicle[field]) ||
+        (zeroAllowed ? vehicle[field] < 0 : vehicle[field] <= 0)
+      )
         errors.push(`VEHICLES.${id}: invalid ${field}`);
+    }
     if (!vehicle.name) errors.push(`VEHICLES.${id}: name is required`);
   }
 
