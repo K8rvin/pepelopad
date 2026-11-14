@@ -51,7 +51,10 @@
     "car_taxi": { "src": "/assets/sprites/car_taxi.png", "caption": "top-down convertible car with headrests showing", "license": "CC0-1.0" },
     "car_police": { "src": "/assets/sprites/car_police.png", "caption": "top-down police car with a single dome siren", "license": "CC0-1.0" },
     "car_ambulance": { "src": "/assets/sprites/car_ambulance.png", "caption": "top-down front-view ambulance with a high box body", "license": "CC0-1.0" },
-    "car_truck": { "src": "/assets/sprites/car_truck.png", "caption": "top-down dump truck with a dirt load", "license": "CC0-1.0" },
-    "car_wreck": { "src": "/assets/sprites/car_wreck.png", "caption": "top-down rusty teal car with a spoiler", "license": "CC0-1.0" }
+    "car_truck": { "src": "/assets/sprites/car_truck.png", "caption": "top-down brand new gray army truck with a front winch", "license": "CC0-1.0" },
+    "car_wreck": { "src": "/assets/sprites/car_wreck.png", "caption": "top-down rusty teal car with a spoiler", "license": "CC0-1.0" },
+    "train": { "src": "/assets/sprites/train.png", "caption": "top-down electric locomotive with roof insulators in muted colors", "license": "CC0-1.0" },
+    "train_carriage": { "src": "/assets/sprites/train_carriage.png", "caption": "top-down rounded train carriage with a row of windows", "license": "CC0-1.0" },
+    "tram": { "src": "/assets/sprites/tram.png", "caption": "top-down short tram with a red stripe in warm colors", "license": "CC0-1.0" }
   }
 }
