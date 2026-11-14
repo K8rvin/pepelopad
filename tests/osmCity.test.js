@@ -22,9 +22,9 @@ const city = createOsmCityModel(world, projection);
 
 describe("игровая модель статичного Волгограда", () => {
   it("размещает специальные объекты по реальным координатам", () => {
-    const base = city.planBlock(0, 0, 42, new Map());
-    expect(base.special).toBe("base");
-    expect(base.name).toBe("Рубеж у Волгограда I");
+    const origin = city.planBlock(0, 0, 42, new Map());
+    expect(origin.special).toBe("origin");
+    expect(origin.name).toBe("Волгоград I");
     const supermarketBlock = projection.blockForSite("supermarket");
     const supermarket = city.planBlock(
       supermarketBlock.bx,

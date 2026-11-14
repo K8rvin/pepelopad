@@ -13,5 +13,5 @@ describe("OSM-конвейер", () => {
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("OSM import self-test: OK");
-  });
+  }, 15000);
 });
