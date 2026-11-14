@@ -15,11 +15,17 @@ async function installBalanceDriver(page) {
           };
           let deaths = 0,
             previousMain = Q.main;
-          const milestones = [],
-            questTarget = Q.targets[0],
-            supermarket = planBlock(questTarget.bx, questTarget.by),
+          const milestones = [];
+          for (const target of [...Q.targets])
+            qEvent(target.event, {
+              stage: "m1",
+              goal: target.goal,
+              wayId: target.wayId,
+            });
+          const supermarketBlock = OSM_PROJECTION.blockForSite("school_food"),
+            supermarket = planBlock(supermarketBlock.bx, supermarketBlock.by),
             supply = supermarket.containers.find(
-              (container) => container.wayId === questTarget.wayId,
+              (container) => container.wayId === 112437649,
             );
           P.x = supply.x * 16 + 8;
           P.y = (supply.y + 2) * 16 + 8;

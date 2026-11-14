@@ -22,15 +22,20 @@ async function startWithDriver(page, driver) {
   return errors;
 }
 
-test("m1 ведёт в ближайший супермаркет с доступными полками", async ({
+test("школьная цель использует ближайший супермаркет с доступными полками", async ({
   page,
 }) => {
   const errors = await startWithDriver(
     page,
     `
-    target: () => Q.targets[0],
+    target: () => {
+      Q.main = 4;
+      setupMain();
+      const target = Q.targets.find((target) => target.siteId === "school_food");
+      return { ...target, distance: Math.hypot(target.x - SPAWN.x, target.y - SPAWN.y) };
+    },
     loot: () => {
-      const target = Q.targets[0],
+      const target = Q.targets.find((target) => target.siteId === "school_food"),
         block = planBlock(target.bx, target.by),
         shelf = block.containers.find((item) => item.wayId === target.wayId && item.type === "shelf");
       P.x = shelf.x * 16 + 8;
@@ -46,20 +51,19 @@ test("m1 ведёт в ближайший супермаркет с доступ
         shelfId: shelf.id,
         lootTable: shelf.lootTable,
         fixtures: layout.fixtures.length,
-        completed: Q.main > 0,
       };
     },
     saveAndLoad: () => {
       saveGame();
       loadGame();
-      return Q.targets[0].wayId;
+      return Q.targets.find((target) => target.siteId === "school_food").wayId;
     },
   `,
   );
   const target = await page.evaluate(() => window.__interiorTest.target());
   expect(target.wayId).toBe(112437649);
   expect(target.distance / 16).toBeLessThan(300);
-  expect(target.label).toContain("Пятёрочка");
+  expect(target.osmName).toContain("Пятёрочка");
   expect(await page.evaluate(() => window.__interiorTest.saveAndLoad())).toBe(
     112437649,
   );
@@ -67,7 +71,6 @@ test("m1 ведёт в ближайший супермаркет с доступ
   expect(result).toMatchObject({
     wayId: 112437649,
     lootTable: "market",
-    completed: true,
   });
   expect(result.fixtures).toBeGreaterThanOrEqual(4);
   expect(errors).toEqual([]);
@@ -125,5 +128,100 @@ test("пилотная многоэтажка имеет комнаты, две�
   expect(result.upperAfter).toEqual({ ground: false, upper: true });
   expect(result.restoredFloor).toBe("upper");
   expect(result.restoredWay).toBe(112436182);
+  expect(errors).toEqual([]);
+});
+
+test("похожий дом Репина 21 использует общий шаблон со своими ID", async ({
+  page,
+}) => {
+  const errors = await startWithDriver(
+    page,
+    `
+    matched: () => {
+      const building = OSM_CITY.buildings.get(112436656),
+        block = planBlock(building.bx, building.by),
+        ground = OSM_CITY.interiorFor(building, "ground"),
+        upper = OSM_CITY.interiorFor(building, "upper"),
+        containers = block.containers.filter((item) => item.wayId === building.wayId);
+      return {
+        groundWalls: ground.internalWalls.length,
+        groundDoors: ground.doors.length,
+        upperWalls: upper.internalWalls.length,
+        containers: containers.length,
+        stableIds: containers.every((item) => item.id.startsWith("osm:112436656:") && !item.id.includes("osm:112436182:")),
+        identical: containers.every((item) => {
+          const layout = item.floorId === "upper" ? upper : ground,
+            original = layout.containers.find((candidate) => candidate.id === item.id);
+          return original && original.tileX === item.x && original.tileY === item.y;
+        }),
+        floors: [...new Set(containers.map((item) => item.floorId))].sort(),
+      };
+    },
+  `,
+  );
+  const result = await page.evaluate(() => window.__interiorTest.matched());
+  expect(result.groundWalls).toBeGreaterThan(0);
+  expect(result.groundDoors).toBeGreaterThan(0);
+  expect(result.upperWalls).toBeGreaterThan(0);
+  expect(result.containers).toBeGreaterThan(0);
+  expect(result.stableIds).toBe(true);
+  expect(result.identical).toBe(true);
+  expect(result.floors).toEqual(["ground", "upper"]);
+  expect(errors).toEqual([]);
+});
+
+test("неподходящий жилой дом сохраняет обычные контейнеры без шаблона", async ({
+  page,
+}) => {
+  const errors = await startWithDriver(
+    page,
+    `
+    unmatched: () => {
+      const building = OSM_CITY.buildings.get(40699743),
+        block = planBlock(building.bx, building.by),
+        containers = block.containers.filter((item) => item.wayId === building.wayId);
+      return {
+        ground: OSM_CITY.interiorFor(building, "ground"),
+        upper: OSM_CITY.interiorFor(building, "upper"),
+        containers: containers.length,
+        generic: containers.every((item) => item.floorId === "ground" && /^osm:40699743:\\d+$/.test(item.id)),
+      };
+    },
+  `,
+  );
+  const result = await page.evaluate(() => window.__interiorTest.unmatched());
+  expect(result.ground).toBeNull();
+  expect(result.upper).toBeNull();
+  expect(result.containers).toBeGreaterThan(0);
+  expect(result.generic).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("подсказка миникарты показывает полный адрес безымянного здания", async ({
+  page,
+}) => {
+  const errors = await startWithDriver(
+    page,
+    `
+    showAddress: () => {
+      const building = OSM_CITY.buildings.get(112436182),
+        point = OSM_CITY.stairsFor(building, "ground")[0];
+      P.x = point.x;
+      P.y = point.y;
+      updateBuildingPresence();
+      drawMinimap();
+      return {
+        activeWay: activeBuilding?.wayId,
+        placeName: OSM_CITY.placeNameAt(P.x, P.y),
+      };
+    },
+  `,
+  );
+  const result = await page.evaluate(() => window.__interiorTest.showAddress());
+  expect(result.activeWay).toBe(112436182);
+  expect(result.placeName).toBe("Библиотечная улица, 12");
+  await page.locator("#mmap").hover();
+  await expect(page.locator("#mmapHint")).toBeVisible();
+  await expect(page.locator("#mmapHint")).toHaveText("Библиотечная улица, 12");
   expect(errors).toEqual([]);
 });

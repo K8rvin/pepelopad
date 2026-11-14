@@ -241,4 +241,30 @@ describe("шаблон пилотного жилого дома", () => {
         );
     }
   });
+
+  it("возвращает null для повреждённого или недоступного детального этажа", () => {
+    expect(
+      getBuildingLayout(apartment(), "ground", {
+        stairs: [{ x: -100, y: -100 }],
+      }),
+    ).toBeNull();
+    expect(
+      getBuildingLayout({
+        ...apartment(),
+        points: [
+          [0, 0],
+          [100, 0],
+          [200, 0],
+        ],
+      }),
+    ).toBeNull();
+    expect(
+      getBuildingLayout(apartment(), "ground", {
+        stairs: Array.from({ length: 80 }, (_, index) => ({
+          x: 20 + (index % 20) * 50,
+          y: 50 + Math.floor(index / 20) * 45,
+        })),
+      }),
+    ).toBeNull();
+  });
 });

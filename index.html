@@ -1689,6 +1689,11 @@
     <div id="dialog" class="hid">
       <div id="dlgWho">АРТЁМ</div>
       <div id="dlgText"></div>
+      <div
+        id="dlgChoices"
+        class="hid"
+        style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px"
+      ></div>
       <div id="dlgHint">E / Space / клик — далее</div>
     </div>
     <button id="muteBtn" class="px">♪ ЗВУК: ВКЛ</button>
@@ -1778,6 +1783,12 @@
           <div id="mapOv">
             <div class="mtitle px">КАРТА ГОРОДА</div>
             <canvas id="bmap" width="504" height="504"></canvas>
+            <div id="storyTravelBox" class="mhint hid">
+              <button id="btnStoryTravel" class="btn acid">
+                Поехать к сюжетной цели
+              </button>
+              <div id="storyTravelInfo"></div>
+            </div>
             <div id="mapFloorNav" class="mhint hid">
               <button id="mapFloorPrev" class="btn">← Этаж</button>
               <b id="mapFloorName"></b>
@@ -1820,6 +1831,14 @@
             <option value="2">2×</option>
           </select>
         </div>
+        <label class="prow">
+          <span>Поворот камеры</span>
+          <input id="rotateCamera" type="checkbox" />
+        </label>
+        <label class="prow">
+          <span>Поворот миникарты</span>
+          <input id="rotateMinimap" type="checkbox" />
+        </label>
         <button id="btnRestart" class="btn red">Начать заново</button
         ><button id="btnToMenu" class="btn">В главное меню</button>
         <div class="ctrlGrid" id="pauseCtrls"></div>

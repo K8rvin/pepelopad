@@ -144,7 +144,7 @@ describe("схема сохранения", () => {
     const migrated = migrateSave({ ...createSaveData(source), v: 8 });
     const truck = migrated.cars[0][1],
       override = migrated.OV[0][1];
-    expect(migrated.v).toBe(9);
+    expect(migrated.v).toBe(10);
     expect(migrated.city).toBe(CITY_ID);
     expect(truck.fuel).toBe(60);
     expect(truck.maxFuel).toBe(120);
@@ -170,6 +170,72 @@ describe("схема сохранения", () => {
     expect(migrated.cars[0][1].maxFuel).toBe(52);
     expect(migrated.OV[0][1].fuel).toBe(13);
     expect(migrated.OV[0][1].maxFuel).toBe(52);
+  });
+
+  it("перезапускает раннюю v9 сюжетную линию без потери имущества и мира", () => {
+    const source = snapshot();
+    source.P.xp = 75;
+    source.Q = {
+      main: 3,
+      prog: { medkit: 2 },
+      given: { old: true },
+      side: [{ id: "side", goals: [] }],
+      sideProg: { side: {} },
+    };
+    source.CARS = new Map([["car", { id: "car", type: "sedan", fuel: 30 }]]);
+    const migrated = migrateSave({ ...createSaveData(source), v: 9 });
+    expect(migrated.Q.main).toBe(0);
+    expect(migrated.Q.prog).toEqual({});
+    expect(migrated.Q.mainGiven).toEqual({});
+    expect(migrated.Q.side).toHaveLength(1);
+    expect(migrated.P.xp).toBe(75);
+    expect(migrated.inv).toEqual([{ id: "wood", n: 3 }, null]);
+    expect(migrated.cars[0][1].fuel).toBe(30);
+    expect(migrated.OV).toEqual([["A", { value: 1 }]]);
+    expect(migrated.options).toEqual({
+      rotateCamera: false,
+      rotateMinimap: false,
+    });
+    expect(migrated.story.friendHelp).toBeNull();
+  });
+
+  it("не меняет позднюю v9 кампанию и восстанавливает настройки", () => {
+    const source = snapshot();
+    source.Q = { main: 6, prog: { nest: 1 }, side: [], sideProg: {} };
+    source.options = { rotateCamera: true, rotateMinimap: false };
+    source.story = { friendHelp: "supplies", branches: { school: "clinic" } };
+    const migrated = migrateSave({ ...createSaveData(source), v: 9 });
+    expect(migrated.Q.main).toBe(6);
+    expect(migrated.Q.prog).toEqual({ nest: 1 });
+    expect(migrated.options.rotateCamera).toBe(true);
+    expect(migrated.story.friendHelp).toBe("supplies");
+    expect(migrated.story.branches.school).toBe("clinic");
+  });
+
+  it("не сериализует статические координаты лагеря", () => {
+    const source = snapshot();
+    source.CAMPS = new Map([
+      [
+        "camp_school",
+        {
+          id: "camp_school",
+          x: 999,
+          y: 888,
+          level: 2,
+          trust: 5,
+          proj: { wall: 1, garden: 0, tower: 0, clinic: 1 },
+          branch: "clinic",
+          rescuedResidents: ["school_rescue"],
+        },
+      ],
+    ]);
+    const data = createSaveData(source);
+    expect(data.camps[0][1].x).toBeUndefined();
+    expect(data.camps[0][1].y).toBeUndefined();
+    expect(data.camps[0][1]).toMatchObject({
+      branch: "clinic",
+      rescuedResidents: ["school_rescue"],
+    });
   });
 
   it("читает сохранение из JSON", () => {
