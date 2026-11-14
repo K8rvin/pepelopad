@@ -84,4 +84,35 @@ describe("игровая модель статичного Волгограда"
       expect(city.buildingAt(stair.x, stair.y).wayId).toBe(123686711);
     }
   });
+
+  it("показывает реальный адрес ближайшего здания и не выдумывает номер", () => {
+    const addressed = [...city.buildings.values()].find(
+      (building) =>
+        building.tags["addr:street"] && building.tags["addr:housenumber"],
+    );
+    expect(addressed).toBeDefined();
+    const center = {
+      x: (addressed.bounds.minX + addressed.bounds.maxX) / 2,
+      y: (addressed.bounds.minY + addressed.bounds.maxY) / 2,
+    };
+    expect(city.addressAt(center.x, center.y)).toEqual({
+      district: city.districtNameAt(center.x, center.y),
+      street: addressed.tags["addr:street"],
+      houseNumber: addressed.tags["addr:housenumber"],
+      wayId: addressed.wayId,
+    });
+
+    const unnumbered = [...city.buildings.values()].find(
+      (building) =>
+        building.tags["addr:street"] && !building.tags["addr:housenumber"],
+    );
+    expect(unnumbered).toBeDefined();
+    const address = city.addressAt(
+      (unnumbered.bounds.minX + unnumbered.bounds.maxX) / 2,
+      (unnumbered.bounds.minY + unnumbered.bounds.maxY) / 2,
+    );
+    expect(address.street).toBe(unnumbered.tags["addr:street"]);
+    expect(address.houseNumber).toBeNull();
+    expect(address.wayId).toBe(unnumbered.wayId);
+  });
 });

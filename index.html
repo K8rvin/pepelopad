@@ -285,6 +285,19 @@
         padding: 6px 14px;
         letter-spacing: 2px;
       }
+      #locationChip {
+        position: absolute;
+        left: 14px;
+        bottom: 146px;
+        max-width: min(560px, calc(100vw - 28px));
+        padding: 7px 10px;
+        background: var(--panel);
+        border: 2px solid var(--line);
+        color: var(--sand);
+        font-size: 12px;
+        line-height: 1.4;
+        pointer-events: none;
+      }
       #bars {
         position: absolute;
         left: 14px;
@@ -1621,6 +1634,7 @@
         <div class="sbar"><i id="siegeF"></i></div>
       </div>
       <div id="pauseChip" class="hid px">ПАУЗА</div>
+      <div id="locationChip" class="hid"></div>
       <div id="bars">
         <div class="brow hp"><i id="hpF"></i><b id="hpT"></b></div>
         <div class="brow st"><i id="stF"></i></div>

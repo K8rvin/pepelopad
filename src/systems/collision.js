@@ -17,8 +17,6 @@ export function getSolid(tx, ty, context, exCar) {
   }
 
   if (context.solidTiles.has(context.tileAt(tx, ty))) return { kind: "tile" };
-  const osm = context.osmSolidAt?.(tx * 16 + 8, ty * 16 + 8, 0);
-  if (osm) return { kind: "tile", o: osm };
   return null;
 }
 
@@ -51,21 +49,29 @@ export function moveBody(body, dx, dy, context, exCar) {
   let bx = false;
   let by = false;
   let hit = null;
+  const steps = Math.max(
+      1,
+      Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 2),
+    ),
+    stepX = dx / steps,
+    stepY = dy / steps;
 
-  if (dx) {
-    const current = circleHit(body.x + dx, body.y, body.r, context, exCar);
-    if (!current) body.x += dx;
-    else {
-      bx = true;
-      hit = current;
+  for (let step = 0; step < steps; step++) {
+    if (stepX) {
+      const current = circleHit(body.x + stepX, body.y, body.r, context, exCar);
+      if (!current) body.x += stepX;
+      else {
+        bx = true;
+        hit = current;
+      }
     }
-  }
-  if (dy) {
-    const current = circleHit(body.x, body.y + dy, body.r, context, exCar);
-    if (!current) body.y += dy;
-    else {
-      by = true;
-      hit = hit || current;
+    if (stepY) {
+      const current = circleHit(body.x, body.y + stepY, body.r, context, exCar);
+      if (!current) body.y += stepY;
+      else {
+        by = true;
+        hit = hit || current;
+      }
     }
   }
 

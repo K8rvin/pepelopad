@@ -263,29 +263,85 @@ export function createOsmCityModel(world, projection) {
     }
     return null;
   }
-  function placeNameAt(x, y) {
-    const building = buildingAt(x, y);
-    if (building?.name) return building.name;
-    if (building?.type && POI[building.type]) return POI[building.type].name;
-    const chunk = gameWorld.chunks.get(
-      `${Math.floor(x / gameWorld.chunkSize)},${Math.floor(y / gameWorld.chunkSize)}`,
-    );
+  function waysNear(x, y, radius = 0) {
+    const ids = new Set(),
+      minChunkX = Math.floor((x - radius) / gameWorld.chunkSize),
+      maxChunkX = Math.floor((x + radius) / gameWorld.chunkSize),
+      minChunkY = Math.floor((y - radius) / gameWorld.chunkSize),
+      maxChunkY = Math.floor((y + radius) / gameWorld.chunkSize);
+    for (let cy = minChunkY; cy <= maxChunkY; cy++)
+      for (let cx = minChunkX; cx <= maxChunkX; cx++)
+        for (const id of gameWorld.chunks.get(`${cx},${cy}`)?.ways || [])
+          ids.add(id);
+    return ids;
+  }
+  function nearestRoadAt(x, y, radius = 512, onRoadOnly = false) {
     let nearest = null,
-      best = Infinity;
-    for (const id of chunk?.ways || []) {
+      best = onRoadOnly ? Infinity : radius * radius;
+    for (const id of waysNear(x, y, radius)) {
       const way = gameWorld.wayById.get(id);
       if (!way.tags.highway || !way.tags.name) continue;
       for (let index = 1; index < way.points.length; index++) {
         const a = way.points[index - 1],
           b = way.points[index],
           distance = distanceToSegmentSquared(x, y, a[0], a[1], b[0], b[1]);
-        if (distance < best && distance <= (osmWayWidth(way) / 2 + 8) ** 2) {
+        if (
+          distance < best &&
+          (!onRoadOnly || distance <= (osmWayWidth(way) / 2 + 8) ** 2)
+        ) {
           best = distance;
-          nearest = way.tags.name;
+          nearest = way;
         }
       }
     }
-    return nearest || findDistrictName(districtBoundaries, x, y);
+    return nearest;
+  }
+  function nearestBuildingAt(x, y, radius = 512) {
+    let nearest = null,
+      best = radius * radius;
+    for (const id of waysNear(x, y, radius)) {
+      const way = gameWorld.wayById.get(id);
+      if (!way.tags.building) continue;
+      const box = gameWorld.boundsByWay.get(id),
+        dx = Math.max(box.minX - x, 0, x - box.maxX),
+        dy = Math.max(box.minY - y, 0, y - box.maxY);
+      if (dx * dx + dy * dy >= best) continue;
+      const distance = pointInPolygon(x, y, way.points)
+        ? 0
+        : distanceToBuildingWalls(x, y, way.points) ** 2;
+      if (distance < best) {
+        best = distance;
+        nearest = playableBuildings.get(id) || way;
+      }
+    }
+    return nearest;
+  }
+  function addressAt(x, y) {
+    const building = nearestBuildingAt(x, y),
+      road = building?.tags?.["addr:street"] ? null : nearestRoadAt(x, y),
+      street = building?.tags?.["addr:street"] || road?.tags?.name || null;
+    if (!building && !road)
+      return {
+        district: findDistrictName(districtBoundaries, x, y),
+        street,
+        houseNumber: null,
+        wayId: null,
+      };
+    return {
+      district: findDistrictName(districtBoundaries, x, y),
+      street,
+      houseNumber: building?.tags?.["addr:housenumber"] || null,
+      wayId: building?.wayId || null,
+    };
+  }
+  function placeNameAt(x, y) {
+    const building = buildingAt(x, y);
+    if (building?.name) return building.name;
+    if (building?.type && POI[building.type]) return POI[building.type].name;
+    return (
+      nearestRoadAt(x, y, 0, true)?.tags?.name ||
+      findDistrictName(districtBoundaries, x, y)
+    );
   }
   function populationDensityAt(x, y) {
     const bx = Math.floor(x / projection.blockPixels),
@@ -497,6 +553,7 @@ export function createOsmCityModel(world, projection) {
     districtBoundaries,
     districtNameAt: (x, y) => findDistrictName(districtBoundaries, x, y),
     buildingAt,
+    addressAt,
     placeNameAt,
     populationDensityAt,
     spawnPointsNear,

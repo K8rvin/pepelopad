@@ -56,6 +56,7 @@ import {
   circleHit as testCircleHit,
   moveBody as moveBodyGrid,
 } from "/src/systems/collision.js";
+import { findNearestFreePosition } from "/src/systems/recovery.js";
 import {
   applyQuestEvent,
   goalsComplete,
@@ -661,6 +662,9 @@ const chunks = new Map(),
   CAR_GRID = new Map(),
   CAMPS = new Map(),
   NPCS = [];
+let stuckTime = 0,
+  stuckNotified = false,
+  lastPosition = { x: 0, y: 0 };
 let Z = [],
   PR = [],
   PT = [],
@@ -683,6 +687,7 @@ let shake = 0,
   H = innerHeight,
   RES = Math.min(devicePixelRatio || 1, 2),
   hudT = 0,
+  locationT = 0,
   mmT = 0,
   saveT = 0,
   spawnT = 0,
@@ -708,10 +713,7 @@ const collisionContext = {
   containers: CMAP,
   solidTiles: SOLID,
   tileAt,
-  osmSolidAt: (x, y, radius) =>
-    currentFloorId === "outdoor"
-      ? osmSolidAt(x, y, OSM_CITY.gameWorld, radius)
-      : null,
+  osmSolidAt: (x, y, radius) => osmSolidAt(x, y, OSM_CITY.gameWorld, radius),
   carsNear,
 };
 const { genChunk, getChunk } = createChunkManager({
@@ -880,13 +882,59 @@ function tileAt() {
   return 0;
 }
 function solidAt(tx, ty, exCar) {
-  return getSolid(tx, ty, collisionContext, exCar);
+  const solid = getSolid(tx, ty, collisionContext, exCar);
+  if (solid) return solid;
+  const osm = collisionContext.osmSolidAt?.(tx * 16 + 8, ty * 16 + 8, 0);
+  return osm ? { kind: "tile", o: osm } : null;
 }
 function circleHit(x, y, r, exCar) {
   return testCircleHit(x, y, r, collisionContext, exCar);
 }
 function moveBody(e, dx, dy, exCar) {
   return moveBodyGrid(e, dx, dy, collisionContext, exCar);
+}
+function recoverFromStuck() {
+  if (!P) return;
+  if (P.inCar) {
+    const car = CARS.get(P.inCar),
+      points = OSM_CITY.spawnPointsNear(car.x, car.y, 400)
+        .filter((point) => !circleHit(point.x, point.y, 12, car.id))
+        .sort(
+          (a, b) => d2(car.x, car.y, a.x, a.y) - d2(car.x, car.y, b.x, b.y),
+        );
+    if (!points.length) {
+      toast("Рядом нет свободной дороги", "danger");
+      return;
+    }
+    car.x = points[0].x;
+    car.y = points[0].y;
+    car.speed = 0;
+    carGridMove(car);
+    P.x = car.x;
+    P.y = car.y;
+  } else {
+    if (!circleHit(P.x, P.y, P.r) && stuckTime < 1.5) {
+      toast("Ты не застрял. Двигайся к ближайшему проёму.", "info");
+      return;
+    }
+    const point = findNearestFreePosition(
+      P.x,
+      P.y,
+      (x, y) => !circleHit(x, y, P.r),
+    );
+    if (!point) {
+      toast("Не найдено свободное место рядом", "danger");
+      return;
+    }
+    P.x = point.x;
+    P.y = point.y;
+  }
+  searching = null;
+  stuckTime = 0;
+  stuckNotified = false;
+  lastPosition = { x: P.x, y: P.y };
+  updateBuildingPresence();
+  toast("Освобождение выполнено. Без штрафа.", "info");
 }
 function spawnGuards(p) {
   const district = districtDefinition(p.district),
@@ -4972,7 +5020,8 @@ function keyAction(code) {
         curCar = c;
         openPanel("trunk");
       } else toast("Нет машины рядом", "info");
-    } else if (code === "KeyX") tryRemove();
+    } else if (code === "KeyV") recoverFromStuck();
+    else if (code === "KeyX") tryRemove();
     else if (code === "KeyB") toggleBuild();
     else if (code === "Tab" || code === "KeyI") openPanel("inv");
     else if (code === "KeyC") openPanel("craft");
@@ -5464,6 +5513,26 @@ function update(dt) {
       startReload();
     if (mouse.down && !buildSel && !searching) fireWeapon();
   }
+  const movementRequested =
+      keys.KeyW ||
+      keys.KeyA ||
+      keys.KeyS ||
+      keys.KeyD ||
+      keys.ArrowUp ||
+      keys.ArrowDown ||
+      keys.ArrowLeft ||
+      keys.ArrowRight,
+    progressed = Math.hypot(P.x - lastPosition.x, P.y - lastPosition.y);
+  if (movementRequested && progressed < 0.05) stuckTime += dt;
+  else {
+    stuckTime = 0;
+    stuckNotified = false;
+  }
+  lastPosition = { x: P.x, y: P.y };
+  if (stuckTime >= 1.5 && !stuckNotified) {
+    stuckNotified = true;
+    toast("V — выбраться из застревания без штрафа", "info");
+  }
   updateBuildingPresence();
   P.iframe -= dt;
   P.hu = Math.max(0, P.hu - dt * 0.1 * (1 - P.skills.metabolism * 0.12));
@@ -5523,6 +5592,20 @@ function update(dt) {
     hudT = 0.1;
     refreshHUD();
     updateInteract();
+  }
+  locationT -= dt;
+  if (locationT <= 0) {
+    locationT = 0.5;
+    const address = OSM_CITY.addressAt(P.x, P.y),
+      text = [
+        address.district,
+        address.street,
+        address.wayId ? `д. ${address.houseNumber || "б/н"}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    $("locationChip").textContent = text;
+    $("locationChip").classList.toggle("hid", !text);
   }
   mmT -= dt;
   if (mmT <= 0) {
