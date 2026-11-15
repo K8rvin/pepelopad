@@ -50,4 +50,8 @@ describe("навигация и выгрузка зомби", () => {
     expect(shouldSkipZombieUpdate(siege, 100 * 16)).toBe(false);
     expect(shouldUnloadZombie(siege, 100 * 16)).toBe(false);
   });
+
+  it("сохраняет обязательного сюжетного противника на дальнем маршруте", () => {
+    expect(shouldUnloadZombie({ storyEncounter: true }, 200 * 16)).toBe(false);
+  });
 });

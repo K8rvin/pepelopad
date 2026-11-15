@@ -22,6 +22,15 @@ describe("отрисовка OSM-карты", () => {
             [20, 20],
           ],
         },
+        {
+          id: 3,
+          tags: { amenity: "school" },
+          points: [
+            [40, 40],
+            [50, 40],
+            [50, 50],
+          ],
+        },
       ],
     };
     const before = JSON.stringify(world);
@@ -49,6 +58,8 @@ describe("отрисовка OSM-карты", () => {
     });
     expect(ctx.fill).toHaveBeenCalled();
     expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.moveTo.mock.calls[0][0]).toBe(40);
+    expect(ctx.moveTo.mock.calls.at(-1)[0]).toBe(0);
     expect(JSON.stringify(world)).toBe(before);
   });
 });
