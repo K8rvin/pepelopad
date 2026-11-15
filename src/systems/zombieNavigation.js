@@ -33,7 +33,7 @@ export function shouldSkipZombieUpdate(zombie, playerDistance) {
 }
 
 export function shouldUnloadZombie(zombie, playerDistance) {
-  if (zombie.siege) return false;
+  if (zombie.siege || zombie.storyEncounter) return false;
   const range = (zombie.nest ? 80 : 52) * 16;
   return playerDistance > range;
 }

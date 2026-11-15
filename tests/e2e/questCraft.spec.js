@@ -52,7 +52,7 @@ ${marker}`;
   );
   expect(looted.main).toBe(1);
   expect(looted.blueprint).toBe(true);
-  expect(looted.hint).toContain("Собери арбалет на верстаке");
+  expect(looted.hint).toContain("B — построить верстак");
   expect(await page.evaluate(() => window.__questCraftTest.buildBench())).toBe(
     true,
   );

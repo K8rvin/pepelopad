@@ -78,6 +78,15 @@ export function renderOsmMap({
           }
       }
   }
+  const layer = (way) => {
+    const category = wayCategory(way.tags);
+    return category === "building"
+      ? 2
+      : ["road", "railway"].includes(category)
+        ? 1
+        : 0;
+  };
+  ways = [...ways].sort((a, b) => layer(a) - layer(b) || a.id - b.id);
   for (const way of ways) {
     const category = wayCategory(way.tags);
     if (category === "land") continue;

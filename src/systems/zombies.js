@@ -38,6 +38,7 @@ export function createZombie(
     mem: 0,
     elite,
     siege: !!options.siege,
+    storyEncounter: options.storyEncounter === true,
     nest: options.nest || null,
     floorId: options.floorId || "outdoor",
     side: 0,

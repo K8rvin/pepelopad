@@ -1243,6 +1243,14 @@ function dlgText() {
   $("dlgWho").textContent = l.who || "АРТЁМ";
   $("dlgText").innerHTML = l.text.slice(0, Math.floor(DL.ch));
 }
+function updateDialog(dt) {
+  if (!DL.active) return;
+  const line = DL.lines[DL.i];
+  if (line && DL.ch < line.text.length) {
+    DL.ch += dt * 48;
+    dlgText();
+  }
+}
 function advanceDialog() {
   if (!DL.active) return;
   if (DL.ch < DL.lines[DL.i].text.length) {
@@ -2599,7 +2607,7 @@ function storyInteractionPosition(target) {
 function nearestStoryInteraction() {
   if (P.inCar) return null;
   let nearest = null,
-    best = (2.2 * 16) ** 2;
+    best = mainQuest()?.id === "m1" ? (1.5 * 16) ** 2 : (2.2 * 16) ** 2;
   const candidates = activeStoryTargets().filter((target) => !target.camp);
   if (mainQuest()?.id !== "m2") {
     const site = OSM_PROJECTION.sites.bartender,
@@ -2643,6 +2651,17 @@ function completeStoryInteraction(target) {
     wayId: target.wayId,
     camp: target.camp,
   });
+  if (target.interaction === "gunstore") {
+    toast(
+      "Обучение: B → Верстак → 6 дерева и 4 металла → установить рядом",
+      "quest",
+    );
+    tut.push([
+      playT + 10,
+      "Подойди к верстаку и нажми E. Вкладка крафта → арбалет.",
+    ]);
+    tut.sort((a, b) => a[0] - b[0]);
+  }
   syncStoryNPCs();
   saveGame();
 }
@@ -3408,6 +3427,55 @@ function trackedQuest() {
   if (Q.tracked === "main") return mainQuest() || Q.side[0];
   return Q.side.find((q) => q.id === Q.tracked) || mainQuest() || Q.side[0];
 }
+function prepareFirstQuestRoute(quest) {
+  if (quest.id !== "m1") return;
+  for (const target of Q.targets) {
+    const building = OSM_CITY.buildings.get(target.wayId),
+      doors = (building?.openings || []).filter(
+        (opening) => opening.kind === "door",
+      ),
+      door = doors.sort(
+        (a, b) =>
+          d2(SPAWN.x, SPAWN.y, a.x, a.y) - d2(SPAWN.x, SPAWN.y, b.x, b.y),
+      )[0];
+    if (door) {
+      target.interactionX = door.x + door.nx * 12;
+      target.interactionY = door.y + door.ny * 12;
+    }
+  }
+  if (STORY.m1Encounter) return;
+  STORY.m1Encounter = true;
+  for (const target of Q.targets) {
+    const point = storyInteractionPosition(target),
+      random = mb32(hashStr(`m1:${target.siteId}:${SEED}`)),
+      ratio = 0.45 + random() * 0.2,
+      baseX = SPAWN.x + (point.x - SPAWN.x) * ratio,
+      baseY = SPAWN.y + (point.y - SPAWN.y) * ratio,
+      angle = random() * Math.PI * 2;
+    let placed = false;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const distance = 24 + attempt * 8,
+        direction = angle + attempt * 1.618,
+        x = baseX + Math.cos(direction) * distance,
+        y = baseY + Math.sin(direction) * distance;
+      if (circleHit(x, y, 8)) continue;
+      spawnZ("walker", x, y, { floorId: "outdoor", storyEncounter: true });
+      placed = true;
+      break;
+    }
+    if (!placed) {
+      const fallback = [
+        ...OSM_CITY.spawnPointsNear(baseX, baseY, 240),
+        ...OSM_CITY.spawnPointsNear(SPAWN.x, SPAWN.y, 400),
+      ].find((candidate) => !circleHit(candidate.x, candidate.y, 8));
+      if (fallback)
+        spawnZ("walker", fallback.x, fallback.y, {
+          floorId: "outdoor",
+          storyEncounter: true,
+        });
+    }
+  }
+}
 function setupMain() {
   const q = mainQuest();
   if (!q) return;
@@ -3417,6 +3485,7 @@ function setupMain() {
   const targets = OSM_QUEST_TARGETS[q.id] || q.targets || [];
   Q.targets = targets.map((target) => ({ ...target }));
   q.targets = Q.targets;
+  prepareFirstQuestRoute(q);
   syncQuestProgress(q, Q.prog, {
     learned,
     owned: P.owned,
@@ -3711,7 +3780,8 @@ function updateQuestUI() {
     ? "◈ " + target.label + " · M — карта"
     : "Подготовка к выживанию";
   if (q.id === "m2" && Q.prog.talk_gunstore && !Q.prog.craft_crossbow)
-    $("qHint").textContent = "Чертёж получен. Собери арбалет на верстаке [C].";
+    $("qHint").textContent =
+      "B — построить верстак (6 дерева, 4 металла). Подойди и нажми E — собери арбалет.";
 }
 function goalLabel(k, n) {
   const storyLabels = {
@@ -5487,6 +5557,10 @@ function keyAction(code) {
     }
     return;
   }
+  if (state === "play" && (DL.active || storyChoiceActive)) {
+    if (DL.active && ["KeyE", "Space", "Enter"].includes(code)) advanceDialog();
+    return;
+  }
   if (state === "play") {
     if (code === "KeyE") doInteract();
     else if (code === "KeyR") {
@@ -5953,6 +6027,7 @@ function updateRailVehicles(dt) {
 }
 function update(dt) {
   playT += dt;
+  updateDialog(dt);
   energyT = Math.max(0, energyT - dt);
   recoil = Math.max(0, recoil - dt * 30);
   shake = Math.max(0, shake - dt * 22);

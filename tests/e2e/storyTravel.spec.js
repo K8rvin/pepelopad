@@ -44,6 +44,21 @@ async function installStoryDriver(page) {
           if (guard <= 0) throw new Error("Dialog did not finish");
         },
         craftCrossbow: () => qEvent("craft", { id: "crossbow" }),
+        firstRoute: () => ({
+          killGoal: mainQuest().goals.find(([goal]) => goal === "kills")?.[1],
+          zombies: Z.filter((zombie) => zombie.storyEncounter).length,
+          targets: Q.targets.map((target) => {
+            const point = storyInteractionPosition(target),
+              building = OSM_CITY.buildings.get(target.wayId),
+              distance = Math.min(...building.openings.filter((opening) => opening.kind === "door").map((opening) => Math.hypot(point.x - opening.x, point.y - opening.y)));
+            return { siteId: target.siteId, distance };
+          }),
+        }),
+        defeatFirstEncounter: () => {
+          for (const zombie of [...Z])
+            if (zombie.storyEncounter) hurtZ(zombie, 999);
+          return stats.kills;
+        },
         openSchool: () => {
           if (panelOpen()) closePanel();
           openCamp(CAMPS.get("camp_school"));
@@ -105,6 +120,12 @@ test("новая история m1–m6: диалоги, спасение, ве�
     () => window.__storyTest?.snapshot().state === "play",
   );
 
+  const route = await page.evaluate(() => window.__storyTest.firstRoute());
+  expect(route.killGoal).toBe(3);
+  expect(route.zombies).toBe(3);
+  for (const target of route.targets)
+    expect(target.distance).toBeCloseTo(12, 1);
+
   for (const siteId of ["parents", "friend", "girlfriend"]) {
     await page.evaluate((id) => {
       window.__storyTest.interact(id);
@@ -119,6 +140,9 @@ test("новая история m1–m6: диалоги, спасение, ве�
       ).toBe("refused");
     }
   }
+  expect(
+    await page.evaluate(() => window.__storyTest.defeatFirstEncounter()),
+  ).toBe(3);
   expect(await page.evaluate(() => window.__storyTest.snapshot().quest)).toBe(
     "m2",
   );
@@ -132,6 +156,7 @@ test("новая история m1–m6: диалоги, спасение, ве�
   expect(
     await page.evaluate(() => window.__storyTest.snapshot().crossbowLearned),
   ).toBe(true);
+  await expect(page.locator("#qHint")).toContainText("B — построить верстак");
   await page.evaluate(() => window.__storyTest.craftCrossbow());
   expect(await page.evaluate(() => window.__storyTest.snapshot().quest)).toBe(
     "m3",

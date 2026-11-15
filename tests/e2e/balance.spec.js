@@ -22,6 +22,8 @@ async function installBalanceDriver(page) {
               goal: target.goal,
               wayId: target.wayId,
             });
+          for (let kill = 0; kill < 3; kill++)
+            qEvent("kill", { type: "walker" });
           const supermarketBlock = OSM_PROJECTION.blockForSite("school_food"),
             supermarket = planBlock(supermarketBlock.bx, supermarketBlock.by),
             supply = supermarket.containers.find(
