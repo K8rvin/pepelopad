@@ -26,11 +26,94 @@
         white-space: pre;
         pointer-events: none;
       }
+      #ui {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 12, 9, 0.55);
+      }
+      #ui .panel {
+        background: rgba(17, 20, 14, 0.97);
+        border: 1px solid #596248;
+        padding: 14px 18px;
+        min-width: 420px;
+        color: #ece5d0;
+      }
+      #ui h3 {
+        margin: 8px 0 6px;
+        color: #c96a35;
+        font-size: 13px;
+        letter-spacing: 1px;
+      }
+      #ui .grid {
+        display: grid;
+        grid-template-columns: repeat(8, 44px);
+        gap: 4px;
+      }
+      #ui .slot {
+        width: 44px;
+        height: 44px;
+        background: #1b2016;
+        border: 1px solid #39402e;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #ui .slot .ic {
+        font-size: 20px;
+      }
+      #ui .slot .n {
+        position: absolute;
+        right: 2px;
+        bottom: 0;
+        font-size: 10px;
+        color: #ffb23e;
+      }
+      #ui .loot-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        border-bottom: 1px solid #262c1e;
+      }
+      #ui .loot-row .ic {
+        font-size: 18px;
+      }
+      #ui .loot-row button,
+      #ui #takeAll {
+        margin-left: auto;
+        background: #39402e;
+        color: #ece5d0;
+        border: 1px solid #596248;
+        padding: 2px 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+      #ui #takeAll {
+        margin: 8px 0;
+        padding: 5px 14px;
+      }
+      #ui .loot-row button:hover,
+      #ui #takeAll:hover {
+        background: #4a5438;
+      }
+      #ui .hint {
+        margin-top: 8px;
+        color: #9a9478;
+        font-size: 11px;
+      }
+      #ui .dim {
+        color: #9a9478;
+      }
     </style>
   </head>
   <body>
     <canvas id="cv"></canvas>
     <div id="hud">…</div>
+    <div id="ui"></div>
     <script type="module" src="/src/iso/main.js"></script>
   </body>
 </html>

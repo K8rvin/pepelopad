@@ -50,6 +50,8 @@ export function renderWorld({
   combat,
   aim,
   now,
+  lootNearest,
+  uiOpen,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -364,6 +366,20 @@ export function renderWorld({
   if (combat && combat.hurtFlash > 0) {
     ctx.fillStyle = `rgba(224,67,56,${0.28 * combat.hurtFlash})`;
     ctx.fillRect(0, 0, W, H);
+    R.drawCalls++;
+  }
+  // подсказка обыска у контейнера
+  if (lootNearest && !uiOpen && !(combat && combat.dead)) {
+    const p = w2s(lootNearest.x, lootNearest.y);
+    const dx = toX(p.x),
+      dy = toY(p.y) - 46 * zoom;
+    ctx.font = `${12 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText("E — обыскать", dx + 1, dy + 1);
+    ctx.fillStyle = "#ffb23e";
+    ctx.fillText("E — обыскать", dx, dy);
+    ctx.textAlign = "left";
     R.drawCalls++;
   }
   // смерть
