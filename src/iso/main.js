@@ -48,6 +48,13 @@ import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
 import {
+  saveGame,
+  loadGameData,
+  hasSave,
+  deleteSave,
+  applySave,
+} from "./persistence/save.js";
+import {
   createSurvival,
   darknessFor,
   clockText,
@@ -123,10 +130,22 @@ export async function boot() {
   const survival = createSurvival();
   // лут и инвентарь
   const inv = createInventory(24);
-  addItem(inv, "arrow", 12); // стартовый колчан
-  addItem(inv, "can", 2); // немного еды на старт
-  addItem(inv, "meds", 1);
   const loot = createLoot(city);
+  // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
+  const wantNew = params.get("new") === "1";
+  let loaded = false;
+  if (hasSave() && !wantNew) {
+    const data = loadGameData();
+    if (data && data.seed === seed && data.nb === nb) {
+      applySave(data, { city, player, combat, survival, inv, loot });
+      loaded = true;
+    }
+  }
+  if (!loaded) {
+    addItem(inv, "arrow", 12); // стартовый колчан
+    addItem(inv, "can", 2); // немного еды на старт
+    addItem(inv, "meds", 1);
+  }
   let toastMsg = "",
     toastT = 0;
   const toast = (msg) => {
@@ -239,8 +258,16 @@ export async function boot() {
       cam.x = x;
       cam.y = y;
     },
-    setNight: (v) => (night = v),
+    setTod: (v) => (survival.tod = v),
+    save: () => saveGame({ city, player, combat, survival, inv, loot }),
   };
+
+  // автосохранение: каждые 15 с и при скрытии страницы
+  let saveT = 15;
+  const doSave = () => saveGame({ city, player, combat, survival, inv, loot });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) doSave();
+  });
 
   let lastT = performance.now();
   let fpsE = 60,
@@ -295,6 +322,12 @@ export async function boot() {
     const ms = performance.now() - t0;
     msE += (ms - msE) * 0.06;
     fpsE += (1 / Math.max(dt, 1e-4) - fpsE) * 0.06;
+    // автосохранение раз в 15 с
+    saveT -= dt;
+    if (saveT <= 0 && !combat.dead) {
+      saveT = 15;
+      doSave();
+    }
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}
