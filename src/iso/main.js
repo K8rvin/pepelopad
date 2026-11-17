@@ -45,6 +45,8 @@ import {
 } from "./systems/loot.js";
 import { createUI } from "./ui/panels.js";
 import { ITEMS } from "./data/items.js";
+import { RECIPES } from "./data/recipes.js";
+import { canCraft, craft } from "./systems/craft.js";
 import {
   createSurvival,
   darknessFor,
@@ -144,6 +146,18 @@ export async function boot() {
     onTake: (c, i) => takeFrom(loot, c, i, (id, n) => addItem(inv, id, n)),
     onTakeAll: (c) => takeAll(loot, c, (id, n) => addItem(inv, id, n)),
     onUse: (id) => useItem(id),
+    onDrop: (slotIndex) => {
+      const s = inv.slots[slotIndex];
+      if (s) {
+        toast(`Выброшено: ${ITEMS[s.id].name} ×${s.n}`);
+        inv.slots[slotIndex] = null;
+      }
+    },
+    onCraft: (id) => {
+      const r = RECIPES.find((r) => r.id === id);
+      if (r && craft(inv, r)) toast(`Создано: ${r.name}`);
+    },
+    canCraft: (r) => canCraft(inv, r),
     onClose: () => {},
   });
   let zoom = 1;
@@ -172,6 +186,10 @@ export async function boot() {
       respawn(combat, player, spawn.x, spawn.y);
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
+    if (e.code === "KeyC") {
+      if (ui.isOpen()) ui.close();
+      else ui.openCraft();
+    }
     // интерфейс: рюкзак и обыск
     if (e.code === "KeyI" || e.code === "Tab") {
       e.preventDefault();
