@@ -67,10 +67,9 @@ export function bakeChunk(city, groundSet, cx, cy) {
           ? city.gflag[ty * city.SIZE + tx]
           : 0;
       if (!f) continue;
-      const p1 = local(tx + 0.5, ty + (f === 1 ? 0 : 0.5));
-      const p2 = local(tx + 0.5, ty + (f === 1 ? 1 : 0.5));
-      const q1 = f === 2 ? local(tx, ty + 0.5) : p1;
-      const q2 = f === 2 ? local(tx + 1, ty + 0.5) : p2;
+      // флаг на тайле центра+1 (rx===4); осевая — на его левой кромке (x=tx / y=ty)
+      const q1 = f === 2 ? local(tx, ty) : local(tx, ty);
+      const q2 = f === 2 ? local(tx + 1, ty) : local(tx, ty + 1);
       g.beginPath();
       g.moveTo(q1.x, q1.y);
       g.lineTo(q2.x, q2.y);
