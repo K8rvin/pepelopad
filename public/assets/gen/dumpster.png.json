@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\dumpster_v1.png",
+  "output": "public\\assets\\sprites\\dumpster.png",
+  "bgRemovedPct": 78,
+  "pocketsRemoved": 0,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    1168,
+    1170
+  ]
+}

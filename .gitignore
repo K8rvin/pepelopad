@@ -7,3 +7,5 @@ tmp/
 __pycache__/
 *.log
 .DS_Store
+.env
+.cache/

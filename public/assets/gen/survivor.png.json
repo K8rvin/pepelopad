@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\survivor_v1.png",
+  "output": "public\\assets\\gen\\survivor.png",
+  "bgRemovedPct": 91,
+  "pocketsRemoved": 922,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    465,
+    1403
+  ]
+}

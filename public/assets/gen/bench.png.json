@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\bench_v1.png",
+  "output": "public\\assets\\sprites\\bench.png",
+  "bgRemovedPct": 81,
+  "pocketsRemoved": 110185,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    1386,
+    1343
+  ]
+}

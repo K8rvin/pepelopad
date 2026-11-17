@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { background: #111; color: #eee; font: 12px monospace; }
+      canvas { border: 1px solid #555; image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <div id="log">loading…</div>
+    <canvas id="cv" width="1296" height="894"></canvas>
+    <script type="module">
+      import { loadOsmWorld } from "/src/world/osmMap.js";
+      import { createOsmCityModel } from "/src/world/osmCity.js";
+      import { createOsmGameProjection } from "/src/world/osmPois.js";
+      import { renderOsmMap } from "/src/render/osmMapRenderer.js";
+
+      const log = (msg) => (document.getElementById("log").textContent = msg);
+      try {
+        const world = await loadOsmWorld("/assets/maps/volgograd-center.json");
+        const projection = createOsmGameProjection(world);
+        const city = createOsmCityModel(world, projection);
+        const params = new URLSearchParams(location.search);
+        const cam = {
+          x: Number(params.get("x") ?? 35283),
+          y: Number(params.get("y") ?? -93400),
+        };
+        const SC = Number(params.get("sc") ?? 1);
+        const cv = document.getElementById("cv");
+        const ctx = cv.getContext("2d");
+        const W = cv.width, H = cv.height;
+        const w2s = (x, y) => ({ x: (x - cam.x) * SC + W / 2, y: (y - cam.y) * SC + H / 2 });
+        renderOsmMap({ ctx, world: city.gameWorld, cam, W, H, SC, w2s, detailed: true });
+        // посчитаем здания в окне
+        const halfW = W / 2, halfH = H / 2;
+        let count = 0;
+        for (const way of city.gameWorld.ways) {
+          if (!way.tags?.building) continue;
+          const b = city.gameWorld.boundsByWay.get(way.id);
+          if (b.maxX < cam.x - halfW || b.minX > cam.x + halfW || b.maxY < cam.y - halfH || b.minY > cam.y + halfH) continue;
+          count++;
+        }
+        log("buildings in view: " + count + " | ways total: " + city.gameWorld.ways.length);
+      } catch (e) {
+        log("ERROR: " + e.message + "\n" + e.stack);
+      }
+    </script>
+  </body>
+</html>

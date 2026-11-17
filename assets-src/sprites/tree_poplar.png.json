@@ -1,0 +1,9 @@
+{
+  "source": "assets-src\\generated\\tree_poplar_v1.png",
+  "output": "assets-src\\sprites\\tree_poplar.png",
+  "backgroundRemovedPct": 91,
+  "cropped": [
+    596,
+    1447
+  ]
+}
