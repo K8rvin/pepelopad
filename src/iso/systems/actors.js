@@ -10,8 +10,9 @@ export function initActors(seed) {
 }
 
 export function moveActor(city, a, dx, dy) {
-  if (!solidRectAt(city, a.x + dx, a.y, a.r)) a.x += dx;
-  if (!solidRectAt(city, a.x, a.y + dy, a.r)) a.y += dy;
+  const lvl = a.level || 0;
+  if (!solidRectAt(city, a.x + dx, a.y, a.r, null, lvl)) a.x += dx;
+  if (!solidRectAt(city, a.x, a.y + dy, a.r, null, lvl)) a.y += dy;
   a.x = clamp(a.x, 1, city.SIZE - 1);
   a.y = clamp(a.y, 1, city.SIZE - 1);
 }

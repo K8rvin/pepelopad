@@ -56,6 +56,7 @@ export function renderWorld({
   questTarget,
   inCar,
   npcs,
+  stairsNear,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -432,6 +433,44 @@ export function renderWorld({
     ctx.fillStyle = `rgba(224,67,56,${0.28 * combat.hurtFlash})`;
     ctx.fillRect(0, 0, W, H);
     R.drawCalls++;
+  }
+  // лестница внутри здания: ступени + подсказка
+  if (inside && !inCar) {
+    const it = getInterior(null, inside);
+    if (it.stairs) {
+      const sx = inside.x + it.stairs.x + it.stairs.w / 2,
+        sy = inside.y + it.stairs.y + it.stairs.h / 2;
+      const p = w2s(sx, sy);
+      const dx = toX(p.x),
+        dy = toY(p.y);
+      // ступени
+      ctx.fillStyle = "#4a453c";
+      for (let i = 0; i < 4; i++)
+        ctx.fillRect(
+          dx - 14 * zoom + i * 2 * zoom,
+          dy - i * 5 * zoom,
+          (24 - i * 3) * zoom,
+          4 * zoom,
+        );
+      if (stairsNear) {
+        ctx.font = `${12 * zoom}px monospace`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffb23e";
+        const canUp = player.level < inside.floors - 1,
+          canDown = player.level > 0;
+        ctx.fillText(
+          canUp && canDown
+            ? "E — наверх · X — вниз"
+            : canUp
+              ? "E — наверх"
+              : "X — вниз",
+          dx,
+          dy - 26 * zoom,
+        );
+        ctx.textAlign = "left";
+      }
+      R.drawCalls++;
+    }
   }
   // подсказка обыска у контейнера
   if (lootNearest && !uiOpen && !(combat && combat.dead)) {
