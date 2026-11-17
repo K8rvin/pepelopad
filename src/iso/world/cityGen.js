@@ -255,32 +255,54 @@ function genCourtyard(city, bx0, by0, r) {
         });
     city.tires.push({ x: cx0 + 20, y: cy0 + 6 });
   }
-  // деревья во дворе
+  // деревья во дворе — только на траве/земле, не на дорожках
   const nTrees = 3 + Math.floor(r() * 4);
-  for (let i = 0; i < nTrees; i++) {
+  for (let i = 0; i < nTrees * 2; i++) {
     const tx = cx0 + 2 + r() * (cs - 4),
       ty = cy0 + 2 + r() * (cs - 4);
+    if (ground[(ty | 0) * SIZE + (tx | 0)] !== T_GRASS) continue;
     if (Math.abs(tx - cx0 - mid) < 2.5 || Math.abs(ty - cy0 - mid) < 2.5)
       continue; // не на дорожках
     city.trees.push({ x: tx, y: ty, dead: r() < 0.3, v: Math.floor(r() * 3) });
   }
-  // деревья вдоль улиц квартала
+  // деревья у края квартала — только на траве внутри квартала (не на тротуаре!)
   for (let i = 0; i < 3; i++) {
-    if (r() < 0.6)
-      city.trees.push({
-        x: bx0 - 4.5 + r(),
-        y: by0 + 8 + r() * (BLOCK - 16),
-        dead: r() < 0.35,
-        v: Math.floor(r() * 3),
-      });
-    if (r() < 0.6)
-      city.trees.push({
-        x: bx0 + 8 + r() * (BLOCK - 16),
-        y: by0 - 4.5 + r(),
-        dead: r() < 0.35,
-        v: Math.floor(r() * 3),
-      });
+    if (r() < 0.6) {
+      const tx = bx0 + 2 + r(),
+        ty = by0 + 8 + r() * (BLOCK - 16);
+      if (
+        ground[(ty | 0) * SIZE + (tx | 0)] === T_GRASS &&
+        !buildingAt(city, tx, ty)
+      )
+        city.trees.push({
+          x: tx,
+          y: ty,
+          dead: r() < 0.35,
+          v: Math.floor(r() * 3),
+        });
+    }
+    if (r() < 0.6) {
+      const tx = bx0 + 8 + r() * (BLOCK - 16),
+        ty = by0 + 2 + r();
+      if (
+        ground[(ty | 0) * SIZE + (tx | 0)] === T_GRASS &&
+        !buildingAt(city, tx, ty)
+      )
+        city.trees.push({
+          x: tx,
+          y: ty,
+          dead: r() < 0.35,
+          v: Math.floor(r() * 3),
+        });
+    }
   }
+}
+
+// есть ли здание в точке (с запасом)
+function buildingAt(city, x, y) {
+  return city.buildings.some(
+    (b) => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 1,
+  );
 }
 
 // POI-кварталы
