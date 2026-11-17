@@ -6,6 +6,7 @@ export function createUI({
   getLootState,
   onTake,
   onTakeAll,
+  onUse,
   onClose,
 }) {
   const root = document.getElementById("ui");
@@ -30,10 +31,27 @@ export function createUI({
     return `<div class="slot" title="${def.name}"><span class="ic">${def.icon}</span><span class="n">${s.n}</span></div>`;
   }
 
+  function consumablesRow() {
+    const inv = getInventory();
+    const rows = [];
+    for (const id of ["can", "meds"]) {
+      const n = inv.slots
+        .filter((s) => s && s.id === id)
+        .reduce((a, s) => a + s.n, 0);
+      if (!n) continue;
+      const def = ITEMS[id];
+      const verb = id === "can" ? "съесть" : "перевязать";
+      rows.push(
+        `<span class="ic">${def.icon}</span> ${def.name} ×${n} <button class="use" data-id="${id}">${verb}</button>`,
+      );
+    }
+    return rows.length ? `<div class="loot-row">${rows.join(" · ")}</div>` : "";
+  }
+
   function invPanel() {
     const inv = getInventory();
-    return `<div class="panel"><h3>Рюкзак</h3><div class="grid">${inv.slots.map(slotHtml).join("")}</div>
-      <div class="hint">I / Tab / Esc — закрыть</div></div>`;
+    return `<div class="panel"><h3>Рюкзак</h3>${consumablesRow()}<div class="grid">${inv.slots.map(slotHtml).join("")}</div>
+      <div class="hint">I / Tab / Esc — закрыть · Q — еда · H — бинт</div></div>`;
   }
 
   function lootPanel() {
@@ -49,7 +67,7 @@ export function createUI({
     return `<div class="panel"><h3>Обыск: ${lootTarget.kind === "dumpster" ? "мусорный контейнер" : "бочка"}</h3>
       <div class="loot-list">${rows || '<div class="dim">пусто</div>'}</div>
       <button id="takeAll">Взять всё</button>
-      <h3>Рюкзак</h3><div class="grid">${inv.slots.map(slotHtml).join("")}</div>
+      <h3>Рюкзак</h3>${consumablesRow()}<div class="grid">${inv.slots.map(slotHtml).join("")}</div>
       <div class="hint">E / Esc — закрыть</div></div>`;
   }
 
@@ -57,6 +75,12 @@ export function createUI({
     if (!mode) return;
     root.innerHTML = mode === "inv" ? invPanel() : lootPanel();
     root.style.display = "flex";
+    root.querySelectorAll("button.use").forEach((b) =>
+      b.addEventListener("click", () => {
+        onUse?.(b.dataset.id);
+        render();
+      }),
+    );
     if (mode === "loot") {
       root.querySelectorAll(".loot-row button").forEach((b) =>
         b.addEventListener("click", () => {
