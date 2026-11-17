@@ -30,6 +30,16 @@ import {
   respawn,
   screenToWorld,
 } from "./systems/combat.js";
+import { createInventory, addItem, countItem } from "./systems/inventory.js";
+import {
+  createLoot,
+  nearestContainer,
+  openContainer,
+  takeFrom,
+  takeAll,
+} from "./systems/loot.js";
+import { createUI } from "./ui/panels.js";
+import { ITEMS } from "./data/items.js";
 import { w2s } from "./core/geo.js";
 
 export async function boot() {
@@ -96,6 +106,17 @@ export async function boot() {
   const keys = {};
   const combat = createCombat();
   initCombat(seed);
+  // лут и инвентарь
+  const inv = createInventory(24);
+  addItem(inv, "arrow", 12); // стартовый колчан
+  const loot = createLoot(city);
+  const ui = createUI({
+    getInventory: () => inv,
+    getLootState: (c) => loot.opened.get(c.id),
+    onTake: (c, i) => takeFrom(loot, c, i, (id, n) => addItem(inv, id, n)),
+    onTakeAll: (c) => takeAll(loot, c, (id, n) => addItem(inv, id, n)),
+    onClose: () => {},
+  });
   let night = false,
     zoom = 1;
   const mouse = { x: 0, y: 0 };
@@ -105,13 +126,14 @@ export async function boot() {
     mouse.y = e.clientY - r.top;
   });
   cv.addEventListener("mousedown", (e) => {
-    if (e.button === 0 && !combat.dead) combat.bowDrawing = true;
+    if (e.button === 0 && !combat.dead && !ui.isOpen())
+      combat.bowDrawing = true;
   });
   cv.addEventListener("mouseup", (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || ui.isOpen()) return;
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
-    releaseBow(combat, player, aim);
+    releaseBow(combat, player, aim, inv);
   });
   addEventListener("keydown", (e) => {
     keys[e.code] = true;
@@ -119,6 +141,23 @@ export async function boot() {
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
     if (e.code === "KeyR" && combat.dead)
       respawn(combat, player, spawn.x, spawn.y);
+    // интерфейс: рюкзак и обыск
+    if (e.code === "KeyI" || e.code === "Tab") {
+      e.preventDefault();
+      if (ui.isOpen()) ui.close();
+      else ui.openInventory();
+    }
+    if (e.code === "KeyE") {
+      if (ui.isOpen()) ui.close();
+      else if (!combat.dead) {
+        const c = nearestContainer(loot, player.x, player.y);
+        if (c) {
+          openContainer(loot, c);
+          ui.openLoot(c);
+        }
+      }
+    }
+    if (e.code === "Escape" && ui.isOpen()) ui.close();
   });
   addEventListener("keyup", (e) => (keys[e.code] = false));
 
@@ -140,6 +179,10 @@ export async function boot() {
     player,
     cam,
     R,
+    combat,
+    inv,
+    loot,
+    ui,
     teleport: (x, y) => {
       player.x = x;
       player.y = y;
@@ -156,8 +199,10 @@ export async function boot() {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     const t0 = performance.now();
-    updatePlayer(city, player, keys, dt);
+    if (!ui.isOpen()) updatePlayer(city, player, keys, dt);
+    else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
     updateZombies(city, city.zombies, player, dt);
+    loot.nearest = nearestContainer(loot, player.x, player.y);
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
     updateCombat(combat, city, player, aim, dt, t / 1000);
@@ -181,6 +226,8 @@ export async function boot() {
       combat,
       aim,
       now: t / 1000,
+      lootNearest: loot.nearest,
+      uiOpen: ui.isOpen(),
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -196,8 +243,8 @@ export async function boot() {
     fpsE += (1 / Math.max(dt, 1e-4) - fpsE) * 0.06;
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
-HP ${combat.playerHp}/${combat.playerMaxHp} · убито ${combat.kills} · ${night ? "НОЧЬ" : "день"} · zoom ×${zoom}
-WASD — движение · Shift — бег · ЛКМ — лук · N — день/ночь · Z — зум · R — возрождение`;
+HP ${combat.playerHp}/${combat.playerMaxHp} · убито ${combat.kills} · стрелы ${countItem(inv, "arrow")} · ${night ? "НОЧЬ" : "день"} · zoom ×${zoom}
+WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · N — день/ночь · Z — зум${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

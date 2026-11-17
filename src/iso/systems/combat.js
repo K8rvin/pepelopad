@@ -3,6 +3,7 @@
 // Стрела летит в мировых координатах, тихая; шум слышат зомби в 8 м.
 // Зомби: кусают в контакте с кулдауном; урон игроку; кровь; смерть.
 import { mulberry32 } from "../core/rng.js";
+import { countItem, removeItem } from "./inventory.js";
 
 let rng = mulberry32(7);
 export function initCombat(seed) {
@@ -97,6 +98,7 @@ export function updateCombat(C, city, player, aim, dt, now) {
   // затухание эффектов
   C.hurtFlash = Math.max(0, C.hurtFlash - dt * 2.2);
   C.shake = Math.max(0, C.shake - dt * 18);
+  C.noArrowsT = Math.max(0, (C.noArrowsT || 0) - dt);
   // кровь и трупы
   for (const b of C.blood) b.t += dt;
   C.blood = C.blood.filter((b) => b.t < 60);
@@ -142,14 +144,20 @@ function segmentHitsCircle(x1, y1, x2, y2, cx, cy, r) {
   return Math.hypot(cx - (x1 + t * dx), cy - (y1 + t * dy)) < r;
 }
 
-// выстрел при отпускании ЛКМ
-export function releaseBow(C, player, aim) {
+// выстрел при отпускании ЛКМ; стрелы расходуются из инвентаря
+export function releaseBow(C, player, aim, inv) {
   if (!C.bowDrawing) return;
   C.bowDrawing = false;
   if (C.bowCharge < 0.15) {
     C.bowCharge = 0;
     return; // слабый спуск — не стреляем
   }
+  if (countItem(inv, "arrow") < 1) {
+    C.bowCharge = 0;
+    C.noArrowsT = 1.2; // подсказка «нет стрел»
+    return;
+  }
+  removeItem(inv, "arrow", 1);
   const dx = aim.x - player.x,
     dy = aim.y - player.y;
   const d = Math.hypot(dx, dy) || 1;
