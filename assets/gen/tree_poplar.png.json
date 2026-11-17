@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\tree_poplar_v1.png",
+  "output": "public\\assets\\sprites\\tree_poplar.png",
+  "bgRemovedPct": 91,
+  "pocketsRemoved": 3267,
+  "modulate": {
+    "brightness": 0.72,
+    "saturation": 0.55
+  },
+  "cropped": [
+    596,
+    1447
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\tree_dead_v1.png",
+  "output": "public\\assets\\sprites\\tree_dead.png",
+  "bgRemovedPct": 91,
+  "pocketsRemoved": 13913,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    1160,
+    1390
+  ]
+}

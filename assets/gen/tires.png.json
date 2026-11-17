@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\tires_v1.png",
+  "output": "public\\assets\\sprites\\tires.png",
+  "bgRemovedPct": 65,
+  "pocketsRemoved": 15112,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    1701,
+    1225
+  ]
+}

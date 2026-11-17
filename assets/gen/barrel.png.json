@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\barrel_v1.png",
+  "output": "public\\assets\\sprites\\barrel.png",
+  "bgRemovedPct": 68,
+  "pocketsRemoved": 0,
+  "modulate": {
+    "brightness": 0.9,
+    "saturation": 0.7
+  },
+  "cropped": [
+    1577,
+    1301
+  ]
+}
