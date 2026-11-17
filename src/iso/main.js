@@ -22,6 +22,15 @@ import {
 } from "./render/renderer.js";
 import { createLighting, fitLighting } from "./render/lighting.js";
 import { initActors, updatePlayer, updateZombies } from "./systems/actors.js";
+import {
+  createCombat,
+  initCombat,
+  updateCombat,
+  releaseBow,
+  respawn,
+  screenToWorld,
+} from "./systems/combat.js";
+import { w2s } from "./core/geo.js";
 
 export async function boot() {
   const cv = document.getElementById("cv");
@@ -82,14 +91,34 @@ export async function boot() {
     pose: 0,
     animT: 0,
   };
+  const spawn = { x: player.x, y: player.y };
   const cam = { x: player.x, y: player.y };
   const keys = {};
+  const combat = createCombat();
+  initCombat(seed);
   let night = false,
     zoom = 1;
+  const mouse = { x: 0, y: 0 };
+  cv.addEventListener("mousemove", (e) => {
+    const r = cv.getBoundingClientRect();
+    mouse.x = e.clientX - r.left;
+    mouse.y = e.clientY - r.top;
+  });
+  cv.addEventListener("mousedown", (e) => {
+    if (e.button === 0 && !combat.dead) combat.bowDrawing = true;
+  });
+  cv.addEventListener("mouseup", (e) => {
+    if (e.button !== 0) return;
+    const camS = w2s(cam.x, cam.y);
+    const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
+    releaseBow(combat, player, aim);
+  });
   addEventListener("keydown", (e) => {
     keys[e.code] = true;
     if (e.code === "KeyN") night = !night;
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
+    if (e.code === "KeyR" && combat.dead)
+      respawn(combat, player, spawn.x, spawn.y);
   });
   addEventListener("keyup", (e) => (keys[e.code] = false));
 
@@ -129,6 +158,9 @@ export async function boot() {
     const t0 = performance.now();
     updatePlayer(city, player, keys, dt);
     updateZombies(city, city.zombies, player, dt);
+    const camS = w2s(cam.x, cam.y);
+    const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
+    updateCombat(combat, city, player, aim, dt, t / 1000);
     cam.x += (player.x - cam.x) * Math.min(1, dt * 6);
     cam.y += (player.y - cam.y) * Math.min(1, dt * 6);
     renderWorld({
@@ -146,6 +178,9 @@ export async function boot() {
       W,
       H,
       ashP,
+      combat,
+      aim,
+      now: t / 1000,
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -161,8 +196,8 @@ export async function boot() {
     fpsE += (1 / Math.max(dt, 1e-4) - fpsE) * 0.06;
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
-позиция ${player.x.toFixed(1)}, ${player.y.toFixed(1)} · ${night ? "НОЧЬ" : "день"} · zoom ×${zoom}
-WASD — движение · Shift — бег · N — день/ночь · Z — зум`;
+HP ${combat.playerHp}/${combat.playerMaxHp} · убито ${combat.kills} · ${night ? "НОЧЬ" : "день"} · zoom ×${zoom}
+WASD — движение · Shift — бег · ЛКМ — лук · N — день/ночь · Z — зум · R — возрождение`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

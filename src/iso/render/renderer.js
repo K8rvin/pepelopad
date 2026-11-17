@@ -47,9 +47,17 @@ export function renderWorld({
   W,
   H,
   ashP,
+  combat,
+  aim,
+  now,
 }) {
   R.drawCalls = 0;
+  const shake = combat ? combat.shake : 0;
   const camS = w2s(cam.x, cam.y);
+  if (shake > 0) {
+    camS.x += Math.sin(now * 47) * shake;
+    camS.y += Math.cos(now * 31) * shake;
+  }
   const toX = (sx) => (sx - camS.x) * zoom + W / 2;
   const toY = (sy) => (sy - camS.y) * zoom + H / 2;
   ctx.fillStyle = PAL.dark;
@@ -77,6 +85,20 @@ export function renderWorld({
       R.drawCalls++;
     }
   evictIfNeeded(R.chunkCache, camS.x, camS.y);
+
+  // кровь на земле (плоская, до высокого слоя)
+  if (combat)
+    for (const b of combat.blood) {
+      const p = w2s(b.x, b.y);
+      const dx = toX(p.x),
+        dy = toY(p.y);
+      if (dx < -60 || dx > W + 60 || dy < -60 || dy > H + 60) continue;
+      ctx.fillStyle = `rgba(109,43,37,${0.55 * Math.max(0, 1 - b.t / 60)})`;
+      ctx.beginPath();
+      ctx.ellipse(dx, dy, b.r * 32 * zoom, b.r * 16 * zoom, 0, 0, 7);
+      ctx.fill();
+      R.drawCalls++;
+    }
 
   // высокий слой
   const items = [];
@@ -248,6 +270,7 @@ export function renderWorld({
     });
   });
   for (const z of zombies) {
+    if (z.dead) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
     push(z.x + z.y + 0.01, 2, () =>
       drawActor(ctx, z, SPR, toX, toY, zoom, false),
@@ -256,6 +279,28 @@ export function renderWorld({
   push(player.x + player.y + 0.01, 2, () =>
     drawActor(ctx, player, SPR, toX, toY, zoom, true),
   );
+
+  // трупы и стрелы в полёте
+  if (combat) {
+    for (const c of combat.corpses) {
+      if (!vis(c.x, c.y, 40, 30)) continue;
+      push(c.x + c.y, 1.5, () => drawCorpse(ctx, c, SPR, toX, toY, zoom));
+    }
+    for (const a of combat.arrows) {
+      push(a.x + a.y + 0.02, 2, () => {
+        const p = w2s(a.x, a.y, 0.9); // стрела летит на высоте ~0,9 м
+        const dx = toX(p.x),
+          dy = toY(p.y);
+        ctx.strokeStyle = "#d9cba6";
+        ctx.lineWidth = 2 * zoom;
+        ctx.beginPath();
+        ctx.moveTo(dx, dy);
+        ctx.lineTo(dx - a.dx * 10 * zoom, dy - a.dy * 6 * zoom);
+        ctx.stroke();
+        R.drawCalls++;
+      });
+    }
+  }
 
   items.sort((a, b) => a.depth - b.depth || a.layer - b.layer);
   for (const it of items) it.f();
@@ -283,6 +328,59 @@ export function renderWorld({
     ctx.globalCompositeOperation = "source-over";
     R.drawCalls++;
   }
+
+  // боевые оверлеи: прицел, дуга натяжения, вспышка урона, смерть
+  if (combat && !combat.dead) {
+    // прицел в точке aim
+    const ap = w2s(aim.x, aim.y);
+    const ax = toX(ap.x),
+      ay = toY(ap.y);
+    ctx.strokeStyle = "rgba(194,190,178,0.8)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(ax, ay, 8 * zoom, 4 * zoom, 0, 0, 7);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,178,62,0.9)";
+    ctx.fillRect(ax - 1, ay - 1, 2, 2);
+    R.drawCalls += 2;
+    // дуга натяжения над головой игрока
+    if (combat.bowDrawing) {
+      const pp = w2s(player.x, player.y);
+      const px = toX(pp.x),
+        py = toY(pp.y) - 74 * zoom;
+      ctx.strokeStyle = "rgba(42,46,40,0.8)";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(px, py, 14 * zoom, Math.PI, 2 * Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = combat.bowCharge > 0.99 ? "#a6e83c" : "#ffb23e";
+      ctx.beginPath();
+      ctx.arc(px, py, 14 * zoom, Math.PI, Math.PI + Math.PI * combat.bowCharge);
+      ctx.stroke();
+      R.drawCalls += 2;
+    }
+  }
+  // вспышка урона
+  if (combat && combat.hurtFlash > 0) {
+    ctx.fillStyle = `rgba(224,67,56,${0.28 * combat.hurtFlash})`;
+    ctx.fillRect(0, 0, W, H);
+    R.drawCalls++;
+  }
+  // смерть
+  if (combat && combat.dead) {
+    const a = Math.min(0.85, combat.deadT * 0.5);
+    ctx.fillStyle = `rgba(10,10,10,${a})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#c2beb2";
+    ctx.font = `${28 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText("ТЫ ПОГИБ", W / 2, H / 2 - 20);
+    ctx.font = `${13 * zoom}px monospace`;
+    ctx.fillStyle = "#9a9478";
+    ctx.fillText("R — возродиться у парка", W / 2, H / 2 + 14);
+    ctx.textAlign = "left";
+    R.drawCalls += 3;
+  }
   return inside;
 }
 
@@ -301,6 +399,19 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost) {
     spr.canvas.height * zoom,
   );
   if (ghost) ctx.globalAlpha = 1;
+}
+
+function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
+  // павший зомби: спрайт на боку, затухание после 3 с
+  const p = w2s(c.x, c.y);
+  const alpha = c.t > 3 ? Math.max(0, 1 - (c.t - 3) / 3) : 1;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(toX(p.x), toY(p.y));
+  ctx.rotate(c.pose ? 1.45 : -1.45); // на бок
+  ctx.scale(zoom * 0.9, zoom * 0.55); // сплющен к земле
+  ctx.drawImage(SPR.zombie[0], -32, -88, 64, 96);
+  ctx.restore();
 }
 
 function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
