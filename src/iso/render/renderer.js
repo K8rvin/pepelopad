@@ -5,6 +5,7 @@ import { CH, getChunk, evictIfNeeded } from "./chunks.js";
 import { buildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
+import { getInterior } from "../world/interiors.js";
 
 export function createRenderer() {
   return {
@@ -503,12 +504,16 @@ export function renderWorld({
 }
 
 function drawBuilding(ctx, b, toX, toY, zoom, ghost) {
+  if (ghost) {
+    // внутри: вместо shell — интерьер (низкие перегородки 1 м с кэпом)
+    drawInteriorWalls(ctx, b, toX, toY, zoom);
+    return;
+  }
   const spr = buildingSprite(b);
   const ox = (b.x - b.y) * 32 + spr.minX,
     oy = (b.x + b.y) * 16 + spr.minY;
   const dx = toX(ox),
     dy = toY(oy);
-  if (ghost) ctx.globalAlpha = 0.15;
   ctx.drawImage(
     spr.canvas,
     dx,
@@ -516,7 +521,46 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost) {
     spr.canvas.width * zoom,
     spr.canvas.height * zoom,
   );
-  if (ghost) ctx.globalAlpha = 1;
+}
+
+// низкие перегородки интерьера (1 м) со светлым кэпом — по консультации Qwen
+function drawInteriorWalls(ctx, b, toX, toY, zoom) {
+  const it = getInterior(null, b);
+  const hgt = 32 * zoom;
+  const walls = [...it.walls];
+  // + фасадные стены с проёмом двери (тоже низкие, чтобы читался контур комнаты)
+  const du = it.doorU,
+    W = b.w,
+    H = b.h;
+  walls.push(
+    { x1: 0, y1: 0, x2: W, y2: 0 },
+    { x1: 0, y1: H, x2: du - 0.7, y2: H },
+    { x1: du + 0.7, y1: H, x2: W, y2: H },
+    { x1: 0, y1: 0, x2: 0, y2: H },
+    { x1: W, y1: 0, x2: W, y2: H },
+  );
+  for (const sgm of walls) {
+    const a = w2s(b.x + sgm.x1, b.y + sgm.y1);
+    const c = w2s(b.x + sgm.x2, b.y + sgm.y2);
+    const ax = toX(a.x),
+      ay = toY(a.y),
+      cx2 = toX(c.x),
+      cy2 = toY(c.y);
+    ctx.fillStyle = "#56524a";
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(cx2, cy2);
+    ctx.lineTo(cx2, cy2 - hgt);
+    ctx.lineTo(ax, ay - hgt);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#7a7568";
+    ctx.lineWidth = Math.max(1, 3 * zoom);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay - hgt);
+    ctx.lineTo(cx2, cy2 - hgt);
+    ctx.stroke();
+  }
 }
 
 function drawCorpse(ctx, c, SPR, toX, toY, zoom) {

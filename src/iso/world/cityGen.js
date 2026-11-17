@@ -10,6 +10,7 @@ import {
   T_SAND,
   T_FLOOR,
 } from "../render/tiles.js";
+import { buildBuildingGrid, solidInteriorAt } from "./interiors.js";
 
 export const ROAD = 8,
   SW = 3,
@@ -123,6 +124,7 @@ export function createCity(seed = 11, nb = 19) {
       city.lamps.push({ x: d, y: rx0 + ROAD + 1.6 });
     }
   }
+  buildBuildingGrid(city);
   buildSolidIndex(city);
   // зомби: не внутри твёрдых тел и не у спавна (стартовые 60 м безопасны)
   const spawnSafe = { x: PITCH + 11 + 31, y: PITCH + 11 + 31, r: 60 };
@@ -426,8 +428,7 @@ function addSolid(city, x, y, w, h, kind, ref = null) {
 }
 export function buildSolidIndex(city) {
   city.solidGrid = new Map();
-  for (const b of city.buildings)
-    addSolid(city, b.x, b.y, b.w, b.h, "building");
+  // здания НЕ в сетке: их стены проверяет solidInteriorAt (фасад с дверью + перегородки)
   for (const c of city.cars)
     addSolid(
       city,
@@ -454,6 +455,8 @@ export function buildSolidIndex(city) {
 }
 
 export function solidRectAt(city, x, y, r, excludeRef = null) {
+  // стены зданий (фасад с дверью + перегородки интерьера)
+  if (solidInteriorAt(city, x, y, r)) return true;
   const x0 = Math.floor((x - r) / SOLID_CELL),
     x1 = Math.floor((x + r) / SOLID_CELL);
   const y0 = Math.floor((y - r) / SOLID_CELL),
