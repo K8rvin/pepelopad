@@ -1,10 +1,18 @@
 // Сохранения новой игры: версионированная схема, живые объекты не сериализуются.
 // Город пересоздаётся из сида; сохраняется только дельта состояния.
-const SKEY = "pepelopad_city_v1";
+const SKEY = "pepelopad_city_v2";
 
-export function saveGame({ city, player, combat, survival, inv, loot }) {
+export function saveGame({
+  city,
+  player,
+  combat,
+  survival,
+  inv,
+  loot,
+  quests,
+}) {
   const data = {
-    v: 1,
+    v: 2,
     savedAt: Date.now(),
     seed: city.seed,
     nb: city.nb,
@@ -27,17 +35,30 @@ export function saveGame({ city, player, combat, survival, inv, loot }) {
       hp: z.hp,
       dead: !!z.dead,
     })),
+    quests: quests
+      ? { i: quests.i, prog: quests.prog, done: quests.done }
+      : null,
   };
   localStorage.setItem(SKEY, JSON.stringify(data));
   return data;
 }
 
+// миграция v1 → v2: появилось поле quests
+function migrate(data) {
+  if (data.v === 1) {
+    data.v = 2;
+    data.quests = null;
+  }
+  return data;
+}
+
 export function loadGameData() {
-  const raw = localStorage.getItem(SKEY);
+  const raw =
+    localStorage.getItem(SKEY) || localStorage.getItem("pepelopad_city_v1");
   if (!raw) return null;
   try {
-    const data = JSON.parse(raw);
-    if (data.v !== 1) return null; // миграции — при появлении v2
+    const data = migrate(JSON.parse(raw));
+    if (data.v !== 2) return null;
     return data;
   } catch {
     return null;
@@ -45,15 +66,21 @@ export function loadGameData() {
 }
 
 export function hasSave() {
-  return !!localStorage.getItem(SKEY);
+  return !!(
+    localStorage.getItem(SKEY) || localStorage.getItem("pepelopad_city_v1")
+  );
 }
 
 export function deleteSave() {
   localStorage.removeItem(SKEY);
+  localStorage.removeItem("pepelopad_city_v1");
 }
 
 // применить загруженное состояние к живой игре (город уже создан из сида)
-export function applySave(data, { city, player, combat, survival, inv, loot }) {
+export function applySave(
+  data,
+  { city, player, combat, survival, inv, loot, quests },
+) {
   survival.day = data.survival.day;
   survival.tod = data.survival.tod;
   survival.hunger = data.survival.hunger;
@@ -65,6 +92,11 @@ export function applySave(data, { city, player, combat, survival, inv, loot }) {
   player.y = data.player.y;
   inv.slots = data.inv;
   loot.opened = new Map(data.opened);
+  if (quests && data.quests) {
+    quests.i = data.quests.i;
+    quests.prog = data.quests.prog || {};
+    quests.done = data.quests.done || [];
+  }
   data.zombies.forEach((zs, i) => {
     const z = city.zombies[i];
     if (!z) return;

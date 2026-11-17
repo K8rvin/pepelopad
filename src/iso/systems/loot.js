@@ -67,16 +67,16 @@ export function openContainer(L, c) {
   return L.opened.get(c.id);
 }
 
-// забрать предмет из контейнера; addFn(id, n) → сколько НЕ влезло; возвращает взятое
+// забрать предмет из контейнера; addFn(id, n) → сколько НЕ влезло; возвращает {id, took}
 export function takeFrom(L, c, index, addFn) {
   const items = L.opened.get(c.id);
-  if (!items || !items[index]) return 0;
+  if (!items || !items[index]) return { id: null, took: 0 };
   const stack = items[index];
   const left = addFn(stack.id, stack.n);
   const took = stack.n - left;
   stack.n = left;
   if (!stack.n) items[index] = null;
-  return took;
+  return { id: stack.id, took };
 }
 
 // забрать всё; возвращает список [id, взято]

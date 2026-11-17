@@ -48,6 +48,15 @@ import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
 import {
+  createQuests,
+  mainQuest,
+  goalText,
+  qEvent,
+  questTargetPoi,
+  poiBuilding,
+} from "./systems/quests.js";
+import { QUESTS } from "./data/quests.js";
+import {
   saveGame,
   loadGameData,
   hasSave,
@@ -131,13 +140,14 @@ export async function boot() {
   // лут и инвентарь
   const inv = createInventory(24);
   const loot = createLoot(city);
+  const quests = createQuests();
   // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
   const wantNew = params.get("new") === "1";
   let loaded = false;
   if (hasSave() && !wantNew) {
     const data = loadGameData();
     if (data && data.seed === seed && data.nb === nb) {
-      applySave(data, { city, player, combat, survival, inv, loot });
+      applySave(data, { city, player, combat, survival, inv, loot, quests });
       loaded = true;
     }
   }
@@ -152,6 +162,15 @@ export async function boot() {
     toastMsg = msg;
     toastT = 2.5;
   };
+  // квестовые события: kill / loot / visit
+  const questEvent = (type, data) => {
+    const done = qEvent(quests, QUESTS, type, data);
+    if (done) {
+      for (const [id, n] of done.reward) addItem(inv, id, n);
+      toast(`Квест выполнен: «${done.name}»! Награда получена.`);
+    }
+  };
+  combat.onKill = () => questEvent("kill");
   const useItem = (id) => {
     const msg = useConsumable(survival, combat, inv, id, (i, n) =>
       removeItem(inv, i, n),
@@ -162,8 +181,18 @@ export async function boot() {
   const ui = createUI({
     getInventory: () => inv,
     getLootState: (c) => loot.opened.get(c.id),
-    onTake: (c, i) => takeFrom(loot, c, i, (id, n) => addItem(inv, id, n)),
-    onTakeAll: (c) => takeAll(loot, c, (id, n) => addItem(inv, id, n)),
+    onTake: (c, i) => {
+      const { id, took } = takeFrom(loot, c, i, (id2, n) =>
+        addItem(inv, id2, n),
+      );
+      if (took > 0) questEvent("loot", { id, n: took });
+    },
+    onTakeAll: (c) => {
+      for (const [id, took] of takeAll(loot, c, (id2, n) =>
+        addItem(inv, id2, n),
+      ))
+        questEvent("loot", { id, n: took });
+    },
     onUse: (id) => useItem(id),
     onDrop: (slotIndex) => {
       const s = inv.slots[slotIndex];
@@ -264,7 +293,15 @@ export async function boot() {
 
   // автосохранение: каждые 15 с и при скрытии страницы
   let saveT = 15;
-  const doSave = () => saveGame({ city, player, combat, survival, inv, loot });
+  let visitT = 0;
+  const doSave = () =>
+    saveGame({ city, player, combat, survival, inv, loot, quests });
+  // строка квеста для HUD
+  function questHudText() {
+    const q = mainQuest(quests, QUESTS);
+    if (!q) return "◆ Цепочка выполнена. Выживай.";
+    return `◆ ${q.name}: ${q.goals.map((g) => goalText(g, quests.prog)).join(" · ")}`;
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) doSave();
   });
@@ -284,6 +321,21 @@ export async function boot() {
     updateZombies(city, city.zombies, player, dt, night ? 1.35 : 1);
     loot.nearest = nearestContainer(loot, player.x, player.y);
     toastT = Math.max(0, toastT - dt);
+    // квесты: визит к POI (раз в 0,5 с)
+    visitT -= dt;
+    if (visitT <= 0) {
+      visitT = 0.5;
+      const poi = questTargetPoi(quests, QUESTS);
+      if (poi) {
+        const b = poiBuilding(city, poi);
+        if (
+          b &&
+          Math.hypot(player.x - (b.x + b.w / 2), player.y - (b.y + b.h / 2)) <
+            25
+        )
+          questEvent("visit", { poi });
+      }
+    }
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
     updateCombat(combat, city, player, aim, dt, t / 1000);
@@ -309,6 +361,10 @@ export async function boot() {
       now: t / 1000,
       lootNearest: loot.nearest,
       uiOpen: ui.isOpen(),
+      questTarget: (() => {
+        const poi = questTargetPoi(quests, QUESTS);
+        return poi ? poiBuilding(city, poi) : null;
+      })(),
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -331,7 +387,8 @@ export async function boot() {
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}
-WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · Q — еда · H — бинт · N — к ночи/утру${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
+${questHudText()}
+WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · C — крафт · Q — еда · H — бинт${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
