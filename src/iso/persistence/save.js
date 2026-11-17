@@ -42,6 +42,7 @@ export function saveGame({
       x: c.x,
       y: c.y,
     })),
+    windows: [...city.brokenWindows.entries()].map(([k, v]) => [k, [...v]]),
     quests: quests
       ? { i: quests.i, prog: quests.prog, done: quests.done }
       : null,
@@ -125,4 +126,7 @@ export function applySave(
       c.x = cs.x;
       c.y = cs.y;
     });
+  if (data.windows)
+    for (const [k, arr] of data.windows)
+      city.brokenWindows.set(Number(k), new Set(arr));
 }

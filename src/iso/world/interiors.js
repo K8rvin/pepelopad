@@ -150,16 +150,24 @@ export function solidInteriorAt(city, x, y, r, level = 0) {
         const lx = x - b.x,
           ly = y - b.y;
         const inside = lx >= 0 && lx < b.w && ly >= 0 && ly < b.h;
-        // фасадные стены с проёмом двери (юг, y = h); на этажах > 0 дверь не пройти
+        // фасадные стены с проёмами: дверь (юг) + разбитые окна (юг/восток, только улица)
         const du = level > 0 ? -99 : it.doorU;
         const W = b.w,
           H = b.h;
+        const broken = level === 0 ? city.brokenWindows?.get(b.id) : null;
+        const southGaps = [[du, 0.7]];
+        const eastGaps = [];
+        if (broken)
+          for (const key of broken) {
+            const [face, u] = key.split(":");
+            if (face === "S") southGaps.push([Number(u), 0.6]);
+            else eastGaps.push([Number(u), 0.6]);
+          }
         const ext = [
           [0, 0, W, 0], // север
-          [0, H, du - 0.7, H], // юг левее двери
-          [du + 0.7, H, W, H], // юг правее двери
+          ...wallWithGaps(0, H, W, H, southGaps), // юг с дверью и разбитыми окнами
           [0, 0, 0, H], // запад
-          [W, 0, W, H], // восток
+          ...wallWithGaps(W, 0, W, H, eastGaps), // восток с разбитыми окнами
         ];
         for (const [x1, y1, x2, y2] of ext)
           if (distToSeg(lx, ly, x1, y1, x2, y2) < r + 0.15) return true;
@@ -170,6 +178,42 @@ export function solidInteriorAt(city, x, y, r, level = 0) {
       }
     }
   return false;
+}
+
+// позиции окон первого этажа на южной и восточной гранях (та же сетка, что в спрайте)
+export function groundWindows(b) {
+  const wins = [];
+  const du = b.doorU ?? Math.round(b.w / 2);
+  for (let u = 1.8; u < b.w - 1.8; u += 2.5) {
+    if (Math.abs(u - du) < 1.6) continue; // над дверью окна нет
+    wins.push({ face: "S", u, x: b.x + u, y: b.y + b.h });
+  }
+  for (let u = 1.8; u < b.h - 1.8; u += 2.5)
+    wins.push({ face: "E", u, x: b.x + b.w, y: b.y + u });
+  return wins;
+}
+
+// стена с проёмами: gaps = [[pos, halfWidth]] вдоль стены → массив отрезков
+export function wallWithGaps(x1, y1, x2, y2, gaps) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (!len) return [];
+  const ux = (x2 - x1) / len,
+    uy = (y2 - y1) / len;
+  const segs = [];
+  let cur = 0;
+  for (const [pos, hw] of [...gaps].sort((a, b) => a[0] - b[0])) {
+    if (pos + hw <= 0 || pos - hw >= len) continue; // вне стены
+    if (pos - hw > cur)
+      segs.push([
+        x1 + ux * cur,
+        y1 + uy * cur,
+        x1 + ux * (pos - hw),
+        y1 + uy * (pos - hw),
+      ]);
+    cur = Math.max(cur, pos + hw);
+  }
+  if (cur < len) segs.push([x1 + ux * cur, y1 + uy * cur, x2, y2]);
+  return segs;
 }
 
 function distToSeg(px, py, x1, y1, x2, y2) {
