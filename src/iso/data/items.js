@@ -8,4 +8,5 @@ export const ITEMS = {
   arrow: { name: "Стрелы", stack: 40, icon: "🏹" },
   fuel: { name: "Бензин (л)", stack: 20, icon: "⛽" },
   part: { name: "Деталь", stack: 10, icon: "🔩" },
+  torch: { name: "Факел", stack: 5, icon: "🔥" },
 };

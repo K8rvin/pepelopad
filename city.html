@@ -108,6 +108,38 @@
       #ui .dim {
         color: #9a9478;
       }
+      #ui .slot.sel {
+        border-color: #ffb23e;
+      }
+      #ui .ctxmenu {
+        position: absolute;
+        left: 0;
+        top: 46px;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        background: #1b2016;
+        border: 1px solid #596248;
+        min-width: 150px;
+      }
+      #ui .ctxmenu button {
+        background: none;
+        border: none;
+        color: #ece5d0;
+        text-align: left;
+        padding: 5px 8px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      #ui .ctxmenu button:hover {
+        background: #39402e;
+      }
+      #ui .loot-row button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
     </style>
   </head>
   <body>

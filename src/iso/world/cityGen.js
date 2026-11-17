@@ -124,7 +124,8 @@ export function createCity(seed = 11, nb = 19) {
     }
   }
   buildSolidIndex(city);
-  // зомби: не внутри твёрдых тел
+  // зомби: не внутри твёрдых тел и не у спавна (стартовые 60 м безопасны)
+  const spawnSafe = { x: PITCH + 11 + 31, y: PITCH + 11 + 31, r: 60 };
   let placed = 0,
     guard = 0;
   const target = nb * nb + 80;
@@ -132,6 +133,7 @@ export function createCity(seed = 11, nb = 19) {
     const zx = 14 + r() * (SIZE - 28),
       zy = 14 + r() * (SIZE - 28);
     if (solidRectAt(city, zx, zy, 0.5)) continue;
+    if (Math.hypot(zx - spawnSafe.x, zy - spawnSafe.y) < spawnSafe.r) continue;
     city.zombies.push({
       x: zx,
       y: zy,
