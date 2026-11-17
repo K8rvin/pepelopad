@@ -131,7 +131,7 @@ export function renderWorld({
     )
       continue;
     push(b.x + b.w + (b.y + b.h), 1, () =>
-      drawBuilding(ctx, b, toX, toY, zoom, inside === b),
+      drawBuilding(ctx, b, toX, toY, zoom, inside === b, player),
     );
   }
   for (const t of city.trees) {
@@ -307,12 +307,12 @@ export function renderWorld({
   for (const z of zombies) {
     if (z.dead) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
-    push(z.x + z.y + 0.01, 2, () =>
+    push(actorDepth(city, z), 2, () =>
       drawActor(ctx, z, SPR, toX, toY, zoom, false),
     );
   }
   if (!inCar)
-    push(player.x + player.y + 0.01, 2, () =>
+    push(actorDepth(city, player) + 0.01, 2, () =>
       drawActor(ctx, player, SPR, toX, toY, zoom, true),
     );
 
@@ -503,10 +503,10 @@ export function renderWorld({
   return inside;
 }
 
-function drawBuilding(ctx, b, toX, toY, zoom, ghost) {
+function drawBuilding(ctx, b, toX, toY, zoom, ghost, player) {
   if (ghost) {
-    // внутри: вместо shell — интерьер (низкие перегородки 1 м с кэпом)
-    drawInteriorWalls(ctx, b, toX, toY, zoom);
+    // внутри: вместо shell — интерьер (перегородки к югу/востоку от игрока — полупрозрачные)
+    drawInteriorWalls(ctx, b, toX, toY, zoom, player);
     return;
   }
   const spr = buildingSprite(b);
@@ -523,12 +523,11 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost) {
   );
 }
 
-// низкие перегородки интерьера (1 м) со светлым кэпом — по консультации Qwen
-function drawInteriorWalls(ctx, b, toX, toY, zoom) {
+// низкие перегородки интерьера (1 м) со светлым кэпом; к югу/востоку от игрока — полупрозрачные
+function drawInteriorWalls(ctx, b, toX, toY, zoom, player) {
   const it = getInterior(null, b);
   const hgt = 32 * zoom;
   const walls = [...it.walls];
-  // + фасадные стены с проёмом двери (тоже низкие, чтобы читался контур комнаты)
   const du = it.doorU,
     W = b.w,
     H = b.h;
@@ -539,7 +538,14 @@ function drawInteriorWalls(ctx, b, toX, toY, zoom) {
     { x1: 0, y1: 0, x2: 0, y2: H },
     { x1: W, y1: 0, x2: W, y2: H },
   );
+  const plx = player ? player.x - b.x : 0,
+    ply = player ? player.y - b.y : 0;
   for (const sgm of walls) {
+    // перегородка к югу (ниже) или к востоку (правее) от игрока — прозрачнее
+    const horizontal = sgm.y1 === sgm.y2;
+    const fade =
+      (horizontal && sgm.y1 > ply + 0.1) || (!horizontal && sgm.x1 > plx + 0.1);
+    if (fade) ctx.globalAlpha = 0.38;
     const a = w2s(b.x + sgm.x1, b.y + sgm.y1);
     const c = w2s(b.x + sgm.x2, b.y + sgm.y2);
     const ax = toX(a.x),
@@ -560,7 +566,37 @@ function drawInteriorWalls(ctx, b, toX, toY, zoom) {
     ctx.moveTo(ax, ay - hgt);
     ctx.lineTo(cx2, cy2 - hgt);
     ctx.stroke();
+    if (fade) ctx.globalAlpha = 1;
   }
+}
+
+// глубина актёра с учётом зданий: перед южной/восточной стеной — поверх неё
+function actorDepth(city, a) {
+  let d = a.x + a.y + 0.01;
+  const cx = Math.floor(a.x / 16),
+    cy = Math.floor(a.y / 16);
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const cell = city.buildingGrid?.get(cx + dx + "," + (cy + dy));
+      if (!cell) continue;
+      for (const b of cell) {
+        const bd = b.x + b.w + (b.y + b.h); // передний угол здания
+        if (bd <= d) continue;
+        // актёр в пределах «передней полосы» фасада (юг или восток)
+        const south =
+          a.y > b.y + b.h - 0.3 &&
+          a.y < b.y + b.h + 2.0 &&
+          a.x > b.x - 1 &&
+          a.x < b.x + b.w + 1;
+        const east =
+          a.x > b.x + b.w - 0.3 &&
+          a.x < b.x + b.w + 2.0 &&
+          a.y > b.y - 1 &&
+          a.y < b.y + b.h + 1;
+        if (south || east) d = bd + 0.01;
+      }
+    }
+  return d;
 }
 
 function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
