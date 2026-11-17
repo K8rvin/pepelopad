@@ -55,6 +55,7 @@ jobs:
           rm -rf .pages/assets
           cp -R dist/assets .pages/assets
           cp dist/index.html .pages/index.html
+          cp dist/city.html .pages/city.html
           cp dist/.nojekyll .pages/.nojekyll
           cd .pages
           if ! git diff --quiet; then
