@@ -26,7 +26,7 @@ export function saveGame({
       playerHp: combat.playerHp,
       kills: combat.kills,
     },
-    player: { x: player.x, y: player.y },
+    player: { x: player.x, y: player.y, level: player.level },
     inv: inv.slots,
     opened: [...loot.opened.entries()],
     zombies: city.zombies.map((z) => ({
@@ -97,6 +97,7 @@ export function applySave(
   combat.dead = false;
   player.x = data.player.x;
   player.y = data.player.y;
+  player.level = data.player.level || 0;
   inv.slots = data.inv;
   loot.opened = new Map(data.opened);
   if (quests && data.quests) {

@@ -63,6 +63,8 @@ import {
   openDialog,
   advanceDialog,
 } from "./systems/npcs.js";
+import { playerInside } from "./render/renderer.js";
+import { getInterior } from "./world/interiors.js";
 import {
   createQuests,
   mainQuest,
@@ -146,6 +148,7 @@ export async function boot() {
     r: 0.35,
     pose: 0,
     animT: 0,
+    level: 0, // этаж (0 = улица/первый)
   };
   const spawn = { x: player.x, y: player.y };
   const cam = { x: player.x, y: player.y };
@@ -254,6 +257,21 @@ export async function boot() {
       respawn(combat, player, spawn.x, spawn.y);
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
+    // лестница вниз
+    if (e.code === "KeyX" && !combat.dead) {
+      const ib = frameState.insideB;
+      if (ib && player.level > 0) {
+        const it = getInterior(city, ib);
+        if (it.stairs) {
+          const sx = ib.x + it.stairs.x + it.stairs.w / 2,
+            sy = ib.y + it.stairs.y + it.stairs.h / 2;
+          if (Math.hypot(player.x - sx, player.y - sy) < 2.2) {
+            player.level--;
+            toast(`Спустился на этаж ${player.level + 1}`);
+          }
+        }
+      }
+    }
     // машины: посадка/высадка/заправка
     if (e.code === "KeyF") {
       const car = veh.inCar || nearestCar(city, player.x, player.y);
@@ -288,6 +306,22 @@ export async function boot() {
         if (!advanceDialog(dlg)) renderDialog(dlg, null);
         else renderDialog(dlg, dlg.npc);
       } else if (!combat.dead) {
+        // лестница: внутри здания у лестницы — E наверх, X вниз
+        const ib = frameState.insideB;
+        if (ib) {
+          const it = getInterior(city, ib);
+          if (it.stairs) {
+            const sx = ib.x + it.stairs.x + it.stairs.w / 2,
+              sy = ib.y + it.stairs.y + it.stairs.h / 2;
+            if (Math.hypot(player.x - sx, player.y - sy) < 2.2) {
+              if (player.level < ib.floors - 1) {
+                player.level++;
+                toast(`Поднялся на этаж ${player.level + 1}`);
+              } else toast("Выше некуда");
+              return;
+            }
+          }
+        }
         const npc = npcNear(npcs, player.x, player.y);
         if (npc) {
           openDialog(dlg, npc);
@@ -348,6 +382,7 @@ export async function boot() {
   // автосохранение: каждые 15 с и при скрытии страницы
   let saveT = 15;
   let visitT = 0;
+  const frameState = { insideB: null, stairsNear: false };
   const doSave = () =>
     saveGame({ city, player, combat, survival, inv, loot, quests });
   // строка квеста для HUD
@@ -411,7 +446,27 @@ export async function boot() {
     }
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
-    updateCombat(combat, city, player, aim, dt, t / 1000, !!veh.inCar);
+    updateCombat(
+      combat,
+      city,
+      player,
+      aim,
+      dt,
+      t / 1000,
+      !!veh.inCar || player.level > 0,
+    );
+    // внутри какого здания и у лестницы ли
+    frameState.insideB = playerInside(city, player);
+    frameState.stairsNear = false;
+    if (frameState.insideB) {
+      const ib = frameState.insideB,
+        it = getInterior(city, ib);
+      if (it.stairs) {
+        const sx = ib.x + it.stairs.x + it.stairs.w / 2,
+          sy = ib.y + it.stairs.y + it.stairs.h / 2;
+        frameState.stairsNear = Math.hypot(player.x - sx, player.y - sy) < 2.2;
+      }
+    }
     cam.x += (player.x - cam.x) * Math.min(1, dt * 6);
     cam.y += (player.y - cam.y) * Math.min(1, dt * 6);
     renderWorld({
@@ -440,6 +495,7 @@ export async function boot() {
       })(),
       inCar: !!veh.inCar,
       npcs,
+      stairsNear: frameState.stairsNear,
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -461,7 +517,7 @@ export async function boot() {
     }
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
-${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}
+${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}${player.level > 0 ? ` · этаж ${player.level + 1}` : ""}
 ${questHudText()}
 ${veh.inCar ? "WASD — руль · E — выйти · F — заправить" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · Q — еда · H — бинт"}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);

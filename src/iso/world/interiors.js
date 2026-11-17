@@ -117,6 +117,13 @@ export function getInterior(city, b) {
     corrA,
     corrB,
     doorU: b.doorU ?? Math.round(w / 2),
+    // лестница в торце коридора (если этажей > 1): 2×3 м
+    stairs:
+      b.floors > 1
+        ? wide
+          ? { x: w - 4, y: corrA - 0.5, w: 3, h: 3 }
+          : { x: corrA - 0.5, y: 1.5, w: 3, h: 3 }
+        : null,
   };
   cache.set(b.id, it);
   return it;
@@ -124,7 +131,7 @@ export function getInterior(city, b) {
 
 // коллизия круга со стенами зданий поблизости: фасадные стены (с проёмом двери,
 // работают с обеих сторон) + внутренние перегородки (только когда внутри).
-export function solidInteriorAt(city, x, y, r) {
+export function solidInteriorAt(city, x, y, r, level = 0) {
   const cx = Math.floor(x / 16),
     cy = Math.floor(y / 16);
   for (let dy = -1; dy <= 1; dy++)
@@ -143,8 +150,8 @@ export function solidInteriorAt(city, x, y, r) {
         const lx = x - b.x,
           ly = y - b.y;
         const inside = lx >= 0 && lx < b.w && ly >= 0 && ly < b.h;
-        // фасадные стены с проёмом двери (юг, y = h)
-        const du = it.doorU;
+        // фасадные стены с проёмом двери (юг, y = h); на этажах > 0 дверь не пройти
+        const du = level > 0 ? -99 : it.doorU;
         const W = b.w,
           H = b.h;
         const ext = [

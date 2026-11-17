@@ -454,9 +454,9 @@ export function buildSolidIndex(city) {
     );
 }
 
-export function solidRectAt(city, x, y, r, excludeRef = null) {
-  // стены зданий (фасад с дверью + перегородки интерьера)
-  if (solidInteriorAt(city, x, y, r)) return true;
+export function solidRectAt(city, x, y, r, excludeRef = null, level = 0) {
+  // стены зданий (фасад с дверью + перегородки интерьера текущего этажа)
+  if (solidInteriorAt(city, x, y, r, level)) return true;
   const x0 = Math.floor((x - r) / SOLID_CELL),
     x1 = Math.floor((x + r) / SOLID_CELL);
   const y0 = Math.floor((y - r) / SOLID_CELL),
