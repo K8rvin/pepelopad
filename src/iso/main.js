@@ -30,7 +30,12 @@ import {
   respawn,
   screenToWorld,
 } from "./systems/combat.js";
-import { createInventory, addItem, countItem } from "./systems/inventory.js";
+import {
+  createInventory,
+  addItem,
+  countItem,
+  removeItem,
+} from "./systems/inventory.js";
 import {
   createLoot,
   nearestContainer,
@@ -40,6 +45,13 @@ import {
 } from "./systems/loot.js";
 import { createUI } from "./ui/panels.js";
 import { ITEMS } from "./data/items.js";
+import {
+  createSurvival,
+  darknessFor,
+  clockText,
+  updateSurvival,
+  useConsumable,
+} from "./systems/survival.js";
 import { w2s } from "./core/geo.js";
 
 export async function boot() {
@@ -106,19 +118,35 @@ export async function boot() {
   const keys = {};
   const combat = createCombat();
   initCombat(seed);
+  const survival = createSurvival();
   // лут и инвентарь
   const inv = createInventory(24);
   addItem(inv, "arrow", 12); // стартовый колчан
+  addItem(inv, "can", 2); // немного еды на старт
+  addItem(inv, "meds", 1);
   const loot = createLoot(city);
+  let toastMsg = "",
+    toastT = 0;
+  const toast = (msg) => {
+    toastMsg = msg;
+    toastT = 2.5;
+  };
+  const useItem = (id) => {
+    const msg = useConsumable(survival, combat, inv, id, (i, n) =>
+      removeItem(inv, i, n),
+    );
+    if (msg) toast(msg);
+    ui.render();
+  };
   const ui = createUI({
     getInventory: () => inv,
     getLootState: (c) => loot.opened.get(c.id),
     onTake: (c, i) => takeFrom(loot, c, i, (id, n) => addItem(inv, id, n)),
     onTakeAll: (c) => takeAll(loot, c, (id, n) => addItem(inv, id, n)),
+    onUse: (id) => useItem(id),
     onClose: () => {},
   });
-  let night = false,
-    zoom = 1;
+  let zoom = 1;
   const mouse = { x: 0, y: 0 };
   cv.addEventListener("mousemove", (e) => {
     const r = cv.getBoundingClientRect();
@@ -137,10 +165,13 @@ export async function boot() {
   });
   addEventListener("keydown", (e) => {
     keys[e.code] = true;
-    if (e.code === "KeyN") night = !night;
+    if (e.code === "KeyN")
+      survival.tod = darknessFor(survival.tod) > 0.4 ? 7 : 20.9; // отладка: к утру/закату
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
     if (e.code === "KeyR" && combat.dead)
       respawn(combat, player, spawn.x, spawn.y);
+    if (e.code === "KeyQ") useItem("can");
+    if (e.code === "KeyH") useItem("meds");
     // интерфейс: рюкзак и обыск
     if (e.code === "KeyI" || e.code === "Tab") {
       e.preventDefault();
@@ -180,6 +211,7 @@ export async function boot() {
     cam,
     R,
     combat,
+    survival,
     inv,
     loot,
     ui,
@@ -201,8 +233,12 @@ export async function boot() {
     const t0 = performance.now();
     if (!ui.isOpen()) updatePlayer(city, player, keys, dt);
     else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
-    updateZombies(city, city.zombies, player, dt);
+    updateSurvival(survival, combat, player, city, inv, dt);
+    const dark = darknessFor(survival.tod);
+    const night = dark > 0.4;
+    updateZombies(city, city.zombies, player, dt, night ? 1.35 : 1);
     loot.nearest = nearestContainer(loot, player.x, player.y);
+    toastT = Math.max(0, toastT - dt);
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
     updateCombat(combat, city, player, aim, dt, t / 1000);
@@ -243,8 +279,8 @@ export async function boot() {
     fpsE += (1 / Math.max(dt, 1e-4) - fpsE) * 0.06;
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
-HP ${combat.playerHp}/${combat.playerMaxHp} · убито ${combat.kills} · стрелы ${countItem(inv, "arrow")} · ${night ? "НОЧЬ" : "день"} · zoom ×${zoom}
-WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · N — день/ночь · Z — зум${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}`;
+${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}
+WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · Q — еда · H — бинт · N — к ночи/утру${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

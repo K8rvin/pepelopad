@@ -30,7 +30,7 @@ export function updatePlayer(city, player, keys, dt) {
   }
 }
 
-export function updateZombies(city, zombies, player, dt) {
+export function updateZombies(city, zombies, player, dt, speedK = 1) {
   for (const z of zombies) {
     // дальние зомби спят (не видны на экране)
     if (Math.abs(z.x - player.x) + Math.abs(z.y - player.y) > 80) continue;
@@ -48,8 +48,13 @@ export function updateZombies(city, zombies, player, dt) {
       dy = z.ty - z.y,
       d = Math.hypot(dx, dy);
     if (d > 0.3) {
-      moveActor(city, z, (dx / d) * 0.85 * dt, (dy / d) * 0.85 * dt);
-      z.animT += dt * 4;
+      moveActor(
+        city,
+        z,
+        (dx / d) * 0.85 * speedK * dt,
+        (dy / d) * 0.85 * speedK * dt,
+      );
+      z.animT += dt * 4 * speedK;
       z.pose = Math.floor(z.animT) % 2;
     }
   }
