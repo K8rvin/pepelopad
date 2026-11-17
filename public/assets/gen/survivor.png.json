@@ -3,9 +3,10 @@
   "output": "public\\assets\\gen\\survivor.png",
   "bgRemovedPct": 91,
   "pocketsRemoved": 922,
+  "whiteStripped": 7722,
   "modulate": {
-    "brightness": 0.9,
-    "saturation": 0.7
+    "brightness": 0.95,
+    "saturation": 0.8
   },
   "cropped": [
     465,

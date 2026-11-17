@@ -1,0 +1,9 @@
+{
+  "id": "car_sedan_v1",
+  "prompt": "2D game sprite, viewed from above at a three-quarter angle, car facing left. An old rusty 1980s Soviet sedan car (like a Lada Zhiguli), faded red-brown paint with rust patches, dark tinted windows, flat tires. Muted desaturated palette, ash grey and faded rust, dirt and grime, flat overcast lighting, no bright colors, post-apocalyptic Soviet city mood. Whole car fully visible, centered, not touching the image edges, on a plain solid white background, no shadow, no ground plane, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\car_sedan_v1.png",
+  "createdAt": "2026-11-17T12:24:40.306Z"
+}

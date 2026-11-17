@@ -1,0 +1,9 @@
+{
+  "id": "car_wreck_v1",
+  "prompt": "2D game sprite, viewed from above at a three-quarter angle, car facing left. A burned-out wrecked Soviet sedan car: charred grey-black body, no glass, collapsed roof, rust. Muted desaturated palette, ash grey and faded rust, dirt and grime, flat overcast lighting, no bright colors, post-apocalyptic Soviet city mood. Whole car fully visible, centered, not touching the image edges, on a plain solid white background, no shadow, no ground plane, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\car_wreck_v1.png",
+  "createdAt": "2026-11-17T12:25:29.723Z"
+}
