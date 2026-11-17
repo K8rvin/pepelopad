@@ -64,7 +64,7 @@ import {
   advanceDialog,
 } from "./systems/npcs.js";
 import { playerInside } from "./render/renderer.js";
-import { getInterior } from "./world/interiors.js";
+import { getInterior, groundWindows } from "./world/interiors.js";
 import {
   createQuests,
   mainQuest,
@@ -272,6 +272,25 @@ export async function boot() {
         }
       }
     }
+    // разбить окно (B) — вход через окно первого этажа
+    if (e.code === "KeyB" && !combat.dead) {
+      const w = frameState.windowNear;
+      if (w) {
+        const set = city.brokenWindows.get(w.bid) || new Set();
+        set.add(w.key);
+        city.brokenWindows.set(w.bid, set);
+        toast("Окно разбито. Шум слышен далеко...");
+        // шум: зомби в 12 м идут к игроку
+        for (const z of city.zombies) {
+          if (z.dead) continue;
+          if (Math.hypot(z.x - player.x, z.y - player.y) < 12) {
+            z.tx = player.x;
+            z.ty = player.y;
+            z.retarget = 0;
+          }
+        }
+      }
+    }
     // машины: посадка/высадка/заправка
     if (e.code === "KeyF") {
       const car = veh.inCar || nearestCar(city, player.x, player.y);
@@ -458,6 +477,32 @@ export async function boot() {
     // внутри какого здания и у лестницы ли
     frameState.insideB = playerInside(city, player);
     frameState.stairsNear = false;
+    frameState.windowNear = null;
+    // ближайшее неразбитое окно первого этажа
+    if (player.level === 0) {
+      const bcx = Math.floor(player.x / 16),
+        bcy = Math.floor(player.y / 16);
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const cell = city.buildingGrid?.get(bcx + dx + "," + (bcy + dy));
+          if (!cell) continue;
+          for (const b of cell) {
+            if (!b.floors) continue;
+            const broken = city.brokenWindows.get(b.id);
+            for (const w of groundWindows(b)) {
+              if (broken && broken.has(w.face + ":" + w.u)) continue;
+              if (Math.hypot(player.x - w.x, player.y - w.y) < 1.5) {
+                frameState.windowNear = {
+                  bid: b.id,
+                  key: w.face + ":" + w.u,
+                  x: w.x,
+                  y: w.y,
+                };
+              }
+            }
+          }
+        }
+    }
     if (frameState.insideB) {
       const ib = frameState.insideB,
         it = getInterior(city, ib);
@@ -496,6 +541,7 @@ export async function boot() {
       inCar: !!veh.inCar,
       npcs,
       stairsNear: frameState.stairsNear,
+      windowNear: frameState.windowNear,
     });
     // пепел дрейфует
     for (const a of ashP) {

@@ -57,6 +57,7 @@ export function createCity(seed = 11, nb = 19) {
     fences: [],
     zombies: [],
     solidGrid: new Map(),
+    brokenWindows: new Map(), // buildingId → Set("S:4.3" | "E:6.8") — разбитые окна
   };
 
   const r = mulberry32(seed);

@@ -57,6 +57,7 @@ export function renderWorld({
   inCar,
   npcs,
   stairsNear,
+  windowNear,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -432,6 +433,20 @@ export function renderWorld({
   if (combat && combat.hurtFlash > 0) {
     ctx.fillStyle = `rgba(224,67,56,${0.28 * combat.hurtFlash})`;
     ctx.fillRect(0, 0, W, H);
+    R.drawCalls++;
+  }
+  // окно: подсказка разбития
+  if (windowNear && !inCar && !(combat && combat.dead)) {
+    const p = w2s(windowNear.x, windowNear.y);
+    const dx = toX(p.x),
+      dy = toY(p.y) - 40 * zoom;
+    ctx.font = `${12 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText("B — разбить окно", dx + 1, dy + 1);
+    ctx.fillStyle = "#7fb8d8";
+    ctx.fillText("B — разбить окно", dx, dy);
+    ctx.textAlign = "left";
     R.drawCalls++;
   }
   // лестница внутри здания: ступени + подсказка
