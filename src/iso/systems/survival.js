@@ -39,6 +39,9 @@ export function updateSurvival(S, combat, player, city, inv, dt, eatFn) {
       combat.deadT = 0;
     }
   }
+  // сытому (голод > 50) здоровье потихоньку восстанавливается
+  if (S.hunger > 50 && !combat.dead && combat.playerHp > 0)
+    combat.playerHp = Math.min(combat.playerMaxHp, combat.playerHp + 0.15 * dt);
   // ночной приток: в 21:00 к игроку подтягивается группа
   if (S.tod >= 21 && S.tod < 21.1 && S.lastSiegeDay < S.day) {
     S.lastSiegeDay = S.day;
