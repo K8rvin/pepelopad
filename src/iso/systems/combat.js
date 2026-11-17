@@ -41,7 +41,15 @@ export function screenToWorld(mx, my, camS, W, H, zoom) {
   return { x: sx / 64 + sy / 32, y: sy / 32 - sx / 64 };
 }
 
-export function updateCombat(C, city, player, aim, dt, now) {
+export function updateCombat(
+  C,
+  city,
+  player,
+  aim,
+  dt,
+  now,
+  protectedFlag = false,
+) {
   if (C.dead) {
     C.deadT += dt;
     return;
@@ -73,28 +81,29 @@ export function updateCombat(C, city, player, aim, dt, now) {
   }
   C.arrows = C.arrows.filter((a) => a.alive);
   // зомби атакуют
-  for (const z of city.zombies) {
-    if (z.dead) continue;
-    const d = Math.hypot(z.x - player.x, z.y - player.y);
-    if (d < 0.7) {
-      z.attackCd = (z.attackCd || 0) - dt;
-      if (z.attackCd <= 0) {
-        z.attackCd = ZOMBIE_ATTACK_CD;
-        C.playerHp -= ZOMBIE_DMG + Math.floor(rng() * 5);
-        C.hurtFlash = 1;
-        C.shake = 6;
-        if (C.playerHp <= 0) {
-          C.playerHp = 0;
-          C.dead = true;
-          C.deadT = 0;
+  if (!protectedFlag)
+    for (const z of city.zombies) {
+      if (z.dead) continue;
+      const d = Math.hypot(z.x - player.x, z.y - player.y);
+      if (d < 0.7) {
+        z.attackCd = (z.attackCd || 0) - dt;
+        if (z.attackCd <= 0) {
+          z.attackCd = ZOMBIE_ATTACK_CD;
+          C.playerHp -= ZOMBIE_DMG + Math.floor(rng() * 5);
+          C.hurtFlash = 1;
+          C.shake = 6;
+          if (C.playerHp <= 0) {
+            C.playerHp = 0;
+            C.dead = true;
+            C.deadT = 0;
+          }
         }
+        // толкаем игрока слегка
+        const push = 0.4 * dt;
+        player.x += ((player.x - z.x) / Math.max(d, 0.01)) * push;
+        player.y += ((player.y - z.y) / Math.max(d, 0.01)) * push;
       }
-      // толкаем игрока слегка
-      const push = 0.4 * dt;
-      player.x += ((player.x - z.x) / Math.max(d, 0.01)) * push;
-      player.y += ((player.y - z.y) / Math.max(d, 0.01)) * push;
     }
-  }
   // затухание эффектов
   C.hurtFlash = Math.max(0, C.hurtFlash - dt * 2.2);
   C.shake = Math.max(0, C.shake - dt * 18);

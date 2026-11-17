@@ -1,6 +1,15 @@
 // Точка входа новой игры (этап 16.4): город, рендер, актёры, цикл.
 // Старый путь (OSM/Волгоград) остаётся в index.html до паритета.
 import { mulberry32 } from "./core/rng.js";
+import {
+  initVehicles,
+  nearestCar,
+  enterCar,
+  exitCar,
+  updateVehicle,
+  refuelCar,
+  fuelText,
+} from "./systems/vehicles.js";
 import { PITCH } from "./world/cityGen.js";
 import { createCity } from "./world/cityGen.js";
 import { loadAssets } from "./render/assets.js";
@@ -141,6 +150,8 @@ export async function boot() {
   const inv = createInventory(24);
   const loot = createLoot(city);
   const quests = createQuests();
+  const veh = { inCar: null };
+  initVehicles(city);
   // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
   const wantNew = params.get("new") === "1";
   let loaded = false;
@@ -234,6 +245,23 @@ export async function boot() {
       respawn(combat, player, spawn.x, spawn.y);
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
+    // машины: посадка/высадка/заправка
+    if (e.code === "KeyF") {
+      const car = veh.inCar || nearestCar(city, player.x, player.y);
+      if (car && !car.wreck) {
+        const lit = refuelCar(
+          car,
+          inv,
+          (id) => countItem(inv, id),
+          (id, n) => removeItem(inv, id, n),
+        );
+        toast(
+          lit > 0
+            ? `Заправлено: +${lit} л (${fuelText(car)})`
+            : "Нет бензина или бак полон",
+        );
+      }
+    }
     if (e.code === "KeyC") {
       if (ui.isOpen()) ui.close();
       else ui.openCraft();
@@ -245,12 +273,22 @@ export async function boot() {
       else ui.openInventory();
     }
     if (e.code === "KeyE") {
-      if (ui.isOpen()) ui.close();
-      else if (!combat.dead) {
-        const c = nearestContainer(loot, player.x, player.y);
-        if (c) {
-          openContainer(loot, c);
-          ui.openLoot(c);
+      if (ui.isOpen()) {
+        ui.close();
+      } else if (!combat.dead) {
+        if (veh.inCar) {
+          exitCar(city, veh, player);
+        } else {
+          const car = nearestCar(city, player.x, player.y);
+          if (car && !car.wreck) enterCar(veh, car, player);
+          else if (car && car.wreck) toast("Машина разбита");
+          else {
+            const c = nearestContainer(loot, player.x, player.y);
+            if (c) {
+              openContainer(loot, c);
+              ui.openLoot(c);
+            }
+          }
         }
       }
     }
@@ -313,12 +351,22 @@ export async function boot() {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     const t0 = performance.now();
-    if (!ui.isOpen()) updatePlayer(city, player, keys, dt);
-    else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
+    if (!ui.isOpen()) {
+      if (veh.inCar)
+        updateVehicle(city, veh.inCar, keys, player, combat, dt, null);
+      else updatePlayer(city, player, keys, dt);
+    } else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
     updateSurvival(survival, combat, player, city, inv, dt);
     const dark = darknessFor(survival.tod);
     const night = dark > 0.4;
-    updateZombies(city, city.zombies, player, dt, night ? 1.35 : 1);
+    updateZombies(
+      city,
+      city.zombies,
+      player,
+      dt,
+      night ? 1.35 : 1,
+      !!veh.inCar,
+    );
     loot.nearest = nearestContainer(loot, player.x, player.y);
     toastT = Math.max(0, toastT - dt);
     // квесты: визит к POI (раз в 0,5 с)
@@ -338,7 +386,7 @@ export async function boot() {
     }
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
-    updateCombat(combat, city, player, aim, dt, t / 1000);
+    updateCombat(combat, city, player, aim, dt, t / 1000, !!veh.inCar);
     cam.x += (player.x - cam.x) * Math.min(1, dt * 6);
     cam.y += (player.y - cam.y) * Math.min(1, dt * 6);
     renderWorld({
@@ -365,6 +413,7 @@ export async function boot() {
         const poi = questTargetPoi(quests, QUESTS);
         return poi ? poiBuilding(city, poi) : null;
       })(),
+      inCar: !!veh.inCar,
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -386,9 +435,9 @@ export async function boot() {
     }
     hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
-${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}
+${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}
 ${questHudText()}
-WASD — движение · ЛКМ — лук · E — обыск · I — рюкзак · C — крафт · Q — еда · H — бинт${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
+${veh.inCar ? "WASD — руль · E — выйти · F — заправить" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · Q — еда · H — бинт"}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

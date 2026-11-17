@@ -35,6 +35,13 @@ export function saveGame({
       hp: z.hp,
       dead: !!z.dead,
     })),
+    cars: city.cars.map((c) => ({
+      fuel: c.fuel,
+      hp: c.hp,
+      heading: c.heading,
+      x: c.x,
+      y: c.y,
+    })),
     quests: quests
       ? { i: quests.i, prog: quests.prog, done: quests.done }
       : null,
@@ -107,4 +114,14 @@ export function applySave(
     z.tx = zs.x;
     z.ty = zs.y;
   });
+  if (data.cars)
+    data.cars.forEach((cs, i) => {
+      const c = city.cars[i];
+      if (!c) return;
+      c.fuel = cs.fuel;
+      c.hp = cs.hp;
+      c.heading = cs.heading;
+      c.x = cs.x;
+      c.y = cs.y;
+    });
 }
