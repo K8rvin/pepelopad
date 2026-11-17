@@ -1,0 +1,19 @@
+{
+  "id": "wood_floor_v1",
+  "prompt": "Seamless tileable texture, top-down orthographic flat view, no perspective. old wooden floor planks of an apartment: worn brown-grey boards with gaps, scratches and dust. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, grime, worn Soviet-era Russian city, post-apocalyptic. The texture fills the entire frame edge to edge, no objects, no shadows of objects, no text, no watermark.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\wood_floor_v1.png",
+  "createdAt": "2026-11-16T21:27:47.314Z",
+  "originalFormat": "jpeg",
+  "originalSize": [
+    2752,
+    1536
+  ],
+  "processed": {
+    "output": "public\\assets\\textures\\wood_floor.png",
+    "size": 512,
+    "note": "center-crop square + lanczos3"
+  }
+}

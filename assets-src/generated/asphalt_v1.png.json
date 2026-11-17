@@ -1,0 +1,19 @@
+{
+  "id": "asphalt_v1",
+  "prompt": "Seamless tileable texture of worn urban asphalt road, top-down orthographic flat view, no perspective: fine grain, thin cracks, small rectangular patches, faint oil stains. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, grime and cracks. The texture fills the entire frame edge to edge, no objects, no shadows of objects, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\asphalt_v1.png",
+  "createdAt": "2026-11-16T21:09:43.902Z",
+  "originalFormat": "jpeg",
+  "originalSize": [
+    2752,
+    1536
+  ],
+  "processed": {
+    "output": "public\\assets\\textures\\asphalt.png",
+    "size": 512,
+    "note": "center-crop square + lanczos3"
+  }
+}

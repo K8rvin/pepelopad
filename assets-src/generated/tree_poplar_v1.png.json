@@ -1,0 +1,9 @@
+{
+  "id": "tree_poplar_v1",
+  "prompt": "Isometric game sprite of a single tall poplar tree in late autumn: sparse yellowish-grey foliage clusters, visible dark trunk, slight natural lean. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, post-apocalyptic Soviet city mood. The whole tree fully visible, centered, not touching the image edges, on a plain solid white background, no shadow, no ground, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\tree_poplar_v1.png",
+  "createdAt": "2026-11-17T02:40:35.509Z"
+}

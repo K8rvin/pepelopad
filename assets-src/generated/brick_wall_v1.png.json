@@ -1,0 +1,19 @@
+{
+  "id": "brick_wall_v1",
+  "prompt": "Seamless tileable flat frontal texture of a vertical wall surface, no perspective, no windows, no doors. Old silicate brick wall: weathered white-grey bricks with visible mortar lines, chipped corners, grime streaks, slight beige dust. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, grime, worn Soviet-era Russian city, post-apocalyptic. The texture fills the entire frame edge to edge, no objects, no shadows of objects, no text, no watermark.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\brick_wall_v1.png",
+  "createdAt": "2026-11-16T21:24:27.056Z",
+  "originalFormat": "jpeg",
+  "originalSize": [
+    2752,
+    1536
+  ],
+  "processed": {
+    "output": "public\\assets\\textures\\brick_wall.png",
+    "size": 512,
+    "note": "center-crop square + lanczos3"
+  }
+}

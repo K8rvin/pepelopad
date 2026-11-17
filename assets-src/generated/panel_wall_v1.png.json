@@ -1,0 +1,19 @@
+{
+  "id": "panel_wall_v1",
+  "prompt": "Seamless tileable flat frontal texture of a vertical wall surface, no perspective, no windows, no doors. Weathered Soviet prefab concrete panel apartment wall: grey-beige concrete panels with subtle vertical seams, dirt streaks, water stains, fine cracks. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, grime, worn Soviet-era Russian city, post-apocalyptic. The texture fills the entire frame edge to edge, no objects, no shadows of objects, no text, no watermark.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\panel_wall_v1.png",
+  "createdAt": "2026-11-16T21:23:37.600Z",
+  "originalFormat": "jpeg",
+  "originalSize": [
+    2752,
+    1536
+  ],
+  "processed": {
+    "output": "public\\assets\\textures\\panel_wall.png",
+    "size": 512,
+    "note": "center-crop square + lanczos3"
+  }
+}

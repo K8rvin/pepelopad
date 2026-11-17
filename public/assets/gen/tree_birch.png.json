@@ -1,0 +1,14 @@
+{
+  "source": "assets-src\\generated\\tree_birch_v1.png",
+  "output": "public\\assets\\sprites\\tree_birch.png",
+  "bgRemovedPct": 89,
+  "pocketsRemoved": 39336,
+  "modulate": {
+    "brightness": 0.72,
+    "saturation": 0.55
+  },
+  "cropped": [
+    1004,
+    1447
+  ]
+}
