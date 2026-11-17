@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "node:path";
 
 export function formatLocalBuildDate(date = new Date()) {
   const year = date.getFullYear();
@@ -9,6 +10,19 @@ export function formatLocalBuildDate(date = new Date()) {
 
 export default defineConfig({
   base: "./",
+  server: {
+    watch: {
+      ignored: ["**/.cache/**", "**/assets-src/**"],
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        city: resolve(__dirname, "city.html"),
+      },
+    },
+  },
   define: {
     __BUILD_ID__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) || "dev"),
     __BUILD_DATE__: JSON.stringify(formatLocalBuildDate()),
