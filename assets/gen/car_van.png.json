@@ -1,0 +1,15 @@
+{
+  "source": "assets-src\\generated\\car_van_v1.png",
+  "output": "public\\assets\\gen\\car_van.png",
+  "bgRemovedPct": 62,
+  "pocketsRemoved": 4217,
+  "whiteStripped": 0,
+  "modulate": {
+    "brightness": 0.92,
+    "saturation": 0.75
+  },
+  "cropped": [
+    1928,
+    1339
+  ]
+}
