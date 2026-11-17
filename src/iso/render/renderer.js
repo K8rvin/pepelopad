@@ -264,23 +264,40 @@ export function renderWorld({
     push(car.x + w + (car.y + h), 1, () => {
       // центр машины на экране, поворот по курсу (изо-проекция вектора курса)
       const p = w2s(car.x + w / 2, car.y + h / 2);
+      const img = car.wreck
+        ? SPRTEX.car_wreck
+        : i % 3 === 2
+          ? SPRTEX.car_van
+          : SPRTEX.car_sedan;
       ctx.save();
       ctx.translate(toX(p.x), toY(p.y));
       if (car.heading !== undefined) {
-        const base =
-          car.axis === "x" ? Math.atan2(16, 32) : Math.atan2(16, -32);
         const vx = Math.cos(car.heading),
           vy = Math.sin(car.heading);
         const sAng = Math.atan2((vx + vy) * 16, (vx - vy) * 32);
-        ctx.rotate(sAng - base);
+        // спрайты Gemini смотрят влево; процедурная коробка — по базовой оси
+        ctx.rotate(
+          sAng -
+            (img
+              ? Math.PI
+              : car.axis === "x"
+                ? Math.atan2(16, 32)
+                : Math.atan2(16, -32)),
+        );
       }
-      ctx.drawImage(
-        SPR.cars[i],
-        -112 * zoom,
-        -85 * zoom,
-        224 * zoom,
-        170 * zoom,
-      );
+      if (img) {
+        const wpx = 170 * zoom,
+          hpx = wpx * (img.height / img.width);
+        ctx.drawImage(img, -wpx / 2, -hpx / 2, wpx, hpx);
+      } else {
+        ctx.drawImage(
+          SPR.cars[i],
+          -112 * zoom,
+          -85 * zoom,
+          224 * zoom,
+          170 * zoom,
+        );
+      }
       ctx.restore();
       R.drawCalls++;
     });
