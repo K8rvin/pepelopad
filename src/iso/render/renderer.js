@@ -133,7 +133,16 @@ export function renderWorld({
     )
       continue;
     push(b.x + b.w + (b.y + b.h), 1, () =>
-      drawBuilding(ctx, b, toX, toY, zoom, inside === b, player),
+      drawBuilding(
+        ctx,
+        b,
+        toX,
+        toY,
+        zoom,
+        inside === b,
+        player,
+        city.brokenWindows.get(b.id),
+      ),
     );
   }
   for (const t of city.trees) {
@@ -557,7 +566,7 @@ export function renderWorld({
   return inside;
 }
 
-function drawBuilding(ctx, b, toX, toY, zoom, ghost, player) {
+function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet) {
   if (ghost) {
     // внутри: вместо shell — интерьер (перегородки к югу/востоку от игрока — полупрозрачные)
     drawInteriorWalls(ctx, b, toX, toY, zoom, player);
@@ -575,6 +584,30 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player) {
     spr.canvas.width * zoom,
     spr.canvas.height * zoom,
   );
+  // разбитые окна поверх фасада (первый этаж)
+  if (brokenSet && SPRTEX.win_broken) {
+    for (const key of brokenSet) {
+      const [face, us] = key.split(":");
+      const u = Number(us);
+      const base =
+        face === "S"
+          ? w2s(b.x + u, b.y + b.h, 0.9)
+          : w2s(b.x + b.w, b.y + u, 0.9);
+      const bx = toX(base.x),
+        by = toY(base.y);
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.transform(face === "S" ? 1 : -1, 0.5, 0, 1, 0, 0);
+      ctx.drawImage(
+        SPRTEX.win_broken,
+        face === "S" ? -22 * zoom : 0,
+        -48 * zoom,
+        45 * zoom,
+        48 * zoom,
+      );
+      ctx.restore();
+    }
+  }
 }
 
 // низкие перегородки интерьера (1 м) со светлым кэпом; к югу/востоку от игрока — полупрозрачные

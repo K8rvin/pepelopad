@@ -2,7 +2,7 @@
 // окна (дневные + светящиеся ночные), дверь, вентиляция. Общий спрайт на архетип.
 import { mulberry32, h2 } from "../core/rng.js";
 import { PAL, mkCanvas, w2s, ZH } from "../core/geo.js";
-import { TEX } from "./assets.js";
+import { TEX, SPRTEX } from "./assets.js";
 
 // процедурные текстуры стен/крыши (fallback)
 function makePanelTexture(style) {
@@ -233,7 +233,22 @@ function bakeBuilding(b, seedKey) {
           f.dx === 1
             ? w2s(bx + u, by + b.h, fl * 3 + 0.9)
             : w2s(bx + b.w, by + u, fl * 3 + 0.9);
-        g.drawImage(winDay, base.x - 15, base.y - 46 + 4);
+        if (SPRTEX.win_intact) {
+          // окно Gemini, наклонённое по стене; учитываем сдвиг канваса (-minX, -minY)
+          g.save();
+          g.setTransform(
+            f.dx === 1 ? 1 : -1,
+            0.5,
+            0,
+            1,
+            base.x - minX - (f.dx === 1 ? 22 : 0),
+            base.y - minY,
+          );
+          g.drawImage(SPRTEX.win_intact, 0, -48, 45, 48);
+          g.restore();
+        } else {
+          g.drawImage(winDay, base.x - 15, base.y - 46 + 4);
+        }
         if (h2(seedKey + fl, wi, 3) < 0.3) {
           gl.drawImage(winLit, base.x - 15, base.y - 46 + 4);
           gl.globalAlpha = 0.5;
@@ -244,18 +259,27 @@ function bakeBuilding(b, seedKey) {
       }
   // дверь на южной грани
   const dp = w2s(bx + b.doorU, by + b.h, 0);
-  g.fillStyle = "#241d14";
-  g.fillRect(dp.x - 16, dp.y - 68, 32, 68);
-  g.fillStyle = "#4a3b26";
-  g.fillRect(dp.x - 13, dp.y - 64, 26, 64);
-  g.fillStyle = "#ffb45c";
-  g.fillRect(dp.x - 13, dp.y - 70, 26, 3);
-  g.fillStyle = "#6f6650";
-  g.fillRect(dp.x - 20, dp.y - 4, 40, 4);
+  if (SPRTEX.door_entry) {
+    g.save();
+    g.setTransform(1, 0.5, 0, 1, dp.x - minX - 17, dp.y - minY + 4);
+    g.drawImage(SPRTEX.door_entry, 0, -72, 34, 72);
+    g.restore();
+    g.fillStyle = "#ffb45c";
+    g.fillRect(dp.x - 13, dp.y - 74, 26, 3); // козырёк-лампа
+    g.fillStyle = "#6f6650";
+    g.fillRect(dp.x - 20, dp.y + 2, 40, 4); // ступень
+  } else {
+    g.fillStyle = "#241d14";
+    g.fillRect(dp.x - 16, dp.y - 68, 32, 68);
+    g.fillStyle = "#4a3b26";
+    g.fillRect(dp.x - 13, dp.y - 64, 26, 64);
+    g.fillStyle = "#ffb45c";
+    g.fillRect(dp.x - 13, dp.y - 70, 26, 3);
+    g.fillStyle = "#6f6650";
+    g.fillRect(dp.x - 20, dp.y - 4, 40, 4);
+  }
   return { canvas: cnv, litCanvas: lit, minX, minY };
 }
-
-// общий спрайт на архетип (типовая советская застройка)
 const spriteCache = new Map();
 export function buildingSprite(b) {
   const key = `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}`;
