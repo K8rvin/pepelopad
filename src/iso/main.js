@@ -246,7 +246,7 @@ export async function boot() {
     if (e.button !== 0 || ui.isOpen()) return;
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
-    releaseBow(combat, player, aim, inv);
+    releaseBow(combat, player, aim, inv, city);
   });
   addEventListener("keydown", (e) => {
     keys[e.code] = true;

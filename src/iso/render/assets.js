@@ -29,6 +29,9 @@ export const SPRITE_FILES = {
   car_sedan: "/assets/gen/car_sedan.png",
   car_wreck: "/assets/gen/car_wreck.png",
   car_van: "/assets/gen/car_van.png",
+  win_intact: "/assets/gen/win_intact.png",
+  win_broken: "/assets/gen/win_broken.png",
+  door_entry: "/assets/gen/door_entry.png",
 };
 
 function loadSet(files, target) {

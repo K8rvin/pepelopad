@@ -153,7 +153,7 @@ function segmentHitsCircle(x1, y1, x2, y2, cx, cy, r) {
 }
 
 // выстрел при отпускании ЛКМ; стрелы расходуются из инвентаря
-export function releaseBow(C, player, aim, inv) {
+export function releaseBow(C, player, aim, inv, city) {
   if (!C.bowDrawing) return;
   C.bowDrawing = false;
   if (C.bowCharge < 0.15) {
