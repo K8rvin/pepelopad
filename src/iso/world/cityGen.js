@@ -388,7 +388,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
 
 // пространственный индекс твёрдых тел (коллизии за O(1))
 export const SOLID_CELL = 16;
-function addSolid(city, x, y, w, h, kind) {
+function addSolid(city, x, y, w, h, kind, ref = null) {
   const x0 = Math.floor(x / SOLID_CELL),
     x1 = Math.floor((x + w) / SOLID_CELL);
   const y0 = Math.floor(y / SOLID_CELL),
@@ -397,10 +397,10 @@ function addSolid(city, x, y, w, h, kind) {
     for (let cx = x0; cx <= x1; cx++) {
       const k = cx + "," + cy;
       if (!city.solidGrid.has(k)) city.solidGrid.set(k, []);
-      city.solidGrid.get(k).push({ x, y, w, h, kind });
+      city.solidGrid.get(k).push({ x, y, w, h, kind, ref });
     }
 }
-function buildSolidIndex(city) {
+export function buildSolidIndex(city) {
   city.solidGrid = new Map();
   for (const b of city.buildings)
     addSolid(city, b.x, b.y, b.w, b.h, "building");
@@ -412,6 +412,7 @@ function buildSolidIndex(city) {
       c.axis === "x" ? 4.4 : 1.8,
       c.axis === "x" ? 1.8 : 4.4,
       "car",
+      c,
     );
   for (const t of city.trees)
     addSolid(city, t.x - 0.4, t.y - 0.4, 0.8, 0.8, "tree");
@@ -428,7 +429,7 @@ function buildSolidIndex(city) {
     );
 }
 
-export function solidRectAt(city, x, y, r) {
+export function solidRectAt(city, x, y, r, excludeRef = null) {
   const x0 = Math.floor((x - r) / SOLID_CELL),
     x1 = Math.floor((x + r) / SOLID_CELL);
   const y0 = Math.floor((y - r) / SOLID_CELL),
@@ -438,6 +439,7 @@ export function solidRectAt(city, x, y, r) {
       const cell = city.solidGrid.get(cx + "," + cy);
       if (!cell) continue;
       for (const s of cell) {
+        if (excludeRef && s.ref === excludeRef) continue;
         if (s.kind === "tree") {
           if (Math.hypot(x - (s.x + 0.4), y - (s.y + 0.4)) < 0.5 + r)
             return true;

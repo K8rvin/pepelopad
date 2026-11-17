@@ -53,6 +53,7 @@ export function renderWorld({
   lootNearest,
   uiOpen,
   questTarget,
+  inCar,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -259,16 +260,28 @@ export function renderWorld({
   city.cars.forEach((car, i) => {
     const w = car.axis === "x" ? 4.4 : 1.8,
       h = car.axis === "x" ? 1.8 : 4.4;
-    if (!vis(car.x + w / 2, car.y + h / 2, 120, 90)) return;
+    if (!vis(car.x + w / 2, car.y + h / 2, 130, 100)) return;
     push(car.x + w + (car.y + h), 1, () => {
-      const p = w2s(car.x, car.y);
+      // центр машины на экране, поворот по курсу (изо-проекция вектора курса)
+      const p = w2s(car.x + w / 2, car.y + h / 2);
+      ctx.save();
+      ctx.translate(toX(p.x), toY(p.y));
+      if (car.heading !== undefined) {
+        const base =
+          car.axis === "x" ? Math.atan2(16, 32) : Math.atan2(16, -32);
+        const vx = Math.cos(car.heading),
+          vy = Math.sin(car.heading);
+        const sAng = Math.atan2((vx + vy) * 16, (vx - vy) * 32);
+        ctx.rotate(sAng - base);
+      }
       ctx.drawImage(
         SPR.cars[i],
-        toX(p.x) - 112 * zoom,
-        toY(p.y) - 46 * zoom,
+        -112 * zoom,
+        -85 * zoom,
         224 * zoom,
         170 * zoom,
       );
+      ctx.restore();
       R.drawCalls++;
     });
   });
@@ -279,9 +292,10 @@ export function renderWorld({
       drawActor(ctx, z, SPR, toX, toY, zoom, false),
     );
   }
-  push(player.x + player.y + 0.01, 2, () =>
-    drawActor(ctx, player, SPR, toX, toY, zoom, true),
-  );
+  if (!inCar)
+    push(player.x + player.y + 0.01, 2, () =>
+      drawActor(ctx, player, SPR, toX, toY, zoom, true),
+    );
 
   // трупы и стрелы в полёте
   if (combat) {
