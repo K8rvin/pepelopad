@@ -111,9 +111,7 @@ function hurtZombie(C, z, dmg, arrow) {
   // отброс по направлению стрелы
   z.x += arrow.dx * 0.35;
   z.y += arrow.dy * 0.35;
-  z.tx = z.x;
-  z.ty = z.y;
-  // зомби слышит/чует и идёт к игроку
+  // зомби слышит/чует и идёт к источнику
   z.tx = arrow.x - arrow.dx * 2;
   z.ty = arrow.y - arrow.dy * 2;
   z.retarget = 0;
@@ -123,6 +121,7 @@ function hurtZombie(C, z, dmg, arrow) {
     C.kills++;
     C.corpses.push({ x: z.x, y: z.y, t: 0, pose: rng() < 0.5 ? 0 : 1 });
     C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
+    C.onKill?.();
   }
 }
 

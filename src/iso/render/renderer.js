@@ -52,6 +52,7 @@ export function renderWorld({
   now,
   lootNearest,
   uiOpen,
+  questTarget,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -380,6 +381,44 @@ export function renderWorld({
     ctx.fillStyle = "#ffb23e";
     ctx.fillText("E — обыскать", dx, dy);
     ctx.textAlign = "left";
+    R.drawCalls++;
+  }
+  // маркер цели квеста: пульс над зданием или стрелка у края
+  if (questTarget) {
+    const p = w2s(
+      questTarget.x + questTarget.w / 2,
+      questTarget.y + questTarget.h / 2,
+      questTarget.floors * 3,
+    );
+    let dx = toX(p.x),
+      dy = toY(p.y);
+    const off = dx < 20 || dx > W - 20 || dy < 20 || dy > H - 20;
+    if (off) {
+      // стрелка к цели от центра экрана
+      const cx = W / 2,
+        cy = H / 2;
+      const ang = Math.atan2(dy - cy, dx - cx);
+      dx = cx + Math.cos(ang) * (Math.min(W, H) / 2 - 50);
+      dy = cy + Math.sin(ang) * (Math.min(W, H) / 2 - 50);
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(ang);
+      ctx.fillStyle = "#ffb23e";
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-6, -8);
+      ctx.lineTo(-6, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else {
+      const pulse = 1 + Math.sin(now * 4) * 0.2;
+      ctx.strokeStyle = "#ffb23e";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(dx, dy, 14 * pulse * zoom, 7 * pulse * zoom, 0, 0, 7);
+      ctx.stroke();
+    }
     R.drawCalls++;
   }
   // смерть
