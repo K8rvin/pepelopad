@@ -54,6 +54,7 @@ export function renderWorld({
   uiOpen,
   questTarget,
   inCar,
+  npcs,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -313,6 +314,37 @@ export function renderWorld({
     push(player.x + player.y + 0.01, 2, () =>
       drawActor(ctx, player, SPR, toX, toY, zoom, true),
     );
+
+  // NPC (спрайт выжившего + подпись вблизи)
+  if (npcs)
+    for (const n of npcs) {
+      if (!vis(n.x, n.y, 45, 60)) continue;
+      push(n.x + n.y, 2, () => {
+        const p = w2s(n.x, n.y);
+        ctx.fillStyle = "rgba(16,20,26,0.35)";
+        ctx.beginPath();
+        ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
+        ctx.fill();
+        const img = SPRTEX.survivor;
+        if (img) {
+          const h = 78 * zoom,
+            w = h * (img.width / img.height);
+          ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+        }
+        if (Math.hypot(player.x - n.x, player.y - n.y) < 6) {
+          ctx.font = `${11 * zoom}px monospace`;
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#0a0c09";
+          ctx.fillText(n.name, toX(p.x) + 1, toY(p.y) - 84 * zoom + 1);
+          ctx.fillStyle = "#a6e83c";
+          ctx.fillText(n.name, toX(p.x), toY(p.y) - 84 * zoom);
+          ctx.fillStyle = "#9a9478";
+          ctx.fillText("E — говорить", toX(p.x), toY(p.y) - 70 * zoom);
+          ctx.textAlign = "left";
+        }
+        R.drawCalls += 2;
+      });
+    }
 
   // трупы и стрелы в полёте
   if (combat) {

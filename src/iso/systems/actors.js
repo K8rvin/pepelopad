@@ -36,13 +36,17 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
     if (Math.abs(z.x - player.x) + Math.abs(z.y - player.y) > 80) continue;
     z.retarget -= dt;
     const dp = Math.hypot(player.x - z.x, player.y - z.y);
-    if (dp < 6) {
+    const chaseR = speedK > 1 ? 10 : 7; // ночью чуют дальше
+    if (dp < chaseR) {
       z.tx = player.x;
       z.ty = player.y;
     } else if (z.retarget <= 0) {
       z.retarget = 2 + rng() * 4;
-      z.tx = clamp(z.x + (rng() - 0.5) * 24, 2, city.SIZE - 2);
-      z.ty = clamp(z.y + (rng() - 0.5) * 24, 2, city.SIZE - 2);
+      // поводок: блуждают вокруг точки спавна, не стекаются со временем
+      const hx = z.homeX ?? z.x,
+        hy = z.homeY ?? z.y;
+      z.tx = clamp(hx + (rng() - 0.5) * 24, 2, city.SIZE - 2);
+      z.ty = clamp(hy + (rng() - 0.5) * 24, 2, city.SIZE - 2);
     }
     const dx = z.tx - z.x,
       dy = z.ty - z.y,

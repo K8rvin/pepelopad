@@ -31,7 +31,7 @@ const BOW_CHARGE_TIME = 0.8;
 const ARROW_SPEED = 35; // м/с
 const ARROW_RANGE = 26; // м
 const ZOMBIE_HP = 70;
-const ZOMBIE_DMG = 11;
+const ZOMBIE_DMG = 9;
 const ZOMBIE_ATTACK_CD = 1.2;
 
 // цель в мировых координатах от мыши (inverse iso, земля z=0)

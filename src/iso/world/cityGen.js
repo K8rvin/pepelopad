@@ -143,6 +143,8 @@ export function createCity(seed = 11, nb = 19) {
       tx: 0,
       ty: 0,
       retarget: 0,
+      homeX: zx,
+      homeY: zy,
     });
     placed++;
   }

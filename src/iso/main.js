@@ -57,6 +57,13 @@ import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
 import {
+  createNpcs,
+  npcNear,
+  createDialog,
+  openDialog,
+  advanceDialog,
+} from "./systems/npcs.js";
+import {
   createQuests,
   mainQuest,
   goalText,
@@ -152,6 +159,8 @@ export async function boot() {
   const quests = createQuests();
   const veh = { inCar: null };
   initVehicles(city);
+  const npcs = createNpcs(city, PITCH);
+  const dlg = createDialog();
   // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
   const wantNew = params.get("new") === "1";
   let loaded = false;
@@ -275,8 +284,15 @@ export async function boot() {
     if (e.code === "KeyE") {
       if (ui.isOpen()) {
         ui.close();
+      } else if (dlg.npc) {
+        if (!advanceDialog(dlg)) renderDialog(dlg, null);
+        else renderDialog(dlg, dlg.npc);
       } else if (!combat.dead) {
-        if (veh.inCar) {
+        const npc = npcNear(npcs, player.x, player.y);
+        if (npc) {
+          openDialog(dlg, npc);
+          renderDialog(dlg, npc);
+        } else if (veh.inCar) {
           exitCar(city, veh, player);
         } else {
           const car = nearestCar(city, player.x, player.y);
@@ -347,11 +363,20 @@ export async function boot() {
   let lastT = performance.now();
   let fpsE = 60,
     msE = 16;
+  const dlgEl = document.getElementById("dlg");
+  function renderDialog(D, npc) {
+    if (!npc) {
+      dlgEl.style.display = "none";
+      return;
+    }
+    dlgEl.style.display = "block";
+    dlgEl.innerHTML = `<div class="who">${npc.name}</div><div>${npc.lines[D.line]}</div><div class="hint">E — дальше</div>`;
+  }
   function frame(t) {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     const t0 = performance.now();
-    if (!ui.isOpen()) {
+    if (!ui.isOpen() && !dlg.npc) {
       if (veh.inCar)
         updateVehicle(city, veh.inCar, keys, player, combat, dt, null);
       else updatePlayer(city, player, keys, dt);
@@ -414,6 +439,7 @@ export async function boot() {
         return poi ? poiBuilding(city, poi) : null;
       })(),
       inCar: !!veh.inCar,
+      npcs,
     });
     // пепел дрейфует
     for (const a of ashP) {
