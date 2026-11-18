@@ -203,6 +203,32 @@ describe("iso-машины: вождение", () => {
     expect(car.x).toBeLessThan(x0); // уехала назад (курс 0 — на запад)
   });
 
+  it("задел носом — задним ходом отъезжает, не залипает", () => {
+    const city = emptyCity();
+    // забор поперёк пути (вертикальный, x=50)
+    city.fences.push({ x0: 50, y0: 30, x1: 50, y1: 50, axis: "y" });
+    city.cars.push({ x: 44, y: 39.5, axis: "x", wreck: false });
+    initVehicles(city);
+    buildSolidIndex(city);
+    const car = city.cars[0];
+    car.fuel = 40;
+    const player = { x: 0, y: 0 };
+    const combat = combatStub();
+    // едем вперёд до упора в забор
+    for (let i = 0; i < 300; i++)
+      updateVehicle(city, car, { KeyW: true }, player, combat, 1 / 60);
+    const stuckX = car.x;
+    expect(carCenter(car).x + CAR_LEN / 2).toBeLessThan(50.1); // не вошёл в забор
+    // назад 2 с: должен отъехать, а не залипнуть на касании
+    for (let i = 0; i < 120; i++)
+      updateVehicle(city, car, { KeyS: true }, player, combat, 1 / 60);
+    expect(car.x).toBeLessThan(stuckX - 2);
+    // и снова вперёд — до упора (залипания нет)
+    for (let i = 0; i < 300; i++)
+      updateVehicle(city, car, { KeyW: true }, player, combat, 1 / 60);
+    expect(car.x).toBeGreaterThan(stuckX - 0.5);
+  });
+
   it("нос машины упирается в препятствие, а не входит в него", () => {
     const city = emptyCity();
     // стена-забор поперёк пути

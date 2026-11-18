@@ -645,17 +645,26 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
   const sx = toX(p.x),
     sy = toY(p.y);
   const heading = car.heading ?? (car.axis === "x" ? 0 : Math.PI / 2);
-  // тень капсулой по форме машины: T = [[cos, −2sin],[0.5sin, cos]] — поворот в плоскости земли
+  // тень капсулой по форме машины: локальные оси кузова проецируем изометрически
+  // (x → ((cos−sin)·32, (cos+sin)·16), y → ((−sin−cos)·32, (−sin+cos)·16) пкс/м)
   const c = Math.cos(heading),
     s = Math.sin(heading);
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.transform(c, 0.5 * s, -2 * s, c, 0, 0);
+  ctx.transform(
+    (c - s) * 32 * zoom,
+    (c + s) * 16 * zoom,
+    (-s - c) * 32 * zoom,
+    (-s + c) * 16 * zoom,
+    0,
+    0,
+  );
   ctx.globalAlpha = 0.35;
   ctx.fillStyle = "#10141a";
   {
-    const L = 150 * zoom,
-      Wd = 58 * zoom,
+    // капсула 4,7 × 2,0 м вдоль оси машины
+    const L = 4.7,
+      Wd = 2.0,
       r = Wd / 2;
     ctx.beginPath();
     ctx.moveTo(-L / 2 + r, -Wd / 2);
