@@ -30,15 +30,8 @@ export function updateSurvival(S, combat, player, city, inv, dt, eatFn) {
     S.tod -= 24;
     S.day++;
   }
-  // голод: 100 за сутки; на нуле — голодный урон
+  // голод: 100 за сутки; на нуле — ВРЕМЕННО без смерти (до балансировки еды)
   S.hunger = Math.max(0, S.hunger - (dt * 100) / 1440);
-  if (S.hunger <= 0 && !combat.dead) {
-    combat.playerHp = Math.max(0, combat.playerHp - 1.5 * dt);
-    if (combat.playerHp <= 0) {
-      combat.dead = true;
-      combat.deadT = 0;
-    }
-  }
   // сытому (голод > 50) здоровье потихоньку восстанавливается
   if (S.hunger > 50 && !combat.dead && combat.playerHp > 0)
     combat.playerHp = Math.min(combat.playerMaxHp, combat.playerHp + 0.15 * dt);
