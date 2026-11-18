@@ -17,6 +17,36 @@ const LOOT_TABLES = {
     ["scrap", 1, 2, 0.5],
     ["part", 1, 1, 0.25],
   ],
+  fridge: [
+    ["can", 1, 3, 0.9],
+    ["can", 1, 2, 0.4],
+    ["meds", 1, 1, 0.15],
+  ],
+  wardrobe: [
+    ["cloth", 1, 3, 0.8],
+    ["meds", 1, 1, 0.35],
+    ["part", 1, 1, 0.2],
+  ],
+  shelf: [
+    ["wood", 1, 2, 0.6],
+    ["scrap", 1, 2, 0.5],
+    ["part", 1, 1, 0.3],
+    ["can", 1, 1, 0.35],
+  ],
+  crate: [
+    ["scrap", 1, 2, 0.6],
+    ["wood", 1, 2, 0.5],
+    ["fuel", 1, 1, 0.2],
+  ],
+};
+
+export const CONTAINER_NAMES = {
+  dumpster: "мусорный контейнер",
+  barrel: "бочка",
+  fridge: "холодильник",
+  wardrobe: "шкаф",
+  shelf: "полка",
+  crate: "ящик",
 };
 
 export function createLoot(city) {
@@ -30,13 +60,29 @@ export function createLoot(city) {
   );
   return {
     containers,
+    interior: new Map(), // buildingId → контейнеры интерьера (регистрируются при входе)
     opened: new Map(), // id → [{id, n}] содержимое после первого обыска
-    nearest: null, // ближайший в зоне досягаемости (для подсказки)
+    nearest: null,
   };
 }
 
-// ближайший контейнер в пределах r
-export function nearestContainer(L, x, y, r = 1.6) {
+// регистрация контейнеров интерьера здания (при первом входе)
+export function registerInterior(L, b, interior) {
+  if (L.interior.has(b.id)) return;
+  L.interior.set(
+    b.id,
+    interior.containers.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      x: b.x + c.x,
+      y: b.y + c.y,
+      interior: true,
+    })),
+  );
+}
+
+// ближайший контейнер: улица всегда, интерьер — только внутри своего здания
+export function nearestContainer(L, x, y, r = 1.6, insideB = null) {
   let best = null,
     bd = r;
   for (const c of L.containers) {
@@ -45,6 +91,17 @@ export function nearestContainer(L, x, y, r = 1.6) {
       bd = d;
       best = c;
     }
+  }
+  if (insideB) {
+    const arr = L.interior.get(insideB.id);
+    if (arr)
+      for (const c of arr) {
+        const d = Math.hypot(c.x - x, c.y - y);
+        if (d < bd) {
+          bd = d;
+          best = c;
+        }
+      }
   }
   return best;
 }

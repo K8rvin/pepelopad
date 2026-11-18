@@ -51,6 +51,7 @@ import {
   openContainer,
   takeFrom,
   takeAll,
+  registerInterior,
 } from "./systems/loot.js";
 import { createUI } from "./ui/panels.js";
 import { ITEMS } from "./data/items.js";
@@ -352,7 +353,13 @@ export async function boot() {
           if (car && !car.wreck) enterCar(veh, car, player);
           else if (car && car.wreck) toast("Машина разбита");
           else {
-            const c = nearestContainer(loot, player.x, player.y);
+            const c = nearestContainer(
+              loot,
+              player.x,
+              player.y,
+              1.6,
+              frameState.insideB,
+            );
             if (c) {
               openContainer(loot, c);
               ui.openLoot(c);
@@ -446,7 +453,20 @@ export async function boot() {
       night ? 1.35 : 1,
       !!veh.inCar,
     );
-    loot.nearest = nearestContainer(loot, player.x, player.y);
+    // регистрация интерьерных контейнеров при входе в здание
+    if (frameState.insideB && !loot.interior.has(frameState.insideB.id))
+      registerInterior(
+        loot,
+        frameState.insideB,
+        getInterior(city, frameState.insideB),
+      );
+    loot.nearest = nearestContainer(
+      loot,
+      player.x,
+      player.y,
+      1.6,
+      frameState.insideB,
+    );
     toastT = Math.max(0, toastT - dt);
     // квесты: визит к POI (раз в 0,5 с)
     visitT -= dt;
@@ -530,6 +550,7 @@ export async function boot() {
       H,
       ashP,
       combat,
+      loot,
       aim,
       now: t / 1000,
       lootNearest: loot.nearest,

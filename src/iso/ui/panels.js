@@ -2,6 +2,7 @@
 // Отделён от игрового цикла.
 import { ITEMS } from "../data/items.js";
 import { RECIPES } from "../data/recipes.js";
+import { CONTAINER_NAMES } from "../systems/loot.js";
 
 export function createUI({
   getInventory,
@@ -68,7 +69,7 @@ export function createUI({
           : "",
       )
       .join("");
-    return `<div class="panel"><h3>Обыск: ${lootTarget.kind === "dumpster" ? "мусорный контейнер" : "бочка"}</h3>
+    return `<div class="panel"><h3>Обыск: ${CONTAINER_NAMES[lootTarget.kind] || lootTarget.kind}</h3>
       <div class="loot-list">${rows || '<div class="dim">пусто</div>'}</div>
       <button id="takeAll">Взять всё</button>
       <h3>Рюкзак</h3><div class="grid">${inv.slots.map(slotHtml).join("")}</div>
