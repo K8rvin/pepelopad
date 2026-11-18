@@ -16,6 +16,9 @@ export const TEX_FILES = {
   roof_felt: "/assets/textures/roof_felt.png",
 };
 
+export const CAR_ATLAS_SRC = "/assets/gen/car8_sedan.png";
+export const CAR_ATLAS_META_SRC = "/assets/gen/car8_sedan.json";
+
 export const SPRITE_FILES = {
   tree: "/assets/gen/tree_poplar.png",
   tree_dead: "/assets/gen/tree_dead.png",
@@ -52,7 +55,27 @@ function loadSet(files, target) {
 }
 
 export async function loadAssets() {
-  await Promise.all([loadSet(TEX_FILES, TEX), loadSet(SPRITE_FILES, SPRTEX)]);
+  await Promise.all([
+    loadSet(TEX_FILES, TEX),
+    loadSet(SPRITE_FILES, SPRTEX),
+    (async () => {
+      try {
+        const [img, meta] = await Promise.all([
+          new Promise((res) => {
+            const i = new Image();
+            i.onload = () => res(i);
+            i.onerror = () => res(null);
+            i.src = CAR_ATLAS_SRC;
+          }),
+          fetch(CAR_ATLAS_META_SRC).then((r) => r.json()),
+        ]);
+        if (img) {
+          SPRTEX.car8 = img;
+          SPRTEX.car8meta = meta;
+        }
+      } catch {}
+    })(),
+  ]);
 }
 
 // бесшовная 2×2 зеркальная композиция + запечённая multiply-тонировка

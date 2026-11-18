@@ -295,46 +295,9 @@ export function renderWorld({
     const w = car.axis === "x" ? 4.4 : 1.8,
       h = car.axis === "x" ? 1.8 : 4.4;
     if (!vis(car.x + w / 2, car.y + h / 2, 130, 100)) return;
-    push(car.x + w + (car.y + h), 1, () => {
-      // центр машины на экране, поворот по курсу (изо-проекция вектора курса)
-      const p = w2s(car.x + w / 2, car.y + h / 2);
-      const img = car.wreck
-        ? SPRTEX.car_wreck
-        : i % 3 === 2
-          ? SPRTEX.car_van
-          : SPRTEX.car_sedan;
-      ctx.save();
-      ctx.translate(toX(p.x), toY(p.y));
-      if (car.heading !== undefined) {
-        const vx = Math.cos(car.heading),
-          vy = Math.sin(car.heading);
-        const sAng = Math.atan2((vx + vy) * 16, (vx - vy) * 32);
-        // спрайты Gemini смотрят влево; процедурная коробка — по базовой оси
-        ctx.rotate(
-          sAng -
-            (img
-              ? Math.PI
-              : car.axis === "x"
-                ? Math.atan2(16, 32)
-                : Math.atan2(16, -32)),
-        );
-      }
-      if (img) {
-        const wpx = 170 * zoom,
-          hpx = wpx * (img.height / img.width);
-        ctx.drawImage(img, -wpx / 2, -hpx / 2, wpx, hpx);
-      } else {
-        ctx.drawImage(
-          SPR.cars[i],
-          -112 * zoom,
-          -85 * zoom,
-          224 * zoom,
-          170 * zoom,
-        );
-      }
-      ctx.restore();
-      R.drawCalls++;
-    });
+    push(car.x + w + (car.y + h), 1, () =>
+      drawCar(ctx, car, i, toX, toY, zoom),
+    );
   });
   for (const z of zombies) {
     if (z.dead) continue;
@@ -639,6 +602,117 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
       );
       ctx.restore();
     }
+  }
+}
+
+// машина: процедурная тень под полным курсом (T-матрица) + кадр турнтейбла с кроссфейдом
+// раскладка кадров атласа: мировой курс в градусах по индексам кадров (подобрано визуально)
+const CAR_DIRS = [145, 340, 225, 280, 175, 18, 45, 73];
+function angDiffDeg(a, b) {
+  let d = a - b;
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+function pickCarFrame(deg) {
+  let best = 0,
+    bd = 999;
+  for (let i = 0; i < CAR_DIRS.length; i++) {
+    const d = Math.abs(angDiffDeg(deg, CAR_DIRS[i]));
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function drawCar(ctx, car, i, toX, toY, zoom) {
+  const w = car.axis === "x" ? 4.4 : 1.8,
+    h = car.axis === "x" ? 1.8 : 4.4;
+  const p = w2s(car.x + w / 2, car.y + h / 2);
+  const sx = toX(p.x),
+    sy = toY(p.y);
+  const heading = car.heading ?? (car.axis === "x" ? 0 : Math.PI / 2);
+  // тень под полным курсом: T = [[cos, −2sin],[0.5sin, cos]] — поворот в плоскости земли
+  const c = Math.cos(heading),
+    s = Math.sin(heading);
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.transform(c, 0.5 * s, -2 * s, c, 0, 0);
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = "#10141a";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 72 * zoom, 27 * zoom, 0, 0, 7);
+  ctx.fill();
+  ctx.restore();
+  // кадр турнтейбла
+  const atlas = SPRTEX.car8,
+    meta = SPRTEX.car8meta;
+  if (atlas && meta && !car.wreck) {
+    const deg = ((((heading * 180) / Math.PI) % 360) + 360) % 360;
+    const frame = pickCarFrame(deg);
+    if (car.visFrame === undefined) car.visFrame = frame;
+    if (car.visBlend === undefined) car.visBlend = 1;
+    if (frame !== car.visFrame) {
+      car.visFrom = car.visFrame;
+      car.visFrame = frame;
+      car.visBlend = 0;
+    }
+    car.visBlend = Math.min(1, car.visBlend + 0.09);
+    const fw = meta.frameW,
+      fh = meta.frameH,
+      cols = meta.cols;
+    const drawW = 165 * zoom,
+      drawH = drawW * (fh / fw);
+    const drawFrame = (idx, alpha) => {
+      if (alpha <= 0) return;
+      const ax = (meta.anchors[idx].x / fw) * drawW,
+        ay = (meta.anchors[idx].y / fh) * drawH;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(
+        atlas,
+        (idx % cols) * fw,
+        Math.floor(idx / cols) * fh,
+        fw,
+        fh,
+        sx - ax,
+        sy - ay,
+        drawW,
+        drawH,
+      );
+    };
+    if (car.visBlend < 1 && car.visFrom !== undefined)
+      drawFrame(car.visFrom, 1 - car.visBlend);
+    drawFrame(car.visFrame, car.visBlend);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  // фолбэк: статичные спрайты (остов) или коробка
+  const img = car.wreck
+    ? SPRTEX.car_wreck
+    : i % 3 === 2
+      ? SPRTEX.car_van
+      : SPRTEX.car_sedan;
+  if (img) {
+    ctx.save();
+    ctx.translate(sx, sy);
+    const vx = Math.cos(heading),
+      vy = Math.sin(heading);
+    const sAng = Math.atan2((vx + vy) * 16, (vx - vy) * 32);
+    ctx.rotate(sAng - Math.PI);
+    const wpx = 170 * zoom,
+      hpx = wpx * (img.height / img.width);
+    ctx.drawImage(img, -wpx / 2, -hpx / 2, wpx, hpx);
+    ctx.restore();
+  } else {
+    ctx.drawImage(
+      SPR.cars[i],
+      sx - 112 * zoom,
+      sy - 85 * zoom,
+      224 * zoom,
+      170 * zoom,
+    );
   }
 }
 
