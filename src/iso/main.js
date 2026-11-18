@@ -464,6 +464,7 @@ export async function boot() {
     dlgEl.innerHTML = `<div class="who">${npc.name}</div><div>${npc.lines[D.line]}</div><div class="hint">E — дальше</div>`;
   }
   function frame(t) {
+    const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     if (paused) {
       // пауза: мир стоит, только рендер + HUD
@@ -504,8 +505,6 @@ export async function boot() {
       requestAnimationFrame(frame);
       return;
     }
-    const dt = Math.min(0.05, (t - lastT) / 1000);
-    lastT = t;
     const t0 = performance.now();
     if (!ui.isOpen() && !dlg.npc) {
       if (veh.inCar)
