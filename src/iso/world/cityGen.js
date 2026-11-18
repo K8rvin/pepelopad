@@ -249,7 +249,7 @@ function genCourtyard(city, bx0, by0, r) {
     // парковка во дворе
     for (let i = 0; i < 4; i++)
       if (r() < 0.7)
-        city.cars.push({
+        pushCar(city, {
           x: cx0 + 4 + i * 6,
           y: cy0 + 4,
           axis: "y",
@@ -369,7 +369,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
         ground[(by0 + 26 + y) * SIZE + bx0 + 16 + x] = T_ASPHALT;
     for (let i = 0; i < 5; i++)
       if (r() < 0.8)
-        city.cars.push({
+        pushCar(city, {
           x: bx0 + 19 + i * 5.4,
           y: by0 + 30,
           axis: "y",
@@ -379,7 +379,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
     city.lamps.push({ x: bx0 + 18, y: by0 + 44 }, { x: bx0 + 44, y: by0 + 44 });
   } else if (kind === "police") {
     put(bx0 + 19, by0 + 12, 24, 12, 2, "panel", "Полиция");
-    city.cars.push({
+    pushCar(city, {
       x: bx0 + 24,
       y: by0 + 27,
       axis: "x",
