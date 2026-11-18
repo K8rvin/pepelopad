@@ -1,9 +1,13 @@
-// Интерьеры (итерация 1 «Коробка» по docs/interiors-qwen.md):
-// коридор вдоль длинной оси + нарезка комнат, дверь в фасаде, низкие перегородки 1 м.
-// Коллизии — отрезки стен (не AABB-заливка footprint).
+// Интерьеры (итерация 2 «Генератор + лут» по docs/interiors-qwen.md):
+// коридор вдоль длинной оси + нарезка комнат ВПЛОТНУЮ к фасаду (без узких щелей!),
+// мебель по ролям комнат с зазорами ≥ 0,9 м, контейнеры внутри.
+// Коллизии — отрезки стен + AABB мебели.
 import { mulberry32 } from "../core/rng.js";
 
 const cache = new Map(); // buildingId → interior
+
+// зазор прохода: персонаж r=0,35 + поля = не ближе 0,9 м к препятствиям
+const CLEAR = 1.1;
 
 // сгенерировать планировку здания (детерминированно по id)
 export function getInterior(city, b) {
@@ -12,13 +16,14 @@ export function getInterior(city, b) {
   const r = mulberry32(b.id * 7919 + 13);
   const w = Math.floor(b.w),
     h = Math.floor(b.h);
-  const walls = []; // {x1,y1,x2,y2} в ЛОКАЛЬНЫХ метрах здания
+  const walls = [];
   const rooms = [];
+  const furniture = []; // {kind, x, y, w, h, container?}
+  const containers = []; // {id, kind, x, y}
 
-  // коридор вдоль длинной оси
   const wide = w >= h;
   const corrW = 2;
-  let corrA, corrB; // коридорная полоса
+  let corrA, corrB;
   if (wide) {
     corrA = Math.floor(h / 2) - 1;
     corrB = corrA + corrW;
@@ -27,31 +32,63 @@ export function getInterior(city, b) {
     corrB = corrA + corrW;
   }
 
-  // нарезка полос на комнаты 8–11 м
-  function sliceStrip(stripMin, stripMax, alongLen) {
-    // возвращает границы комнат вдоль длинной оси
+  // нарезка на комнаты 8–11 м вдоль длинной оси; границы — от стены до стены
+  function sliceStrip(len) {
     const cuts = [1];
     let x = 1;
-    while (alongLen - 1 - x > 11) {
+    while (len - 1 - x > 11) {
       x += 8 + Math.floor(r() * 4);
       cuts.push(x);
     }
-    cuts.push(alongLen - 1);
+    cuts.push(len - 1);
     return cuts;
   }
 
+  const ROLE_CYCLE = ["kitchen", "bedroom", "living", "storage"];
+
+  function wallRoomWithFurniture(x1, y1, x2, y2, doorX, doorY, role) {
+    // мебель по роли, зазоры от двери и углов
+    const mx = (x1 + x2) / 2,
+      my = (y1 + y2) / 2;
+    const doorAlongX = doorY === y1 || doorY === y2 ? 1 : 0;
+    const put = (kind, fx, fy, fw, fh, container) => {
+      // не ближе CLEAR к дверному проёму
+      if (
+        Math.abs(fx + fw / 2 - doorX) < CLEAR + 0.4 &&
+        Math.abs(fy + fh / 2 - doorY) < CLEAR + 0.4
+      )
+        return;
+      furniture.push({ kind, x: fx, y: fy, w: fw, h: fh });
+      if (container)
+        containers.push({ id: null, kind, x: fx + fw / 2, y: fy + fh / 2 });
+    };
+    if (role === "kitchen") {
+      put("fridge", x1 + 0.6, y1 + 0.3, 1.1, 0.8, true);
+      put("table", mx - 0.8, my - 0.4, 1.6, 0.9, false);
+    } else if (role === "bedroom") {
+      put("bed", x1 + 0.5, y1 + 0.2, 2.0, 1.1, false);
+      put("wardrobe", x2 - 1.6, y1 + 0.2, 1.2, 0.6, true);
+    } else if (role === "living") {
+      put("sofa", x1 + 0.5, y2 - 1.1, 2.0, 0.8, false);
+      put("shelf", x2 - 1.5, y1 + 0.2, 1.2, 0.5, true);
+    } else {
+      put("shelf", x1 + 0.5, y1 + 0.2, 1.2, 0.5, true);
+      put("shelf", x2 - 1.7, y2 - 0.8, 1.2, 0.5, true);
+      put("crate", mx - 0.5, my - 0.4, 1.0, 0.8, true);
+    }
+  }
+
   if (wide) {
-    // северная и южная полосы комнат, коридор посередине
-    const cutsN = sliceStrip(1, corrA, w);
-    const cutsS = sliceStrip(corrB, h - 1, w);
-    // перегородки комнат (вертикальные)
+    const cutsN = sliceStrip(w);
+    const cutsS = sliceStrip(w);
+    // перегородки ВПЛОТНУЮ к фасаду (никаких щелей 1 м!)
     for (const cuts of [cutsN, cutsS])
       for (let i = 1; i < cuts.length - 1; i++) {
         const cx = cuts[i];
-        if (cuts === cutsN) walls.push({ x1: cx, y1: 1, x2: cx, y2: corrA });
-        else walls.push({ x1: cx, y1: corrB, x2: cx, y2: h - 1 });
+        if (cuts === cutsN) walls.push({ x1: cx, y1: 0, x2: cx, y2: corrA });
+        else walls.push({ x1: cx, y1: corrB, x2: cx, y2: h });
       }
-    // стены коридора с дверями в комнаты
+    // стены коридора на всю ширину с дверями 1,2 м в каждую комнату
     for (const [cuts, yWall, north] of [
       [cutsN, corrA, true],
       [cutsS, corrB, false],
@@ -60,31 +97,38 @@ export function getInterior(city, b) {
         const x1 = cuts[i],
           x2 = cuts[i + 1];
         const doorX = Math.floor((x1 + x2) / 2);
-        // стена с проёмом под дверь
         walls.push({ x1, y1: yWall, x2: doorX - 0.6, y2: yWall });
         walls.push({ x1: doorX + 0.6, y1: yWall, x2, y2: yWall });
+        const role = ROLE_CYCLE[(north ? i : i + 2) % ROLE_CYCLE.length];
         rooms.push({
           x1,
-          y1: north ? 1 : corrB,
+          y1: north ? 0 : corrB,
           x2,
-          y2: north ? corrA : h - 1,
+          y2: north ? corrA : h,
           doorX,
           doorY: yWall,
+          role,
         });
+        wallRoomWithFurniture(
+          x1,
+          north ? 0 : corrB,
+          x2,
+          north ? corrA : h,
+          doorX,
+          yWall,
+          role,
+        );
       }
     }
-    // торцы коридора
-    walls.push({ x1: 1, y1: corrA, x2: 1, y2: corrB });
-    walls.push({ x1: w - 1, y1: corrA, x2: w - 1, y2: corrB });
   } else {
-    // высокое здание: коридор вертикальный
-    const cutsW = sliceStrip(1, corrA, h);
-    const cutsE = sliceStrip(corrB, w - 1, h);
+    // высокое здание: коридор вертикальный, комнаты слева/справа
+    const cutsW = sliceStrip(h);
+    const cutsE = sliceStrip(h);
     for (const cuts of [cutsW, cutsE])
       for (let i = 1; i < cuts.length - 1; i++) {
         const cy = cuts[i];
-        if (cuts === cutsW) walls.push({ x1: 1, y1: cy, x2: corrA, y2: cy });
-        else walls.push({ x1: corrB, y1: cy, x2: w - 1, y2: cy });
+        if (cuts === cutsW) walls.push({ x1: 0, y1: cy, x2: corrA, y2: cy });
+        else walls.push({ x1: corrB, y1: cy, x2: w, y2: cy });
       }
     for (const [cuts, xWall, west] of [
       [cutsW, corrA, true],
@@ -96,28 +140,41 @@ export function getInterior(city, b) {
         const doorY = Math.floor((y1 + y2) / 2);
         walls.push({ x1: xWall, y1, x2: xWall, y2: doorY - 0.6 });
         walls.push({ x1: xWall, y1: doorY + 0.6, x2: xWall, y2 });
+        const role = ROLE_CYCLE[(west ? i : i + 2) % ROLE_CYCLE.length];
         rooms.push({
-          x1: west ? 1 : corrB,
+          x1: west ? 0 : corrB,
           y1,
-          x2: west ? corrA : w - 1,
+          x2: west ? corrA : w,
           y2,
           doorX: xWall,
           doorY,
+          role,
         });
+        wallRoomWithFurniture(
+          west ? 0 : corrB,
+          y1,
+          west ? corrA : w,
+          y2,
+          xWall,
+          doorY,
+          role,
+        );
       }
     }
-    walls.push({ x1: corrA, y1: 1, x2: corrB, y2: 1 });
-    walls.push({ x1: corrA, y1: h - 1, x2: corrB, y2: h - 1 });
   }
+
+  // id контейнеров
+  containers.forEach((c, i) => (c.id = "int" + b.id + "_" + i));
 
   it = {
     walls,
     rooms,
+    furniture,
+    containers,
     wide,
     corrA,
     corrB,
     doorU: b.doorU ?? Math.round(w / 2),
-    // лестница в торце коридора (если этажей > 1): 2×3 м
     stairs:
       b.floors > 1
         ? wide
@@ -171,10 +228,20 @@ export function solidInteriorAt(city, x, y, r, level = 0) {
         ];
         for (const [x1, y1, x2, y2] of ext)
           if (distToSeg(lx, ly, x1, y1, x2, y2) < r + 0.15) return true;
-        if (inside)
+        if (inside) {
           for (const sgm of it.walls)
             if (distToSeg(lx, ly, sgm.x1, sgm.y1, sgm.x2, sgm.y2) < r + 0.12)
               return true;
+          // мебель (AABB в локальных метрах)
+          for (const f of it.furniture || [])
+            if (
+              lx > f.x - r &&
+              lx < f.x + f.w + r &&
+              ly > f.y - r &&
+              ly < f.y + f.h + r
+            )
+              return true;
+        }
       }
     }
   return false;

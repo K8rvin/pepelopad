@@ -49,6 +49,7 @@ export function renderWorld({
   H,
   ashP,
   combat,
+  loot,
   aim,
   now,
   lootNearest,
@@ -142,6 +143,7 @@ export function renderWorld({
         inside === b,
         player,
         city.brokenWindows.get(b.id),
+        loot,
       ),
     );
   }
@@ -566,10 +568,21 @@ export function renderWorld({
   return inside;
 }
 
-function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet) {
+const FURN_STYLE = {
+  fridge: { c: "#b8b4a8", h: 1.5, top: "#c8c4b8" },
+  table: { c: "#5a4632", h: 0.8, top: "#6a5440" },
+  bed: { c: "#7a8a9a", h: 0.5, top: "#8a9aa8" },
+  wardrobe: { c: "#6a4a30", h: 1.8, top: "#7a5838" },
+  sofa: { c: "#5a6a4a", h: 0.8, top: "#6a7a58" },
+  shelf: { c: "#6a5a40", h: 1.6, top: "#7a6a4c" },
+  crate: { c: "#7a6a4a", h: 0.7, top: "#8a7854" },
+};
+
+function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
   if (ghost) {
     // внутри: вместо shell — интерьер (перегородки к югу/востоку от игрока — полупрозрачные)
     drawInteriorWalls(ctx, b, toX, toY, zoom, player);
+    drawFurniture(ctx, b, toX, toY, zoom, player, loot);
     return;
   }
   const spr = buildingSprite(b);
@@ -607,6 +620,72 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet) {
       );
       ctx.restore();
     }
+  }
+}
+
+// мебель интерьера: изо-коробки по типу; контейнеры — бейдж до обыска
+function drawFurniture(ctx, b, toX, toY, zoom, player, loot) {
+  const it = getInterior(null, b);
+  if (!it.furniture) return;
+  const plx = player ? player.x - b.x : 0,
+    ply = player ? player.y - b.y : 0;
+  for (const f of it.furniture) {
+    const st = FURN_STYLE[f.kind] || FURN_STYLE.table;
+    const cx = b.x + f.x + f.w / 2,
+      cy = b.y + f.y + f.h / 2;
+    const p = w2s(cx, cy);
+    const dx = toX(p.x),
+      dy = toY(p.y);
+    const fade = cy - b.y > ply + 0.1 || cx - b.x > plx + 0.1;
+    if (fade) ctx.globalAlpha = 0.55;
+    const wpx = f.w * 32 * zoom,
+      hpx = f.h * 32 * zoom,
+      hgt = st.h * 32 * zoom;
+    // изо-коробка: южная и восточная грани + верх
+    const s = w2s(b.x + f.x, b.y + f.y + f.h);
+    const e = w2s(b.x + f.x + f.w, b.y + f.y);
+    ctx.fillStyle = st.c;
+    ctx.beginPath();
+    ctx.moveTo(toX(s.x), toY(s.y) - hgt);
+    ctx.lineTo(toX(e.x), toY(e.y) - hgt);
+    ctx.lineTo(toX(e.x), toY(e.y));
+    ctx.lineTo(toX(s.x), toY(s.y));
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = st.top;
+    ctx.beginPath();
+    const a1 = w2s(b.x + f.x, b.y + f.y),
+      a2 = w2s(b.x + f.x + f.w, b.y + f.y),
+      a3 = w2s(b.x + f.x + f.w, b.y + f.y + f.h),
+      a4 = w2s(b.x + f.x, b.y + f.y + f.h);
+    ctx.moveTo(toX(a1.x), toY(a1.y) - hgt);
+    ctx.lineTo(toX(a2.x), toY(a2.y) - hgt);
+    ctx.lineTo(toX(a3.x), toY(a3.y) - hgt);
+    ctx.lineTo(toX(a4.x), toY(a4.y) - hgt);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(16,20,26,0.4)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // бейдж контейнера до обыска
+    const isContainer = it.containers.some(
+      (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
+    );
+    if (
+      isContainer &&
+      loot &&
+      !loot.opened.has(
+        it.containers.find(
+          (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
+        )?.id,
+      )
+    ) {
+      ctx.fillStyle = "#ffb23e";
+      ctx.beginPath();
+      ctx.arc(dx, dy - hgt - 8 * zoom, 3.5 * zoom, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
