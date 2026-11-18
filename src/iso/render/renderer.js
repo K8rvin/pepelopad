@@ -5,7 +5,11 @@ import { CH, getChunk, evictIfNeeded } from "./chunks.js";
 import { buildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
-import { getInterior, wallWithGaps } from "../world/interiors.js";
+import {
+  getInterior,
+  wallWithGaps,
+  buildingAtPoint,
+} from "../world/interiors.js";
 
 export function createRenderer() {
   return {
@@ -299,9 +303,11 @@ export function renderWorld({
       drawCar(ctx, car, i, toX, toY, zoom),
     );
   });
+  player._insideB = inside;
   for (const z of zombies) {
     if (z.dead) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
+    z._insideB = inside || buildingAtPoint(city, z.x, z.y);
     push(actorDepth(city, z), 2, () =>
       drawActor(ctx, z, SPR, toX, toY, zoom, false),
     );
@@ -749,7 +755,7 @@ function drawWallSeg(ctx, b, s, toX, toY, zoom, player) {
   const horizontal = s.y1 === s.y2;
   const fade =
     (horizontal && s.y1 > ply + 0.1) || (!horizontal && s.x1 > plx + 0.1);
-  if (fade) ctx.globalAlpha = 0.38;
+  if (fade) ctx.globalAlpha = 0.25;
   const a = w2s(b.x + s.x1, b.y + s.y1);
   const c = w2s(b.x + s.x2, b.y + s.y2);
   const ax = toX(a.x),
@@ -936,32 +942,53 @@ function drawInteriorWalls(ctx, b, toX, toY, zoom, player) {
   }
 }
 
-// глубина актёра с учётом зданий: перед южной/восточной стеной — поверх неё
+// глубина актёра по парному тесту (Qwen): актёр ПЕРЕД объектом, если южнее его
+// южной кромки ИЛИ восточнее восточной → рисуется после. Проверяются ближайшие
+// здания, машины, а внутри — стены и мебель активного здания.
 function actorDepth(city, a) {
+  const r = a.r || 0.35;
   let d = a.x + a.y + 0.01;
   const cx = Math.floor(a.x / 16),
     cy = Math.floor(a.y / 16);
   for (let dy = -1; dy <= 1; dy++)
     for (let dx = -1; dx <= 1; dx++) {
       const cell = city.buildingGrid?.get(cx + dx + "," + (cy + dy));
-      if (!cell) continue;
-      for (const b of cell) {
-        const bd = b.x + b.w + (b.y + b.h); // передний угол здания
-        if (bd <= d) continue;
-        // актёр в пределах «передней полосы» фасада (юг или восток)
-        const south =
-          a.y > b.y + b.h - 0.3 &&
-          a.y < b.y + b.h + 2.0 &&
-          a.x > b.x - 1 &&
-          a.x < b.x + b.w + 1;
-        const east =
-          a.x > b.x + b.w - 0.3 &&
-          a.x < b.x + b.w + 2.0 &&
-          a.y > b.y - 1 &&
-          a.y < b.y + b.h + 1;
-        if (south || east) d = bd + 0.01;
-      }
+      if (cell)
+        for (const b of cell) {
+          const bx1 = b.x + b.w,
+            by1 = b.y + b.h,
+            bd = bx1 + by1;
+          if (a.x + r > bx1 || a.y + r > by1) d = Math.max(d, bd + 0.01);
+        }
+      const scell = city.solidGrid?.get(cx + dx + "," + (cy + dy));
+      if (scell)
+        for (const s of scell) {
+          if (s.kind !== "car") continue;
+          const cx1 = s.x + s.w,
+            cy1 = s.y + s.h,
+            cd = cx1 + cy1;
+          if (a.x + r > cx1 || a.y + r > cy1) d = Math.max(d, cd + 0.01);
+        }
     }
+  // внутри здания: парный тест по стенам и мебели
+  const ib = a._insideB;
+  if (ib) {
+    const it = getInterior(null, ib);
+    for (const s of it.walls) {
+      const sd = Math.max(
+        ib.x + s.x1 + (ib.y + s.y1),
+        ib.x + s.x2 + (ib.y + s.y2),
+      );
+      const horiz = s.y1 === s.y2;
+      if ((horiz && a.y + r > ib.y + s.y1) || (!horiz && a.x + r > ib.x + s.x1))
+        d = Math.max(d, sd + 0.01);
+    }
+    for (const f of it.furniture || []) {
+      const fd = ib.x + f.x + f.w + (ib.y + f.y + f.h);
+      if (a.x + r > ib.x + f.x + f.w || a.y + r > ib.y + f.y + f.h)
+        d = Math.max(d, fd + 0.01);
+    }
+  }
   return d;
 }
 
