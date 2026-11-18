@@ -103,7 +103,7 @@ export function createCity(seed = 11, nb = 19) {
     for (let d = 18; d < SIZE - 10; d += 26 + Math.floor(r() * 18)) {
       if (d % PITCH < 12 || d % PITCH > PITCH - 4) continue; // не на перекрёстках
       if (r() < 0.55)
-        city.cars.push({
+        pushCar(city, {
           x: rx0 + 5.9,
           y: d,
           axis: "y",
@@ -111,7 +111,7 @@ export function createCity(seed = 11, nb = 19) {
           wreck: r() < 0.3,
         });
       if (r() < 0.55)
-        city.cars.push({
+        pushCar(city, {
           x: d,
           y: rx0 + 5.9,
           axis: "x",
@@ -306,6 +306,21 @@ function buildingAt(city, x, y) {
   return city.buildings.some(
     (b) => x > b.x - 1 && x < b.x + b.w + 1 && y > b.y - 1 && y < b.y + b.h + 1,
   );
+}
+
+// машина не в здании (с запасом 0,8 м) — защита генерации
+function pushCar(city, car) {
+  const w = car.axis === "x" ? 4.4 : 1.8,
+    h = car.axis === "x" ? 1.8 : 4.4,
+    m = 0.8;
+  const bad = city.buildings.some(
+    (b) =>
+      car.x < b.x + b.w + m &&
+      car.x + w > b.x - m &&
+      car.y < b.y + b.h + m &&
+      car.y + h > b.y - m,
+  );
+  if (!bad) city.cars.push(car);
 }
 
 // POI-кварталы
