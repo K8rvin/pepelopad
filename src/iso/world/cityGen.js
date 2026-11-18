@@ -310,8 +310,8 @@ function buildingAt(city, x, y) {
 
 // машина не в здании (с запасом 0,8 м) — защита генерации
 function pushCar(city, car) {
-  const w = car.axis === "x" ? 4.4 : 1.8,
-    h = car.axis === "x" ? 1.8 : 4.4,
+  const w = car.axis === "x" ? CAR_LEN : CAR_WID,
+    h = car.axis === "x" ? CAR_WID : CAR_LEN,
     m = 0.8;
   const bad = city.buildings.some(
     (b) =>
@@ -374,6 +374,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
           y: by0 + 30,
           axis: "y",
           color: pick(r, ["#7a3a2a", "#4a5560", "#9a9283", "#5a5e46"]),
+          kind: i % 3 === 1 ? "van" : "sedan", // у супермаркета чаще фургоны (без трат rng)
           wreck: r() < 0.35,
         });
     city.lamps.push({ x: bx0 + 18, y: by0 + 44 }, { x: bx0 + 44, y: by0 + 44 });
@@ -430,6 +431,24 @@ function genPoiBlock(city, bx0, by0, kind, r) {
 
 // пространственный индекс твёрдых тел (коллизии за O(1))
 export const SOLID_CELL = 16;
+
+// габариты машины: длина вдоль курса, ширина поперёк
+export const CAR_LEN = 4.4,
+  CAR_WID = 1.8;
+
+// AABB по курсу (квантование до доминирующей оси; турнтейбл-рендер плавный)
+export function carDims(car) {
+  const h = car.heading ?? (car.axis === "x" ? 0 : Math.PI / 2);
+  return Math.abs(Math.cos(h)) >= Math.abs(Math.sin(h))
+    ? { w: CAR_LEN, h: CAR_WID }
+    : { w: CAR_WID, h: CAR_LEN };
+}
+
+export function carCenter(car) {
+  const { w, h } = carDims(car);
+  return { x: car.x + w / 2, y: car.y + h / 2 };
+}
+
 function addSolid(city, x, y, w, h, kind, ref = null) {
   const x0 = Math.floor(x / SOLID_CELL),
     x1 = Math.floor((x + w) / SOLID_CELL);
@@ -445,16 +464,10 @@ function addSolid(city, x, y, w, h, kind, ref = null) {
 export function buildSolidIndex(city) {
   city.solidGrid = new Map();
   // здания НЕ в сетке: их стены проверяет solidInteriorAt (фасад с дверью + перегородки)
-  for (const c of city.cars)
-    addSolid(
-      city,
-      c.x,
-      c.y,
-      c.axis === "x" ? 4.4 : 1.8,
-      c.axis === "x" ? 1.8 : 4.4,
-      "car",
-      c,
-    );
+  for (const c of city.cars) {
+    const { w, h } = carDims(c);
+    addSolid(city, c.x, c.y, w, h, "car", c);
+  }
   for (const t of city.trees)
     addSolid(city, t.x - 0.4, t.y - 0.4, 0.8, 0.8, "tree");
   for (const l of city.lamps)

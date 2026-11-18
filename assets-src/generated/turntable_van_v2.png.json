@@ -1,0 +1,9 @@
+{
+  "id": "turntable_van_v2",
+  "prompt": "Sprite sheet with exactly 8 panels in a 2x4 grid. Each panel shows the SAME old Soviet delivery van (like a GAZelle), faded dirty white-blue paint, rust streaks, from a fixed isometric game camera (30 degrees elevation). Between panels the van rotates exactly 45 degrees clockwise around its vertical axis, no duplicate angles. Reading order, left to right, top to bottom: 1) nose pointing lower-left 2) nose pointing left 3) nose pointing upper-left 4) nose pointing straight up, rear to viewer 5) nose pointing upper-right 6) nose pointing right 7) nose pointing lower-right 8) nose pointing straight down, front to viewer. Identical van in all panels: same proportions, same rust, same headlights. Muted desaturated palette, dirt and grime. Flat neutral grey background, uniform lighting from straight above, no cast shadow, no ground, no text, no license plates, no grid lines.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\turntable_van_v2.png",
+  "createdAt": "2026-11-18T15:08:51.106Z"
+}

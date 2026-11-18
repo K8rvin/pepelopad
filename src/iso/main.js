@@ -11,7 +11,7 @@ import {
   fuelText,
 } from "./systems/vehicles.js";
 import { PITCH } from "./world/cityGen.js";
-import { createCity } from "./world/cityGen.js";
+import { createCity, buildSolidIndex } from "./world/cityGen.js";
 import { loadAssets } from "./render/assets.js";
 import { makeGroundSet } from "./render/tiles.js";
 import {
@@ -172,6 +172,7 @@ export async function boot() {
     const data = loadGameData();
     if (data && data.seed === seed && data.nb === nb) {
       applySave(data, { city, player, combat, survival, inv, loot, quests });
+      buildSolidIndex(city); // машины могли переехать с позиций генерации
       loaded = true;
     }
   }
@@ -349,20 +350,30 @@ export async function boot() {
         } else if (veh.inCar) {
           exitCar(city, veh, player);
         } else {
-          const car = nearestCar(city, player.x, player.y);
-          if (car && !car.wreck) enterCar(veh, car, player);
-          else if (car && car.wreck) toast("Машина разбита");
+          // сначала ближайшая исправная; остов — только если исправных рядом нет
+          const drivable = nearestCar(
+            city,
+            player.x,
+            player.y,
+            3,
+            (c) => !c.wreck,
+          );
+          if (drivable) enterCar(veh, drivable, player);
           else {
-            const c = nearestContainer(
-              loot,
-              player.x,
-              player.y,
-              1.6,
-              frameState.insideB,
-            );
-            if (c) {
-              openContainer(loot, c);
-              ui.openLoot(c);
+            const wreck = nearestCar(city, player.x, player.y);
+            if (wreck) toast("Машина разбита");
+            else {
+              const c = nearestContainer(
+                loot,
+                player.x,
+                player.y,
+                1.6,
+                frameState.insideB,
+              );
+              if (c) {
+                openContainer(loot, c);
+                ui.openLoot(c);
+              }
             }
           }
         }

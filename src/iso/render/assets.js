@@ -16,8 +16,12 @@ export const TEX_FILES = {
   roof_felt: "/assets/textures/roof_felt.png",
 };
 
-export const CAR_ATLAS_SRC = "/assets/gen/car8_sedan.png";
-export const CAR_ATLAS_META_SRC = "/assets/gen/car8_sedan.json";
+// турнтейбл-атласы по типам машин (kind): седан, фургон, остов
+export const CAR_ATLASES = {
+  sedan: ["/assets/gen/car8_sedan.png", "/assets/gen/car8_sedan.json"],
+  van: ["/assets/gen/car8_van.png", "/assets/gen/car8_van.json"],
+  wreck: ["/assets/gen/car8_wreck.png", "/assets/gen/car8_wreck.json"],
+};
 
 export const SPRITE_FILES = {
   tree: "/assets/gen/tree_poplar.png",
@@ -58,22 +62,26 @@ export async function loadAssets() {
   await Promise.all([
     loadSet(TEX_FILES, TEX),
     loadSet(SPRITE_FILES, SPRTEX),
+    // турнтейбл-атласы машин: SPRTEX.car8 = { sedan: {img, meta}, ... }
     (async () => {
-      try {
-        const [img, meta] = await Promise.all([
-          new Promise((res) => {
-            const i = new Image();
-            i.onload = () => res(i);
-            i.onerror = () => res(null);
-            i.src = CAR_ATLAS_SRC;
-          }),
-          fetch(CAR_ATLAS_META_SRC).then((r) => r.json()),
-        ]);
-        if (img) {
-          SPRTEX.car8 = img;
-          SPRTEX.car8meta = meta;
-        }
-      } catch {}
+      const out = {};
+      await Promise.all(
+        Object.entries(CAR_ATLASES).map(async ([kind, [imgSrc, metaSrc]]) => {
+          try {
+            const [img, meta] = await Promise.all([
+              new Promise((res) => {
+                const i = new Image();
+                i.onload = () => res(i);
+                i.onerror = () => res(null);
+                i.src = imgSrc;
+              }),
+              fetch(metaSrc).then((r) => r.json()),
+            ]);
+            if (img) out[kind] = { img, meta };
+          } catch {}
+        }),
+      );
+      if (Object.keys(out).length) SPRTEX.car8 = out;
     })(),
   ]);
 }
