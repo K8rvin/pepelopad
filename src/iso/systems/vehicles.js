@@ -83,10 +83,11 @@ export function exitCar(city, state, player) {
 }
 
 export function updateVehicle(city, car, keys, player, combat, dt, rng) {
-  // газ/тормоз/руль
+  // газ/тормоз/руль (A — влево, D — вправо; при заднем ходу знак скорости сам
+  // переворачивает отклик, как у настоящей машины)
   const fwd = keys.KeyW ? 1 : 0,
     back = keys.KeyS ? 1 : 0;
-  const steer = (keys.KeyA ? 1 : 0) - (keys.KeyD ? 1 : 0);
+  const steer = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   if (car.fuel <= 0) {
     car.v *= Math.max(0, 1 - DRAG * dt * 3);
   } else {
