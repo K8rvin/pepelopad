@@ -645,7 +645,7 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
   const sx = toX(p.x),
     sy = toY(p.y);
   const heading = car.heading ?? (car.axis === "x" ? 0 : Math.PI / 2);
-  // тень под полным курсом: T = [[cos, −2sin],[0.5sin, cos]] — поворот в плоскости земли
+  // тень капсулой по форме машины: T = [[cos, −2sin],[0.5sin, cos]] — поворот в плоскости земли
   const c = Math.cos(heading),
     s = Math.sin(heading);
   ctx.save();
@@ -653,9 +653,19 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
   ctx.transform(c, 0.5 * s, -2 * s, c, 0, 0);
   ctx.globalAlpha = 0.35;
   ctx.fillStyle = "#10141a";
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 72 * zoom, 27 * zoom, 0, 0, 7);
-  ctx.fill();
+  {
+    const L = 150 * zoom,
+      Wd = 58 * zoom,
+      r = Wd / 2;
+    ctx.beginPath();
+    ctx.moveTo(-L / 2 + r, -Wd / 2);
+    ctx.lineTo(L / 2 - r, -Wd / 2);
+    ctx.arc(L / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(-L / 2 + r, Wd / 2);
+    ctx.arc(-L / 2 + r, 0, r, Math.PI / 2, Math.PI * 1.5);
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.restore();
   // кадр турнтейбла (атлас по типу машины; остов — свой атлас)
   const kind = car.wreck ? "wreck" : car.kind || "sedan";

@@ -143,7 +143,7 @@ describe("iso-машины: вождение", () => {
     car.fuel = 40;
     const player = { x: 0, y: 0 };
     const combat = combatStub();
-    const keys = { KeyW: true, KeyA: true };
+    const keys = { KeyW: true, KeyD: true };
     const dt = 1 / 60;
     let prev = carCenter(car);
     let maxJump = 0;
@@ -163,6 +163,44 @@ describe("iso-машины: вождение", () => {
     // шаг за кадр — это движение (≤ v·dt + запас), а не скачок AABB (~1,3 м)
     expect(maxJump).toBeLessThan(0.8);
     expect(carDims(car).w).toBe(CAR_WID);
+  });
+
+  it("руль: A влево (курс уменьшается), D вправо (курс растёт)", () => {
+    const city = emptyCity();
+    city.cars.push({ x: 40, y: 40, axis: "x", wreck: false });
+    initVehicles(city);
+    const car = city.cars[0];
+    car.fuel = 40;
+    const player = { x: 0, y: 0 };
+    const combat = combatStub();
+    const run = (keys, frames) => {
+      for (let i = 0; i < frames; i++)
+        updateVehicle(city, car, keys, player, combat, 1 / 60);
+    };
+    // разгон вперёд, затем A
+    run({ KeyW: true }, 60);
+    car.heading = 0;
+    run({ KeyW: true, KeyA: true }, 45);
+    expect(car.heading).toBeLessThan(0); // влево (к северу)
+    // D
+    car.heading = 0;
+    run({ KeyW: true, KeyD: true }, 45);
+    expect(car.heading).toBeGreaterThan(0); // вправо (к югу)
+  });
+
+  it("задний ход: S разгоняет назад до ~40% максимума", () => {
+    const city = emptyCity();
+    city.cars.push({ x: 60, y: 60, axis: "x", wreck: false });
+    initVehicles(city);
+    const car = city.cars[0];
+    car.fuel = 40;
+    const player = { x: 0, y: 0 };
+    const combat = combatStub();
+    const x0 = car.x;
+    for (let i = 0; i < 180; i++)
+      updateVehicle(city, car, { KeyS: true }, player, combat, 1 / 60);
+    expect(car.v).toBeLessThan(0);
+    expect(car.x).toBeLessThan(x0); // уехала назад (курс 0 — на запад)
   });
 
   it("нос машины упирается в препятствие, а не входит в него", () => {
