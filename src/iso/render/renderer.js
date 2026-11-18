@@ -5,7 +5,7 @@ import { CH, getChunk, evictIfNeeded } from "./chunks.js";
 import { buildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
-import { getInterior } from "../world/interiors.js";
+import { getInterior, wallWithGaps } from "../world/interiors.js";
 
 export function createRenderer() {
   return {
@@ -133,19 +133,38 @@ export function renderWorld({
       )
     )
       continue;
-    push(b.x + b.w + (b.y + b.h), 1, () =>
-      drawBuilding(
-        ctx,
-        b,
-        toX,
-        toY,
-        zoom,
-        inside === b,
-        player,
-        city.brokenWindows.get(b.id),
-        loot,
-      ),
-    );
+    if (inside === b) {
+      // внутри: стены и мебель — ОТДЕЛЬНЫМИ сортированными элементами (не слот здания!)
+      const it = getInterior(null, b);
+      const segs = interiorSegments(b, it, city);
+      for (const s of segs) {
+        const d = Math.max(
+          b.x + s.x1 + (b.y + s.y1),
+          b.x + s.x2 + (b.y + s.y2),
+        );
+        push(d, 1, () => drawWallSeg(ctx, b, s, toX, toY, zoom, player));
+      }
+      for (const f of it.furniture || []) {
+        const d = b.x + f.x + f.w + (b.y + f.y + f.h);
+        push(d, 1.5, () =>
+          drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it),
+        );
+      }
+    } else {
+      push(b.x + b.w + (b.y + b.h), 1, () =>
+        drawBuilding(
+          ctx,
+          b,
+          toX,
+          toY,
+          zoom,
+          false,
+          player,
+          city.brokenWindows.get(b.id),
+          loot,
+        ),
+      );
+    }
   }
   for (const t of city.trees) {
     if (!vis(t.x, t.y, 70, 120)) continue;
@@ -621,6 +640,113 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
       ctx.restore();
     }
   }
+}
+
+// стены интерьера + фасадные с проёмами — как сортированные сегменты
+function interiorSegments(b, it, city) {
+  const walls = it.walls.map((w) => ({ ...w, inside: true }));
+  const du = it.doorU,
+    W = b.w,
+    H = b.h;
+  const broken = city.brokenWindows?.get(b.id);
+  const southGaps = [[du, 0.7]],
+    eastGaps = [];
+  if (broken)
+    for (const key of broken) {
+      const [face, u] = key.split(":");
+      if (face === "S") southGaps.push([Number(u), 0.6]);
+      else eastGaps.push([Number(u), 0.6]);
+    }
+  for (const [x1, y1, x2, y2] of [
+    [0, 0, W, 0],
+    ...wallWithGaps(0, H, W, H, southGaps),
+    [0, 0, 0, H],
+    ...wallWithGaps(W, 0, W, H, eastGaps),
+  ])
+    walls.push({ x1, y1, x2, y2 });
+  return walls;
+}
+
+// один сегмент стены (1 м) с кэпом; к югу/востоку от игрока — полупрозрачный
+function drawWallSeg(ctx, b, s, toX, toY, zoom, player) {
+  const hgt = 32 * zoom;
+  const plx = player ? player.x - b.x : 0,
+    ply = player ? player.y - b.y : 0;
+  const horizontal = s.y1 === s.y2;
+  const fade =
+    (horizontal && s.y1 > ply + 0.1) || (!horizontal && s.x1 > plx + 0.1);
+  if (fade) ctx.globalAlpha = 0.38;
+  const a = w2s(b.x + s.x1, b.y + s.y1);
+  const c = w2s(b.x + s.x2, b.y + s.y2);
+  const ax = toX(a.x),
+    ay = toY(a.y),
+    cx2 = toX(c.x),
+    cy2 = toY(c.y);
+  ctx.fillStyle = "#56524a";
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(cx2, cy2);
+  ctx.lineTo(cx2, cy2 - hgt);
+  ctx.lineTo(ax, ay - hgt);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#7a7568";
+  ctx.lineWidth = Math.max(1, 3 * zoom);
+  ctx.beginPath();
+  ctx.moveTo(ax, ay - hgt);
+  ctx.lineTo(cx2, cy2 - hgt);
+  ctx.stroke();
+  if (fade) ctx.globalAlpha = 1;
+}
+
+// мебель как отдельный сортированный элемент
+function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
+  const st = FURN_STYLE[f.kind] || FURN_STYLE.table;
+  const cx = b.x + f.x + f.w / 2,
+    cy = b.y + f.y + f.h / 2;
+  const p = w2s(cx, cy);
+  const dx = toX(p.x),
+    dy = toY(p.y);
+  const plx = player ? player.x - b.x : 0,
+    ply = player ? player.y - b.y : 0;
+  const fade = cy - b.y > ply + 0.1 || cx - b.x > plx + 0.1;
+  if (fade) ctx.globalAlpha = 0.55;
+  const hgt = st.h * 32 * zoom;
+  const s = w2s(b.x + f.x, b.y + f.y + f.h);
+  const e = w2s(b.x + f.x + f.w, b.y + f.y);
+  ctx.fillStyle = st.c;
+  ctx.beginPath();
+  ctx.moveTo(toX(s.x), toY(s.y) - hgt);
+  ctx.lineTo(toX(e.x), toY(e.y) - hgt);
+  ctx.lineTo(toX(e.x), toY(e.y));
+  ctx.lineTo(toX(s.x), toY(s.y));
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = st.top;
+  ctx.beginPath();
+  const a1 = w2s(b.x + f.x, b.y + f.y),
+    a2 = w2s(b.x + f.x + f.w, b.y + f.y),
+    a3 = w2s(b.x + f.x + f.w, b.y + f.y + f.h),
+    a4 = w2s(b.x + f.x, b.y + f.y + f.h);
+  ctx.moveTo(toX(a1.x), toY(a1.y) - hgt);
+  ctx.lineTo(toX(a2.x), toY(a2.y) - hgt);
+  ctx.lineTo(toX(a3.x), toY(a3.y) - hgt);
+  ctx.lineTo(toX(a4.x), toY(a4.y) - hgt);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(16,20,26,0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  const cont = it.containers.find(
+    (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
+  );
+  if (cont && loot && !loot.opened.has(cont.id)) {
+    ctx.fillStyle = "#ffb23e";
+    ctx.beginPath();
+    ctx.arc(dx, dy - hgt - 8 * zoom, 3.5 * zoom, 0, 7);
+    ctx.fill();
+  }
+  if (fade) ctx.globalAlpha = 1;
 }
 
 // мебель интерьера: изо-коробки по типу; контейнеры — бейдж до обыска
