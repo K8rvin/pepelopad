@@ -10,6 +10,7 @@ import {
   wallWithGaps,
   buildingAtPoint,
 } from "../world/interiors.js";
+import { carDims, carCenter } from "../world/cityGen.js";
 
 export function createRenderer() {
   return {
@@ -298,10 +299,9 @@ export function renderWorld({
   // машины не рисуем, когда игрок внутри здания (снаружи скрыты стенами)
   if (!inside)
     city.cars.forEach((car, i) => {
-      const w = car.axis === "x" ? 4.4 : 1.8,
-        h = car.axis === "x" ? 1.8 : 4.4;
-      if (!vis(car.x + w / 2, car.y + h / 2, 130, 100)) return;
-      push(car.x + w + (car.y + h), 1, () =>
+      const cd = carDims(car);
+      if (!vis(car.x + cd.w / 2, car.y + cd.h / 2, 130, 100)) return;
+      push(car.x + cd.w + (car.y + cd.h), 1, () =>
         drawCar(ctx, car, i, toX, toY, zoom),
       );
     });
@@ -614,19 +614,23 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
 }
 
 // машина: процедурная тень под полным курсом (T-матрица) + кадр турнтейбла с кроссфейдом
-// раскладка кадров атласа: мировой курс в градусах по индексам кадров (подобрано визуально)
-const CAR_DIRS = [145, 340, 225, 280, 175, 18, 45, 73];
+// раскладка кадров атласов: мировой курс в градусах по индексам кадров (подобрано визуально)
+const CAR_DIRS = {
+  sedan: [100, 190, 225, 292, 168, 18, 45, 78],
+  van: [110, 135, 180, 225, 270, 315, 0, 45],
+  wreck: [135, 100, 45, 0, 315, 292, 225, 180],
+};
 function angDiffDeg(a, b) {
   let d = a - b;
   while (d > 180) d -= 360;
   while (d < -180) d += 360;
   return d;
 }
-function pickCarFrame(deg) {
+function pickCarFrame(deg, dirs) {
   let best = 0,
     bd = 999;
-  for (let i = 0; i < CAR_DIRS.length; i++) {
-    const d = Math.abs(angDiffDeg(deg, CAR_DIRS[i]));
+  for (let i = 0; i < dirs.length; i++) {
+    const d = Math.abs(angDiffDeg(deg, dirs[i]));
     if (d < bd) {
       bd = d;
       best = i;
@@ -636,9 +640,8 @@ function pickCarFrame(deg) {
 }
 
 function drawCar(ctx, car, i, toX, toY, zoom) {
-  const w = car.axis === "x" ? 4.4 : 1.8,
-    h = car.axis === "x" ? 1.8 : 4.4;
-  const p = w2s(car.x + w / 2, car.y + h / 2);
+  const cc = carCenter(car);
+  const p = w2s(cc.x, cc.y);
   const sx = toX(p.x),
     sy = toY(p.y);
   const heading = car.heading ?? (car.axis === "x" ? 0 : Math.PI / 2);
@@ -654,12 +657,15 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
   ctx.ellipse(0, 0, 72 * zoom, 27 * zoom, 0, 0, 7);
   ctx.fill();
   ctx.restore();
-  // кадр турнтейбла
-  const atlas = SPRTEX.car8,
-    meta = SPRTEX.car8meta;
-  if (atlas && meta && !car.wreck) {
+  // кадр турнтейбла (атлас по типу машины; остов — свой атлас)
+  const kind = car.wreck ? "wreck" : car.kind || "sedan";
+  const set = SPRTEX.car8?.[kind] || SPRTEX.car8?.sedan;
+  const atlas = set?.img,
+    meta = set?.meta;
+  if (atlas && meta) {
     const deg = ((((heading * 180) / Math.PI) % 360) + 360) % 360;
-    const frame = pickCarFrame(deg);
+    const dirs = CAR_DIRS[kind] || CAR_DIRS.sedan;
+    const frame = pickCarFrame(deg, dirs);
     if (car.visFrame === undefined) car.visFrame = frame;
     if (car.visBlend === undefined) car.visBlend = 1;
     if (frame !== car.visFrame) {
@@ -675,13 +681,16 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
       drawH = drawW * (fh / fw);
     const drawFrame = (idx, alpha) => {
       if (alpha <= 0) return;
-      const ax = (meta.anchors[idx].x / fw) * drawW,
-        ay = (meta.anchors[idx].y / fh) * drawH;
+      const col = idx % cols,
+        row = Math.floor(idx / cols);
+      // якоря в JSON — в координатах АТЛАСА; внутри кадра — минус смещение колонки/ряда
+      const ax = ((meta.anchors[idx].x - col * fw) / fw) * drawW,
+        ay = ((meta.anchors[idx].y - row * fh) / fh) * drawH;
       ctx.globalAlpha = alpha;
       ctx.drawImage(
         atlas,
-        (idx % cols) * fw,
-        Math.floor(idx / cols) * fh,
+        col * fw,
+        row * fh,
         fw,
         fh,
         sx - ax,
@@ -696,10 +705,10 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
     ctx.globalAlpha = 1;
     return;
   }
-  // фолбэк: статичные спрайты (остов) или коробка
+  // фолбэк: статичные спрайты по типу или процедурная коробка
   const img = car.wreck
     ? SPRTEX.car_wreck
-    : i % 3 === 2
+    : car.kind === "van"
       ? SPRTEX.car_van
       : SPRTEX.car_sedan;
   if (img) {

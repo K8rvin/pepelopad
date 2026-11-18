@@ -1,0 +1,9 @@
+{
+  "id": "turntable_wreck_v1",
+  "prompt": "Sprite sheet, 8 views of the SAME burned-out wrecked Soviet sedan car, arranged in a 2x4 grid, orthographic isometric view, 30 degrees elevation, each next view rotated 45 degrees clockwise around the car wreck, starting facing left. Identical charred wreck in all 8 cells: grey-black burned body, no windows, collapsed roof, same rust patches and dents. Muted desaturated palette, dirt and ash. Flat neutral grey background, uniform lighting from straight above, no cast shadow, no ground, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\turntable_wreck_v1.png",
+  "createdAt": "2026-11-18T14:55:19.038Z"
+}

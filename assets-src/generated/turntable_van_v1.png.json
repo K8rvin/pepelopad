@@ -1,0 +1,9 @@
+{
+  "id": "turntable_van_v1",
+  "prompt": "Sprite sheet, 8 views of the SAME old Soviet delivery van (like a GAZelle), arranged in a 2x4 grid, orthographic isometric view, 30 degrees elevation, each next view rotated 45 degrees clockwise around the van, starting facing left. Identical van in all 8 cells: same proportions, same rust streaks, same headlights and grille. Muted desaturated palette, faded dirty white-blue paint, dirt and grime. Flat neutral grey background, uniform lighting from straight above, no cast shadow, no ground, no text, no license plates.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\turntable_van_v1.png",
+  "createdAt": "2026-11-18T14:54:05.566Z"
+}

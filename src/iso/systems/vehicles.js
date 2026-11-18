@@ -1,8 +1,13 @@
 // Машины (спроектировано заново): посадка/высадка, вождение (W газ, S тормоз/задний,
 // A/D руль), топливо в литрах, таран зомби, урон машине, багажник (отдельное хранилище).
 // Битые (wreck) — недвижимы, это пропсы.
-import { clamp } from "../core/rng.js";
-import { solidRectAt, buildSolidIndex } from "../world/cityGen.js";
+import {
+  solidRectAt,
+  buildSolidIndex,
+  carDims,
+  carCenter,
+  CAR_LEN,
+} from "../world/cityGen.js";
 
 const ACCEL = 9; // м/с²
 const MAX_SPEED = 22; // ~80 км/ч
@@ -19,20 +24,21 @@ export function initVehicles(city) {
     c.hp = c.wreck ? 0 : 100;
     c.heading = c.axis === "x" ? 0 : Math.PI / 2;
     c.v = 0;
+    // тип кузова без трат rng генерации: детерминированно по индексу,
+    // ~18% фургонов (явный kind из генератора имеет приоритет)
+    c.kind ??= (i * 7919) % 100 < 18 ? "van" : "sedan";
     c.trunk = null; // слоты создаются при первом открытии
   });
 }
 
-export function nearestCar(city, x, y, r = 3) {
+export function nearestCar(city, x, y, r = 3, filter = null) {
   let best = null,
-    bd = r;
+    bd = r + 1.5; // центр машины до 2,2 м от края — радиус от центра
   for (const c of city.cars) {
-    const w = c.axis === "x" ? 4.4 : 1.8,
-      h = c.axis === "x" ? 1.8 : 4.4;
-    const cx = c.x + w / 2,
-      cy = c.y + h / 2;
-    const d = Math.hypot(cx - x, cy - y);
-    if (d < bd + 1.5) {
+    if (filter && !filter(c)) continue;
+    const cc = carCenter(c);
+    const d = Math.hypot(cc.x - x, cc.y - y);
+    if (d < bd) {
       bd = d;
       best = c;
     }
@@ -42,23 +48,34 @@ export function nearestCar(city, x, y, r = 3) {
 
 export function enterCar(state, car, player) {
   state.inCar = car;
-  player.x = car.x + (car.axis === "x" ? 2.2 : 0.9);
-  player.y = car.y + (car.axis === "x" ? 0.9 : 2.2);
+  const cc = carCenter(car);
+  player.x = cc.x;
+  player.y = cc.y;
 }
 
+// высадка: первый свободный борт; если все заняты — кольцевой поиск до 6 м
 export function exitCar(city, state, player) {
   const car = state.inCar;
   if (!car) return;
-  // выход сбоку от машины в свободную точку
-  const w = car.axis === "x" ? 4.4 : 1.8,
-    h = car.axis === "x" ? 1.8 : 4.4;
-  const spots = [
-    { x: car.x - 1, y: car.y + h / 2 },
-    { x: car.x + w + 1, y: car.y + h / 2 },
-    { x: car.x + w / 2, y: car.y - 1 },
-    { x: car.x + w / 2, y: car.y + h + 1 },
+  const { w, h } = carDims(car);
+  const cc = carCenter(car);
+  const candidates = [
+    { x: car.x - 1, y: cc.y },
+    { x: car.x + w + 1, y: cc.y },
+    { x: cc.x, y: car.y - 1 },
+    { x: cc.x, y: car.y + h + 1 },
   ];
-  const spot = spots.find((s) => !solidRectAt(city, s.x, s.y, 0.5)) || spots[0];
+  // кольцевой запасной поиск вокруг центра
+  for (const ring of [3, 4, 5, 6])
+    for (let a = 0; a < 8; a++) {
+      const ang = (a / 8) * Math.PI * 2;
+      candidates.push({
+        x: cc.x + Math.cos(ang) * ring,
+        y: cc.y + Math.sin(ang) * ring,
+      });
+    }
+  const spot =
+    candidates.find((s) => !solidRectAt(city, s.x, s.y, 0.5)) || candidates[0];
   player.x = spot.x;
   player.y = spot.y;
   car.v = 0;
@@ -83,38 +100,30 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
     buildSolidIndex(city);
   }
   if (Math.abs(car.v) > 0.2) {
+    const before = carDims(car);
     car.heading +=
       steer * STEER * dt * Math.min(1, Math.abs(car.v) / 8) * Math.sign(car.v);
+    // перепад доминирующей оси AABB: сохраняем центр машины
+    const after = carDims(car);
+    if (after.w !== before.w) {
+      car.x += (before.w - after.w) / 2;
+      car.y += (before.h - after.h) / 2;
+    }
   }
-  // движение с коллизией: два круга (перед/зад)
-  const dx = Math.cos(car.heading) * car.v * dt,
-    dy = Math.sin(car.heading) * car.v * dt;
-  const w = car.axis === "x" ? 4.4 : 1.8,
-    h = car.axis === "x" ? 1.8 : 4.4;
-  const nx = car.x + dx,
-    ny = car.y + dy;
-  const fx =
-      nx + Math.cos(car.heading) * (w / 2) * (car.axis === "x" ? 1 : 1) * 0,
-    fy = ny; // центр коробки достаточно для прототипа
+  // движение с коллизией: зонды на носу и корме по курсу
+  const { w, h } = carDims(car);
   const hw = w / 2,
     hh = h / 2;
-  const cx = nx + hw,
-    cy = ny + hh;
+  const dx = Math.cos(car.heading) * car.v * dt,
+    dy = Math.sin(car.heading) * car.v * dt;
+  const cx = car.x + dx + hw,
+    cy = car.y + dy + hh;
+  const HL = CAR_LEN / 2,
+    cosH = Math.cos(car.heading),
+    sinH = Math.sin(car.heading);
   const hit =
-    solidRectAt(
-      city,
-      cx + Math.cos(car.heading) * hw,
-      cy + Math.sin(car.heading) * hh,
-      1.0,
-      car,
-    ) ||
-    solidRectAt(
-      city,
-      cx - Math.cos(car.heading) * hw,
-      cy - Math.sin(car.heading) * hh,
-      1.0,
-      car,
-    );
+    solidRectAt(city, cx + cosH * HL, cy + sinH * HL, 0.9, car) ||
+    solidRectAt(city, cx - cosH * HL, cy - sinH * HL, 0.9, car);
   if (hit) {
     if (Math.abs(car.v) > 6) {
       car.hp = Math.max(0, car.hp - Math.abs(car.v));
@@ -122,8 +131,8 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
     }
     car.v = -car.v * 0.25; // отскок
   } else {
-    car.x = nx;
-    car.y = ny;
+    car.x += dx;
+    car.y += dy;
     car.moved = true;
     car.fuel = Math.max(0, car.fuel - Math.abs(car.v) * dt * FUEL_PER_M);
   }
@@ -146,7 +155,7 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
       combat.shake = Math.max(combat.shake, 4);
     }
   }
-  // игрок едет с машиной
+  // игрок едет с машиной (в её центре)
   player.x = car.x + hw;
   player.y = car.y + hh;
 }
