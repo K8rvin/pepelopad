@@ -295,14 +295,16 @@ export function renderWorld({
           R.drawCalls++;
         });
       }
-  city.cars.forEach((car, i) => {
-    const w = car.axis === "x" ? 4.4 : 1.8,
-      h = car.axis === "x" ? 1.8 : 4.4;
-    if (!vis(car.x + w / 2, car.y + h / 2, 130, 100)) return;
-    push(car.x + w + (car.y + h), 1, () =>
-      drawCar(ctx, car, i, toX, toY, zoom),
-    );
-  });
+  // машины не рисуем, когда игрок внутри здания (снаружи скрыты стенами)
+  if (!inside)
+    city.cars.forEach((car, i) => {
+      const w = car.axis === "x" ? 4.4 : 1.8,
+        h = car.axis === "x" ? 1.8 : 4.4;
+      if (!vis(car.x + w / 2, car.y + h / 2, 130, 100)) return;
+      push(car.x + w + (car.y + h), 1, () =>
+        drawCar(ctx, car, i, toX, toY, zoom),
+      );
+    });
   player._insideB = inside;
   for (const z of zombies) {
     if (z.dead) continue;
