@@ -164,6 +164,49 @@
         margin-top: 6px;
         text-align: right;
       }
+      #pause {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 12, 9, 0.6);
+        z-index: 20;
+      }
+      #pause .panel {
+        background: rgba(17, 20, 14, 0.97);
+        border: 1px solid #596248;
+        padding: 18px 22px;
+        min-width: 340px;
+        color: #ece5d0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #pause h2 {
+        color: #c96a35;
+        font-size: 15px;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      #pause button {
+        background: #39402e;
+        color: #ece5d0;
+        border: 1px solid #596248;
+        padding: 7px 12px;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+      }
+      #pause button:hover {
+        background: #4a5438;
+      }
+      #pause .hint {
+        color: #9a9478;
+        font-size: 11px;
+        margin-top: 8px;
+        line-height: 1.5;
+      }
     </style>
   </head>
   <body>
@@ -171,6 +214,20 @@
     <div id="hud">…</div>
     <div id="ui"></div>
     <div id="dlg"></div>
+    <div id="pause">
+      <div class="panel">
+        <h2>ПЕПЕЛОПАД — пауза</h2>
+        <button id="pContinue">Продолжить (Esc)</button>
+        <button id="pSave">Сохранить</button>
+        <button id="pZoom">Зум: ×1</button>
+        <button id="pNew">Новая игра (сброс)</button>
+        <div class="hint">
+          WASD — движение/руль · ЛКМ — лук · E — обыск/сесть/лестница · I — рюкзак · C — крафт<br />
+          Q — еда · H — бинт · B — разбить окно · X — спуск с этажа · F — заправить · R — возрождение<br />
+          Автосохранение каждые 15 с. Новая игра также через ?new=1 в адресе.
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/iso/main.js"></script>
   </body>
 </html>

@@ -368,7 +368,37 @@ export async function boot() {
         }
       }
     }
-    if (e.code === "Escape" && ui.isOpen()) ui.close();
+    if (e.code === "Escape") {
+      if (ui.isOpen()) ui.close();
+      else setPaused(!paused);
+    }
+  });
+
+  // меню паузы
+  const pauseEl = document.getElementById("pause");
+  let paused = false;
+  function setPaused(v) {
+    paused = v;
+    pauseEl.style.display = v ? "flex" : "none";
+  }
+  document
+    .getElementById("pContinue")
+    .addEventListener("click", () => setPaused(false));
+  document.getElementById("pSave").addEventListener("click", () => {
+    doSave();
+    toast("Сохранено");
+    setPaused(false);
+  });
+  const pZoom = document.getElementById("pZoom");
+  pZoom.addEventListener("click", () => {
+    zoom = zoom === 1 ? 2 : 1;
+    pZoom.textContent = "Зум: ×" + zoom;
+  });
+  document.getElementById("pNew").addEventListener("click", () => {
+    if (confirm("Начать заново? Текущее сохранение будет удалено.")) {
+      deleteSave();
+      location.search = "?new=1";
+    }
   });
   addEventListener("keyup", (e) => (keys[e.code] = false));
 
@@ -434,6 +464,46 @@ export async function boot() {
     dlgEl.innerHTML = `<div class="who">${npc.name}</div><div>${npc.lines[D.line]}</div><div class="hint">E — дальше</div>`;
   }
   function frame(t) {
+    lastT = t;
+    if (paused) {
+      // пауза: мир стоит, только рендер + HUD
+      const camS0 = w2s(cam.x, cam.y);
+      const aim0 = screenToWorld(mouse.x, mouse.y, camS0, W, H, zoom);
+      const dark0 = darknessFor(survival.tod);
+      renderWorld({
+        ctx,
+        R,
+        city,
+        player,
+        zombies: city.zombies,
+        groundSet,
+        SPR,
+        cam,
+        zoom,
+        night: dark0 > 0.4,
+        L,
+        W,
+        H,
+        ashP,
+        combat,
+        loot,
+        aim: aim0,
+        now: t / 1000,
+        lootNearest: loot.nearest,
+        uiOpen: ui.isOpen(),
+        questTarget: (() => {
+          const poi = questTargetPoi(quests, QUESTS);
+          return poi ? poiBuilding(city, poi) : null;
+        })(),
+        inCar: !!veh.inCar,
+        npcs,
+        stairsNear: frameState.stairsNear,
+        windowNear: frameState.windowNear,
+      });
+      hud.textContent = `ПЕПЕЛОПАД: Город — ПАУЗА\n${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)}`;
+      requestAnimationFrame(frame);
+      return;
+    }
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
     const t0 = performance.now();
