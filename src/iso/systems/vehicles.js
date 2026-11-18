@@ -111,7 +111,8 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
       car.y += (before.h - after.h) / 2;
     }
   }
-  // движение с коллизией: зонды на носу и корме по курсу
+  // движение с коллизией: зонд ТОЛЬКО по ходу движения (нос при вперёд,
+  // корма при назад) — иначе задевшее носом препятствие не даёт отъехать назад
   const { w, h } = carDims(car);
   const hw = w / 2,
     hh = h / 2;
@@ -122,15 +123,21 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
   const HL = CAR_LEN / 2,
     cosH = Math.cos(car.heading),
     sinH = Math.sin(car.heading);
-  const hit =
-    solidRectAt(city, cx + cosH * HL, cy + sinH * HL, 0.9, car) ||
-    solidRectAt(city, cx - cosH * HL, cy - sinH * HL, 0.9, car);
+  const dir = car.v >= 0 ? 1 : -1;
+  const hit = solidRectAt(
+    city,
+    cx + dir * cosH * HL,
+    cy + dir * sinH * HL,
+    0.4,
+    car,
+  );
   if (hit) {
     if (Math.abs(car.v) > 6) {
       car.hp = Math.max(0, car.hp - Math.abs(car.v));
       combat.shake = 8;
     }
-    car.v = -car.v * 0.25; // отскок
+    // отскок только на скорости; на касании — просто стоп, чтобы не дёргаться
+    car.v = Math.abs(car.v) > 1 ? -car.v * 0.25 : 0;
   } else {
     car.x += dx;
     car.y += dy;
