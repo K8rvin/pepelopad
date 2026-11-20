@@ -104,6 +104,24 @@ import {
   NEUTRAL_MODS,
 } from "./systems/skills.js";
 import { SKILLS, ATTRS } from "./data/skills.js";
+import {
+  createCamps,
+  campNear,
+  campDef,
+  newDay as campsNewDay,
+  buy as campBuy,
+  donate as campDonate,
+  deliver as campDeliver,
+  build as campBuild,
+  service as campService,
+} from "./systems/camps.js";
+import {
+  createBase,
+  foundBase,
+  buildStructure as baseBuild,
+  baseNewDay,
+  baseRaid,
+} from "./systems/base.js";
 import { w2s } from "./core/geo.js";
 
 export async function boot() {
@@ -177,6 +195,9 @@ export async function boot() {
   initVehicles(city);
   const npcs = createNpcs(city, PITCH);
   const dlg = createDialog();
+  const camps = createCamps(city);
+  let campTarget = null;
+  const base = createBase();
   // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
   const wantNew = params.get("new") === "1";
   let loaded = false;
@@ -192,6 +213,8 @@ export async function boot() {
         loot,
         quests,
         skills,
+        camps,
+        base,
       });
       buildSolidIndex(city); // машины могли переехать с позиций генерации
       loaded = true;
@@ -314,6 +337,49 @@ export async function boot() {
       const left = addItem(tr, s.id, s.n);
       inv.slots[i] = left ? { id: s.id, n: left } : null;
     },
+    onCampBuy: (i) => {
+      if (campTarget && campBuy(campTarget, inv, i))
+        toast(`Куплено: ${ITEMS[campTarget.stock[i]?.id]?.name || "предмет"}`);
+    },
+    onCampDonate: (id) => {
+      if (!campTarget) return;
+      const g = campDonate(campTarget, inv, id, 1);
+      if (g) toast(`Пожертвовано: +${g} доверия лагерю`);
+    },
+    onCampDeliver: () => {
+      if (campTarget && campDeliver(campTarget, inv))
+        toast("Поручение выполнено. Доверие и награда получены.");
+    },
+    onCampBuild: (i) => {
+      if (campTarget && campBuild(campTarget, inv, i))
+        toast(`Построено: ${campDef(campTarget).upgrades[i].name}`);
+    },
+    onCampService: () => {
+      if (campTarget && campService(campTarget, combat, survival.day))
+        toast("Лазарет: перевязка +30 HP.");
+    },
+    getBase: () => base,
+    onBaseFound: () => {
+      if (foundBase(base, city, player))
+        toast("База основана. Строй постройки и набирай жителей.");
+      else toast("Нужен открытый газон вне зданий.");
+    },
+    onBaseBuild: (i) => {
+      if (baseBuild(base, inv, i)) toast("Построено на базе.");
+    },
+    onBaseTake: (i) => {
+      const s = base.storage.slots[i];
+      if (!s) return;
+      const left = addItem(inv, s.id, s.n);
+      s.n = left;
+      if (!left) base.storage.slots[i] = null;
+    },
+    onBasePut: (i) => {
+      const s = inv.slots[i];
+      if (!s) return;
+      const left = addItem(base.storage, s.id, s.n);
+      inv.slots[i] = left ? { id: s.id, n: left } : null;
+    },
   });
   let zoom = 1;
   const mouse = { x: 0, y: 0 };
@@ -405,6 +471,14 @@ export async function boot() {
       if (ui.isOpen()) ui.close();
       else ui.openCharacter();
     }
+    if (e.code === "KeyV" && !combat.dead) {
+      if (ui.isOpen()) ui.close();
+      else if (!base.founded) {
+        if (foundBase(base, city, player))
+          toast("База основана. Строй постройки и набирай жителей.");
+        else toast("Нужен открытый газон вне зданий.");
+      } else ui.openBase();
+    }
     // интерфейс: рюкзак и обыск
     if (e.code === "KeyI" || e.code === "Tab") {
       e.preventDefault();
@@ -435,8 +509,12 @@ export async function boot() {
             }
           }
         }
+        const camp = campNear(camps, player.x, player.y);
         const npc = npcNear(npcs, player.x, player.y);
-        if (npc) {
+        if (camp) {
+          campTarget = camp;
+          ui.openCamp(camp);
+        } else if (npc) {
           openDialog(dlg, npc);
           renderDialog(dlg, npc);
         } else if (veh.inCar) {
@@ -463,6 +541,13 @@ export async function boot() {
                 frameState.insideB,
               );
               if (c) {
+                const contents = loot.opened.has(c.id)
+                  ? loot.opened.get(c.id)
+                  : containerItems(c, mods.lootBonus);
+                if (!contents.some((s) => s)) {
+                  toast("Пусто.");
+                  return;
+                }
                 // обыск занимает время; навык поиска ускоряет
                 search = {
                   c,
@@ -549,8 +634,21 @@ export async function boot() {
     alertNear: (x, y, r) => alertNear(city, x, y, r),
     search: () => search,
     peek: (c) => containerItems(c, mods.lootBonus),
+    camps,
+    base,
     save: () =>
-      saveGame({ city, player, combat, survival, inv, loot, quests, skills }),
+      saveGame({
+        city,
+        player,
+        combat,
+        survival,
+        inv,
+        loot,
+        quests,
+        skills,
+        camps,
+        base,
+      }),
   };
 
   // автосохранение: каждые 15 с и при скрытии страницы
@@ -558,7 +656,18 @@ export async function boot() {
   let visitT = 0;
   const frameState = { insideB: null, stairsNear: false };
   const doSave = () =>
-    saveGame({ city, player, combat, survival, inv, loot, quests, skills });
+    saveGame({
+      city,
+      player,
+      combat,
+      survival,
+      inv,
+      loot,
+      quests,
+      skills,
+      camps,
+      base,
+    });
   // строка квеста для HUD
   function questHudText() {
     const q = mainQuest(quests, QUESTS);
@@ -619,6 +728,8 @@ export async function boot() {
         stairsNear: frameState.stairsNear,
         windowNear: frameState.windowNear,
         search,
+        camps,
+        base,
       });
       hud.textContent = `МЁРТВЫЙ РАЙОН — ПАУЗА\n${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)}`;
       requestAnimationFrame(frame);
@@ -656,7 +767,15 @@ export async function boot() {
     } else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
     const dayBefore = survival.day;
     updateSurvival(survival, combat, player, city, inv, dt, mods);
-    if (survival.day > dayBefore) skillXp("survival", 20); // пережил сутки
+    if (survival.day > dayBefore) {
+      skillXp("survival", 20); // пережил сутки
+      campsNewDay(camps, survival.day); // склад и поручения лагерей
+      baseNewDay(base, survival.day); // жители и производство базы
+    }
+    if (survival.tod >= 21 && survival.tod < 21.1) {
+      const n = baseRaid(base, city, survival.day);
+      if (n > 0) toast(`Рейд на базу: ${n} зомби!`);
+    }
     if (survival.pendingBoss) {
       const p = survival.pendingBoss;
       survival.pendingBoss = null;
@@ -687,9 +806,13 @@ export async function boot() {
       1.6,
       frameState.insideB,
     );
-    // пустые контейнеры не предлагают обыск
-    loot.nearest =
-      nearC && containerItems(nearC, mods.lootBonus).length ? nearC : null;
+    // пустые контейнеры не предлагают обыск; учитываем уже опустошённые
+    const nearItems = nearC
+      ? loot.opened.has(nearC.id)
+        ? loot.opened.get(nearC.id)
+        : containerItems(nearC, mods.lootBonus)
+      : null;
+    loot.nearest = nearC && nearItems.some((s) => s) ? nearC : null;
     toastT = Math.max(0, toastT - dt);
     // квесты: визит к POI (раз в 0,5 с)
     visitT -= dt;
@@ -788,6 +911,8 @@ export async function boot() {
       stairsNear: frameState.stairsNear,
       windowNear: frameState.windowNear,
       search,
+      camps,
+      base,
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -811,7 +936,7 @@ export async function boot() {
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}${player.level > 0 ? ` · этаж ${player.level + 1}` : ""}
 ${questHudText()}
-${veh.inCar ? "WASD — руль · E — выйти · F — заправить · T — багажник" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · P — персонаж · T — багажник · Q — еда · H — бинт"}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
+${veh.inCar ? "WASD — руль · E — выйти · F — заправить · T — багажник" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · P — персонаж · T — багажник · Q — еда · H — бинт"}${campNear(camps, player.x, player.y) ? ` · E — лагерь «${campDef(campNear(camps, player.x, player.y)).name}»` : ""}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

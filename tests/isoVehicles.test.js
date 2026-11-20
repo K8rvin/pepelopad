@@ -205,8 +205,8 @@ describe("iso-машины: вождение", () => {
 
   it("задел носом — задним ходом отъезжает, не залипает", () => {
     const city = emptyCity();
-    // забор поперёк пути (вертикальный, x=50)
-    city.fences.push({ x0: 50, y0: 30, x1: 50, y1: 50, axis: "y" });
+    // несбиваемое препятствие поперёк пути (дерево на осевой, x=50); заборы сбиваемые
+    city.trees.push({ x: 50, y: 40.4, dead: false, v: 0 });
     city.cars.push({ x: 44, y: 39.5, axis: "x", wreck: false });
     initVehicles(city);
     buildSolidIndex(city);
@@ -231,8 +231,8 @@ describe("iso-машины: вождение", () => {
 
   it("нос машины упирается в препятствие, а не входит в него", () => {
     const city = emptyCity();
-    // стена-забор поперёк пути
-    city.fences.push({ x0: 50, y0: 30, x1: 50, y1: 50, axis: "y" });
+    // несбиваемое препятствие поперёк пути (дерево на осевой); заборы сбиваемые
+    city.trees.push({ x: 50, y: 40.4, dead: false, v: 0 });
     city.cars.push({ x: 40, y: 39.5, axis: "x", wreck: false });
     initVehicles(city);
     buildSolidIndex(city);

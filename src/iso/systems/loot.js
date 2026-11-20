@@ -53,10 +53,10 @@ export function createLoot(city) {
   // контейнеры мира: мусорки и бочки с координатами
   const containers = [];
   city.containers.forEach((c, i) =>
-    containers.push({ id: "dn" + i, kind: "dumpster", x: c.x, y: c.y }),
+    containers.push({ id: "dn" + i, kind: "dumpster", x: c.x, y: c.y, src: c }),
   );
   city.barrels.forEach((b, i) =>
-    containers.push({ id: "br" + i, kind: "barrel", x: b.x, y: b.y }),
+    containers.push({ id: "br" + i, kind: "barrel", x: b.x, y: b.y, src: b }),
   );
   return {
     containers,
@@ -86,6 +86,7 @@ export function nearestContainer(L, x, y, r = 1.6, insideB = null) {
   let best = null,
     bd = r;
   for (const c of L.containers) {
+    if (c.src?.dead) continue; // снесённый машиной контейнер не обыскивается
     const d = Math.hypot(c.x - x, c.y - y);
     if (d < bd) {
       bd = d;

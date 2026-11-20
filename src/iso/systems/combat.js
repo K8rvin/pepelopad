@@ -18,6 +18,7 @@ export function createCombat() {
     arrows: [], // {x, y, dx, dy, dist, alive}
     blood: [], // {x, y, r, t}
     corpses: [], // {x, y, t, pose}
+    debris: [], // {x, y, vx, vy, t, col} — обломки снесённых объектов
     bowCharge: 0, // 0..1
     bowDrawing: false,
     hurtFlash: 0,
@@ -143,6 +144,14 @@ export function updateCombat(
   C.blood = C.blood.filter((b) => b.t < 60);
   for (const c of C.corpses) c.t += dt;
   C.corpses = C.corpses.filter((c) => c.t < 6);
+  for (const d of C.debris) {
+    d.t += dt;
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    d.vx *= 0.9;
+    d.vy *= 0.9;
+  }
+  C.debris = C.debris.filter((d) => d.t < 0.8);
 }
 
 function hurtZombie(C, z, dmg, arrow) {

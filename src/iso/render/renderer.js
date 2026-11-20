@@ -13,6 +13,7 @@ import {
 import { carDims, carCenter } from "../world/cityGen.js";
 import { CAR_SHAPES } from "../data/carShapes.js";
 import { ZTYPES } from "../data/zombies.js";
+import { campDef } from "../systems/camps.js";
 
 export function createRenderer() {
   return {
@@ -82,6 +83,8 @@ export function renderWorld({
   stairsNear,
   windowNear,
   search,
+  camps,
+  base,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -129,6 +132,21 @@ export function renderWorld({
       ctx.beginPath();
       ctx.ellipse(dx, dy, b.r * 32 * zoom, b.r * 16 * zoom, 0, 0, 7);
       ctx.fill();
+      R.drawCalls++;
+    }
+  // обломки снесённых машиной объектов
+  if (combat)
+    for (const d of combat.debris) {
+      const p = w2s(d.x, d.y, 0.3);
+      ctx.globalAlpha = Math.max(0, 1 - d.t / 0.8);
+      ctx.fillStyle = d.col;
+      ctx.fillRect(
+        toX(p.x) - 2 * zoom,
+        toY(p.y) - 2 * zoom,
+        4 * zoom,
+        3 * zoom,
+      );
+      ctx.globalAlpha = 1;
       R.drawCalls++;
     }
 
@@ -223,7 +241,7 @@ export function renderWorld({
     });
   }
   for (const l of city.lamps) {
-    if (!vis(l.x, l.y, 30, 110)) continue;
+    if (l.dead || !vis(l.x, l.y, 30, 110)) continue;
     push(l.x + l.y, 1, () => {
       const p = w2s(l.x, l.y);
       ctx.drawImage(
@@ -237,7 +255,7 @@ export function renderWorld({
     });
   }
   for (const bch of city.benches) {
-    if (!vis(bch.x, bch.y, 45, 30)) continue;
+    if (bch.dead || !vis(bch.x, bch.y, 45, 30)) continue;
     push(actorDepth(city, bch), 1, () => {
       const p = w2s(bch.x, bch.y);
       const img = SPRTEX.bench;
@@ -257,7 +275,7 @@ export function renderWorld({
     });
   }
   for (const cn of city.containers) {
-    if (!vis(cn.x, cn.y, 40, 35)) continue;
+    if (cn.dead || !vis(cn.x, cn.y, 40, 35)) continue;
     // парный тест со зданиями: контейнер перед домом — на переднем плане
     push(actorDepth(city, cn), 1, () => {
       const p = w2s(cn.x, cn.y);
@@ -278,7 +296,7 @@ export function renderWorld({
     });
   }
   for (const t of city.tires) {
-    if (!vis(t.x, t.y, 32, 25)) continue;
+    if (t.dead || !vis(t.x, t.y, 32, 25)) continue;
     push(actorDepth(city, t), 1, () => {
       const p = w2s(t.x, t.y);
       const img = SPRTEX.tires;
@@ -298,7 +316,7 @@ export function renderWorld({
     });
   }
   for (const br of city.barrels) {
-    if (!vis(br.x, br.y, 20, 22)) continue;
+    if (br.dead || !vis(br.x, br.y, 20, 22)) continue;
     push(actorDepth(city, br), 1, () => {
       const p = w2s(br.x, br.y);
       const img = SPRTEX.barrel;
@@ -310,7 +328,8 @@ export function renderWorld({
       R.drawCalls++;
     });
   }
-  for (const f of city.fences)
+  for (const f of city.fences) {
+    if (f.dead) continue;
     for (let u = f.x0; u < (f.axis === "x" ? f.x1 : f.x0 + 1); u++)
       for (let v = f.y0; v < (f.axis === "y" ? f.y1 : f.y0 + 1); v++) {
         if (!vis(u + 0.5, v + 0.5, 36, 40)) continue;
@@ -326,6 +345,7 @@ export function renderWorld({
           R.drawCalls++;
         });
       }
+  }
   // машины не рисуем, когда игрок внутри здания (снаружи скрыты стенами)
   if (!inside)
     city.cars.forEach((car, i) => {
@@ -385,6 +405,113 @@ export function renderWorld({
         R.drawCalls += 2;
       });
     }
+
+  // лагеря выживших: палатки, ящики, костёр и NPC
+  if (camps)
+    for (const c of camps) {
+      if (!vis(c.x, c.y, 170, 150)) continue;
+      for (const [ox, oy, col] of [
+        [-3.2, -2.2, "#5a6248"],
+        [2.6, -3.0, "#6a6252"],
+      ]) {
+        const tx = c.x + ox,
+          ty = c.y + oy;
+        push(
+          actorDepth(city, { x: tx, y: ty, r: 1 }),
+          1,
+          () => drawTent(ctx, tx, ty, col, toX, toY, zoom),
+          tx + ty,
+        );
+      }
+      for (const [ox, oy] of [
+        [-2.2, 2.0],
+        [3.0, 1.6],
+      ]) {
+        const tx = c.x + ox,
+          ty = c.y + oy;
+        push(
+          actorDepth(city, { x: tx, y: ty, r: 0.5 }),
+          1,
+          () => drawCrate(ctx, tx, ty, toX, toY, zoom),
+          tx + ty,
+        );
+      }
+      push(c.x + c.y, 1, () => drawFire(ctx, c.x, c.y, toX, toY, zoom, now));
+      const def = campDef(c);
+      push(
+        actorDepth(city, { x: c.x + 1, y: c.y + 1, r: 0.35 }),
+        2,
+        () => drawCampNpc(ctx, c, def, player, toX, toY, zoom),
+        c.x + c.y + 2,
+      );
+    }
+
+  // база игрока: флаг, баррикады, жилые модули, грядки, склад, жители
+  if (base && base.founded && vis(base.x, base.y, 220, 180)) {
+    const bx = base.x,
+      by = base.y;
+    push(bx + by, 1, () => drawFlag(ctx, bx, by, toX, toY, zoom), bx + by);
+    const nBar = base.structures.filter((id) => id === "barricade").length;
+    for (let i = 0; i < nBar * 3; i++) {
+      const a = (i / (nBar * 3)) * Math.PI * 2;
+      const tx = bx + Math.cos(a) * 5,
+        ty = by + Math.sin(a) * 5;
+      push(
+        actorDepth(city, { x: tx, y: ty, r: 0.5 }),
+        1,
+        () => drawCrate(ctx, tx, ty, toX, toY, zoom),
+        tx + ty,
+      );
+    }
+    const nHouse = base.structures.filter((id) => id === "housing").length;
+    for (let i = 0; i < nHouse; i++) {
+      const tx = bx - 3 + i * 3,
+        ty = by - 3;
+      push(
+        actorDepth(city, { x: tx, y: ty, r: 1 }),
+        1,
+        () => drawTent(ctx, tx, ty, "#5a6248", toX, toY, zoom),
+        tx + ty,
+      );
+    }
+    const nGarden = base.structures.filter((id) => id === "garden").length;
+    for (let i = 0; i < nGarden; i++) {
+      const tx = bx + 3,
+        ty = by - 2 + i * 2;
+      push(
+        tx + ty,
+        0.5,
+        () => drawGarden(ctx, tx, ty, toX, toY, zoom),
+        tx + ty,
+      );
+    }
+    if (base.structures.includes("storage"))
+      push(
+        actorDepth(city, { x: bx + 2, y: by + 2, r: 0.5 }),
+        1,
+        () => drawCrate(ctx, bx + 2, by + 2, toX, toY, zoom),
+        bx + by + 4,
+      );
+    for (let i = 0; i < base.residents; i++) {
+      const tx = bx + 1 + i * 1.5,
+        ty = by + 1;
+      push(
+        actorDepth(city, { x: tx, y: ty, r: 0.35 }),
+        2,
+        () =>
+          drawCampNpc(
+            ctx,
+            { x: tx - 1, y: ty - 1 },
+            { npc: { name: "Житель" } },
+            player,
+            toX,
+            toY,
+            zoom,
+          ),
+        tx + ty,
+      );
+    }
+  }
 
   // трупы и стрелы в полёте
   if (combat) {
@@ -455,7 +582,7 @@ export function renderWorld({
   for (const it of items) it.f();
 
   if (night) {
-    renderNight({ ctx, L, city, player, inside, toX, toY, zoom, W, H });
+    renderNight({ ctx, L, city, player, inside, toX, toY, zoom, W, H, camps });
     R.drawCalls += 2;
   }
 
@@ -1312,6 +1439,179 @@ function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
       64 * zoom,
       96 * zoom,
     );
+  }
+}
+
+// палатка-пирамида: 4 грани painter-сортировкой, южная светлее
+function drawTent(ctx, x, y, col, toX, toY, zoom) {
+  const b = 1.2,
+    d = 0.9,
+    h = 1.5;
+  const cor = [
+    [-b, -d],
+    [b, -d],
+    [b, d],
+    [-b, d],
+  ];
+  const apex = w2s(x, y, h);
+  const faces = [];
+  for (let e = 0; e < 4; e++) {
+    const a = cor[e],
+      bb = cor[(e + 1) % 4];
+    const mx = (a[0] + bb[0]) / 2,
+      my = (a[1] + bb[1]) / 2;
+    faces.push({ d: mx + my, a, bb });
+  }
+  faces.sort((p, q) => p.d - q.d);
+  for (const f of faces) {
+    const shade = f.d > 0 ? 1 : 0.72;
+    const n = parseInt(col.slice(1), 16);
+    const r = Math.min(255, ((n >> 16) & 255) * shade) | 0;
+    const g = Math.min(255, ((n >> 8) & 255) * shade) | 0;
+    const bl = Math.min(255, (n & 255) * shade) | 0;
+    ctx.fillStyle = `rgb(${r},${g},${bl})`;
+    const p1 = w2s(x + f.a[0], y + f.a[1], 0);
+    const p2 = w2s(x + f.bb[0], y + f.bb[1], 0);
+    ctx.beginPath();
+    ctx.moveTo(toX(p1.x), toY(p1.y));
+    ctx.lineTo(toX(p2.x), toY(p2.y));
+    ctx.lineTo(toX(apex.x), toY(apex.y));
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(16,20,26,0.5)";
+  ctx.lineWidth = 1;
+  const p1 = w2s(x - b, y + d, 0);
+  const p2 = w2s(x + b, y + d, 0);
+  ctx.beginPath();
+  ctx.moveTo(toX(p1.x), toY(p1.y));
+  ctx.lineTo(toX(apex.x), toY(apex.y));
+  ctx.lineTo(toX(p2.x), toY(p2.y));
+  ctx.stroke();
+}
+
+function drawCrate(ctx, x, y, toX, toY, zoom) {
+  const w = 0.9,
+    d = 0.7,
+    h = 0.6;
+  const s = w2s(x, y + d, 0),
+    e = w2s(x + w, y, 0);
+  const hgt = h * 32 * zoom;
+  ctx.fillStyle = "#6a5a3a";
+  ctx.beginPath();
+  ctx.moveTo(toX(s.x), toY(s.y) - hgt);
+  ctx.lineTo(toX(e.x), toY(e.y) - hgt);
+  ctx.lineTo(toX(e.x), toY(e.y));
+  ctx.lineTo(toX(s.x), toY(s.y));
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#7a6844";
+  const a1 = w2s(x, y, 0),
+    a2 = w2s(x + w, y, 0),
+    a3 = w2s(x + w, y + d, 0),
+    a4 = w2s(x, y + d, 0);
+  ctx.beginPath();
+  ctx.moveTo(toX(a1.x), toY(a1.y) - hgt);
+  ctx.lineTo(toX(a2.x), toY(a2.y) - hgt);
+  ctx.lineTo(toX(a3.x), toY(a3.y) - hgt);
+  ctx.lineTo(toX(a4.x), toY(a4.y) - hgt);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(16,20,26,0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawFire(ctx, x, y, toX, toY, zoom, now) {
+  const p = w2s(x, y, 0);
+  const dx = toX(p.x),
+    dy = toY(p.y);
+  // брёвна
+  ctx.strokeStyle = "#3a2e22";
+  ctx.lineWidth = 3 * zoom;
+  ctx.beginPath();
+  ctx.moveTo(dx - 8 * zoom, dy - 2 * zoom);
+  ctx.lineTo(dx + 8 * zoom, dy + 2 * zoom);
+  ctx.moveTo(dx - 6 * zoom, dy + 3 * zoom);
+  ctx.lineTo(dx + 7 * zoom, dy - 3 * zoom);
+  ctx.stroke();
+  // пламя с мерцанием
+  const f = 0.8 + 0.25 * Math.sin(now * 9) + 0.1 * Math.sin(now * 23);
+  const fh = 16 * zoom * f;
+  ctx.fillStyle = "#c96a35";
+  ctx.beginPath();
+  ctx.moveTo(dx - 5 * zoom, dy);
+  ctx.quadraticCurveTo(dx - 2 * zoom, dy - fh * 0.6, dx, dy - fh);
+  ctx.quadraticCurveTo(dx + 3 * zoom, dy - fh * 0.5, dx + 5 * zoom, dy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffb23e";
+  ctx.beginPath();
+  ctx.moveTo(dx - 2.5 * zoom, dy);
+  ctx.quadraticCurveTo(dx, dy - fh * 0.55, dx + 2.5 * zoom, dy);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFlag(ctx, x, y, toX, toY, zoom) {
+  const p = w2s(x, y, 0);
+  const dx = toX(p.x),
+    dy = toY(p.y);
+  ctx.strokeStyle = "#3a2e22";
+  ctx.lineWidth = 2 * zoom;
+  ctx.beginPath();
+  ctx.moveTo(dx, dy);
+  ctx.lineTo(dx, dy - 40 * zoom);
+  ctx.stroke();
+  ctx.fillStyle = "#c96a35";
+  ctx.beginPath();
+  ctx.moveTo(dx, dy - 40 * zoom);
+  ctx.lineTo(dx + 16 * zoom, dy - 35 * zoom);
+  ctx.lineTo(dx, dy - 30 * zoom);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGarden(ctx, x, y, toX, toY, zoom) {
+  const p = w2s(x, y, 0);
+  const dx = toX(p.x),
+    dy = toY(p.y);
+  ctx.fillStyle = "#4a3a28";
+  ctx.beginPath();
+  ctx.ellipse(dx, dy, 20 * zoom, 10 * zoom, 0, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#5a7a3a";
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.ellipse(dx + i * 10 * zoom, dy - 2 * zoom, 4 * zoom, 3 * zoom, 0, 0, 7);
+    ctx.fill();
+  }
+}
+
+function drawCampNpc(ctx, c, def, player, toX, toY, zoom) {
+  const x = c.x + 1,
+    y = c.y + 1;
+  const p = w2s(x, y);
+  ctx.fillStyle = "rgba(16,20,26,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
+  ctx.fill();
+  const img = SPRTEX.survivor;
+  if (img) {
+    const h = 78 * zoom,
+      w = h * (img.width / img.height);
+    ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+  }
+  if (Math.hypot(player.x - x, player.y - y) < 6) {
+    ctx.font = `${11 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText(def.npc.name, toX(p.x) + 1, toY(p.y) - 84 * zoom + 1);
+    ctx.fillStyle = "#a6e83c";
+    ctx.fillText(def.npc.name, toX(p.x), toY(p.y) - 84 * zoom);
+    ctx.fillStyle = "#9a9478";
+    ctx.fillText("E — лагерь", toX(p.x), toY(p.y) - 70 * zoom);
+    ctx.textAlign = "left";
   }
 }
 

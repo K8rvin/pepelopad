@@ -3,6 +3,7 @@
 // Битые (wreck) — недвижимы, это пропсы.
 import {
   solidRectAt,
+  solidHitAt,
   buildSolidIndex,
   carDims,
   carCenter,
@@ -139,14 +140,47 @@ export function updateVehicle(
     cosH = Math.cos(car.heading),
     sinH = Math.sin(car.heading);
   const dir = car.v >= 0 ? 1 : -1;
-  const hit = solidRectAt(
+  const hit = solidHitAt(
     city,
     cx + dir * cosH * HL,
     cy + dir * sinH * HL,
     0.4,
     car,
   );
-  if (hit) {
+  // мелкие объекты (столбы/заборы/контейнеры/бочки/скамейки/покрышки) сносим на скорости
+  const knockable =
+    hit &&
+    (hit.kind === "lamp" || hit.kind === "fence" || hit.kind === "prop") &&
+    Math.abs(car.v) > 2.5;
+  if (knockable) {
+    hit.ref.dead = true;
+    buildSolidIndex(city);
+    car.hp = Math.max(0, car.hp - 2);
+    car.v *= 0.8;
+    combat.shake = Math.max(combat.shake, 4);
+    const ox = hit.x + hit.w / 2,
+      oy = hit.y + hit.h / 2;
+    combat.debris = combat.debris || [];
+    for (let i = 0; i < 5; i++)
+      combat.debris.push({
+        x: ox,
+        y: oy,
+        vx: (Math.random() - 0.5) * 6,
+        vy: (Math.random() - 0.5) * 6,
+        t: 0,
+        col: hit.kind === "lamp" ? "#5f6466" : "#6a5a3a",
+      });
+    // шум сноса привлекает зомби
+    for (const z of city.zombies) {
+      if (!z.dead && Math.hypot(z.x - ox, z.y - oy) < 12) {
+        z.tx = ox;
+        z.ty = oy;
+        z.alertT = 6;
+        z.propagated = false;
+      }
+    }
+  }
+  if (hit && !knockable) {
     if (Math.abs(car.v) > 6) {
       car.hp = Math.max(0, car.hp - Math.abs(car.v));
       combat.shake = 8;

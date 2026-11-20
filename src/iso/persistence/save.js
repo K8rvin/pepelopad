@@ -22,6 +22,8 @@ export function saveGame({
   loot,
   quests,
   skills,
+  camps,
+  base,
 }) {
   const data = {
     v: 4,
@@ -62,6 +64,29 @@ export function saveGame({
       ? { i: quests.i, prog: quests.prog, done: quests.done }
       : null,
     skills: skills ? { skills: skills.skills, attrs: skills.attrs } : null,
+    camps: camps ? camps.map((c) => ({ ...c })) : null,
+    base: base
+      ? {
+          ...base,
+          storage: { slots: base.storage.slots, size: base.storage.size },
+        }
+      : null,
+    wrecked: {
+      lamps: city.lamps.map((l, i) => (l.dead ? i : -1)).filter((i) => i >= 0),
+      fences: city.fences
+        .map((f, i) => (f.dead ? i : -1))
+        .filter((i) => i >= 0),
+      containers: city.containers
+        .map((c, i) => (c.dead ? i : -1))
+        .filter((i) => i >= 0),
+      barrels: city.barrels
+        .map((b, i) => (b.dead ? i : -1))
+        .filter((i) => i >= 0),
+      benches: city.benches
+        .map((b, i) => (b.dead ? i : -1))
+        .filter((i) => i >= 0),
+      tires: city.tires.map((t, i) => (t.dead ? i : -1)).filter((i) => i >= 0),
+    },
   };
   localStorage.setItem(SKEY, JSON.stringify(data));
   return data;
@@ -119,7 +144,7 @@ export function deleteSave() {
 // применить загруженное состояние к живой игре (город уже создан из сида)
 export function applySave(
   data,
-  { city, player, combat, survival, inv, loot, quests, skills },
+  { city, player, combat, survival, inv, loot, quests, skills, camps, base },
 ) {
   survival.day = data.survival.day;
   survival.tod = data.survival.tod;
@@ -141,6 +166,23 @@ export function applySave(
     quests.done = data.quests.done || [];
   }
   if (skills) restoreSkills(skills, data.skills);
+  if (base && data.base) {
+    Object.assign(base, data.base);
+    base.storage = {
+      slots: data.base.storage.slots,
+      size: data.base.storage.size,
+    };
+  }
+  if (camps && data.camps)
+    for (const cs of data.camps) {
+      const c = camps.find((k) => k.id === cs.id);
+      if (!c) continue;
+      c.trust = cs.trust || 0;
+      c.upgrades = cs.upgrades || [];
+      c.stock = cs.stock || [];
+      c.request = cs.request || null;
+      c.usedServiceDay = cs.usedServiceDay || 0;
+    }
   data.zombies.forEach((zs, i) => {
     const z = city.zombies[i];
     if (!z) return;
@@ -166,4 +208,15 @@ export function applySave(
   if (data.windows)
     for (const [k, arr] of data.windows)
       city.brokenWindows.set(Number(k), new Set(arr));
+  if (data.wrecked)
+    for (const key of [
+      "lamps",
+      "fences",
+      "containers",
+      "barrels",
+      "benches",
+      "tires",
+    ])
+      for (const i of data.wrecked[key] || [])
+        if (city[key][i]) city[key][i].dead = true;
 }

@@ -37,6 +37,7 @@ export function renderNight({
   zoom,
   W,
   H,
+  camps,
 }) {
   const s = 0.5; // half-res
   const g = L.lightCtx;
@@ -45,6 +46,7 @@ export function renderNight({
   g.fillRect(0, 0, L.lightCv.width, L.lightCv.height);
   g.globalCompositeOperation = "destination-out";
   for (const l of city.lamps) {
+    if (l.dead) continue;
     const p = w2s(l.x, l.y);
     const dx = (toX(p.x) - 144 * zoom) * s,
       dy = (toY(p.y) - 40 * zoom) * s;
@@ -66,6 +68,18 @@ export function renderNight({
     440 * zoom * s,
     220 * zoom * s,
   );
+  // костры лагерей освещают округу
+  if (camps)
+    for (const c of camps) {
+      const fp = w2s(c.x, c.y);
+      g.drawImage(
+        L.glowLamp,
+        (toX(fp.x) - 144 * zoom) * s,
+        (toY(fp.y) - 60 * zoom) * s,
+        288 * zoom * s,
+        144 * zoom * s,
+      );
+    }
 
   const wc = L.warmCtx;
   wc.globalCompositeOperation = "source-over";
@@ -73,6 +87,7 @@ export function renderNight({
   wc.fillRect(0, 0, L.warmCv.width, L.warmCv.height);
   wc.globalCompositeOperation = "lighter";
   for (const l of city.lamps) {
+    if (l.dead) continue;
     const p = w2s(l.x, l.y);
     const dx = (toX(p.x) - 144 * zoom) * s,
       dy = (toY(p.y) - 40 * zoom) * s;
@@ -85,6 +100,17 @@ export function renderNight({
       continue;
     wc.drawImage(L.glowWarmLamp, dx, dy, 288 * zoom * s, 144 * zoom * s);
   }
+  if (camps)
+    for (const c of camps) {
+      const fp = w2s(c.x, c.y);
+      wc.drawImage(
+        L.glowWarmLamp,
+        (toX(fp.x) - 144 * zoom) * s,
+        (toY(fp.y) - 60 * zoom) * s,
+        288 * zoom * s,
+        144 * zoom * s,
+      );
+    }
 
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(L.lightCv, 0, 0, W, H);

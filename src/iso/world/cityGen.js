@@ -472,23 +472,34 @@ export function buildSolidIndex(city) {
     addSolid(city, c.x, c.y, w, h, "car", c);
   }
   for (const t of city.trees)
-    addSolid(city, t.x - 0.4, t.y - 0.4, 0.8, 0.8, "tree");
+    addSolid(city, t.x - 0.4, t.y - 0.4, 0.8, 0.8, "tree", t);
   for (const l of city.lamps)
-    addSolid(city, l.x - 0.15, l.y - 0.15, 0.3, 0.3, "lamp");
+    if (!l.dead) addSolid(city, l.x - 0.15, l.y - 0.15, 0.3, 0.3, "lamp", l);
   for (const f of city.fences)
-    addSolid(
-      city,
-      f.x0,
-      f.y0 - (f.axis === "x" ? 0.05 : 0),
-      f.axis === "x" ? f.x1 - f.x0 : 0.1,
-      f.axis === "x" ? 0.1 : f.y1 - f.y0,
-      "fence",
-    );
+    if (!f.dead)
+      addSolid(
+        city,
+        f.x0,
+        f.y0 - (f.axis === "x" ? 0.05 : 0),
+        f.axis === "x" ? f.x1 - f.x0 : 0.1,
+        f.axis === "x" ? 0.1 : f.y1 - f.y0,
+        "fence",
+        f,
+      );
+  // мелкие сбиваемые машиной объекты
+  for (const p of city.containers)
+    if (!p.dead) addSolid(city, p.x - 0.6, p.y - 0.4, 1.2, 0.8, "prop", p);
+  for (const p of city.barrels)
+    if (!p.dead) addSolid(city, p.x - 0.3, p.y - 0.3, 0.6, 0.6, "prop", p);
+  for (const p of city.benches)
+    if (!p.dead) addSolid(city, p.x - 0.8, p.y - 0.3, 1.6, 0.6, "prop", p);
+  for (const p of city.tires)
+    if (!p.dead) addSolid(city, p.x - 0.4, p.y - 0.3, 0.8, 0.6, "prop", p);
 }
 
-export function solidRectAt(city, x, y, r, excludeRef = null, level = 0) {
-  // стены зданий (фасад с дверью + перегородки интерьера текущего этажа)
-  if (solidInteriorAt(city, x, y, r, level)) return true;
+// первое твёрдое тело в точке (для сноса машиной нужен kind/ref)
+export function solidHitAt(city, x, y, r, excludeRef = null, level = 0) {
+  if (solidInteriorAt(city, x, y, r, level)) return { kind: "wall" };
   const x0 = Math.floor((x - r) / SOLID_CELL),
     x1 = Math.floor((x + r) / SOLID_CELL);
   const y0 = Math.floor((y - r) / SOLID_CELL),
@@ -500,18 +511,21 @@ export function solidRectAt(city, x, y, r, excludeRef = null, level = 0) {
       for (const s of cell) {
         if (excludeRef && s.ref === excludeRef) continue;
         if (s.kind === "tree") {
-          if (Math.hypot(x - (s.x + 0.4), y - (s.y + 0.4)) < 0.5 + r)
-            return true;
+          if (Math.hypot(x - (s.x + 0.4), y - (s.y + 0.4)) < 0.5 + r) return s;
         } else if (
           x > s.x - r &&
           x < s.x + s.w + r &&
           y > s.y - r &&
           y < s.y + s.h + r
         )
-          return true;
+          return s;
       }
     }
-  return false;
+  return null;
+}
+
+export function solidRectAt(city, x, y, r, excludeRef = null, level = 0) {
+  return !!solidHitAt(city, x, y, r, excludeRef, level);
 }
 
 export function tileAt(city, x, y) {
