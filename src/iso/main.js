@@ -290,6 +290,18 @@ export async function boot() {
   };
   combat.onHit = () => skillXp("archery", 6);
   const useItem = (id) => {
+    if (id === "torch") {
+      if (player.torch) {
+        player.torch = false;
+        toast("Факел погашен.");
+      } else if (countItem(inv, "torch") > 0) {
+        player.torch = true;
+        player.torchT = 120;
+        toast("Факел зажжён. Горит ~2 минуты.");
+      } else toast("Нет факела.");
+      ui.render();
+      return;
+    }
     const hpBefore = combat.playerHp;
     const hungry = survival.hunger < 60;
     const msg = useConsumable(
@@ -802,6 +814,18 @@ export async function boot() {
     }
     const t0 = performance.now();
     mods = modifiers(skills);
+    // факел догорает и расходует предмет
+    if (player.torch) {
+      player.torchT = (player.torchT ?? 120) - dt;
+      if (player.torchT <= 0) {
+        removeItem(inv, "torch", 1);
+        if (countItem(inv, "torch") > 0) player.torchT = 120;
+        else {
+          player.torch = false;
+          toast("Факел догорел.");
+        }
+      }
+    }
     combat.playerMaxHp = mods.maxHp;
     if (combat.playerHp > combat.playerMaxHp)
       combat.playerHp = combat.playerMaxHp;

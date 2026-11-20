@@ -29,6 +29,7 @@ export function updatePlayer(
 ) {
   const ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   const iy = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0);
+  player.moving = !!(ix || iy);
   if (ix || iy) {
     const run = !!keys.ShiftLeft;
     const sp = (run ? 5.4 : 3.2) * (mods?.speedK ?? 1) * dt;
@@ -185,6 +186,7 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
         }
       } else z.stuck = 0;
     }
+    z.moving = d > 0.3 && moved > 0.001;
     z.px = z.x;
     z.py = z.y;
   }

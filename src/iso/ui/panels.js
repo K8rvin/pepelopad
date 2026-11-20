@@ -78,6 +78,8 @@ export function createUI({
       btns.push(
         `<button data-act="use">Перевязать (+${30 + (m?.healBonus ?? 0)} HP)</button>`,
       );
+    if (s.id === "torch")
+      btns.push(`<button data-act="use">Зажечь / погасить</button>`);
     btns.push(`<button data-act="drop">Выбросить</button>`);
     return `<div class="ctxmenu" data-slot="${i}">${btns.join("")}</div>`;
   }

@@ -42,7 +42,13 @@ export function saveGame({
       playerHp: combat.playerHp,
       kills: combat.kills,
     },
-    player: { x: player.x, y: player.y, level: player.level },
+    player: {
+      x: player.x,
+      y: player.y,
+      level: player.level,
+      torch: !!player.torch,
+      torchT: player.torchT || 0,
+    },
     inv: inv.slots,
     opened: [...loot.opened.entries()],
     zombies: city.zombies.map((z) => ({
@@ -171,6 +177,8 @@ export function applySave(
   player.x = data.player.x;
   player.y = data.player.y;
   player.level = data.player.level || 0;
+  player.torch = !!data.player.torch;
+  player.torchT = data.player.torchT || 0;
   inv.slots = data.inv;
   inv.size = data.inv.length;
   loot.opened = new Map(data.opened);
