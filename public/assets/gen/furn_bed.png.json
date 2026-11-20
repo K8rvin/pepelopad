@@ -1,0 +1,16 @@
+{
+  "source": "assets-src/generated/furn_bed_v1.png",
+  "output": "public/assets/gen/furn_bed.png",
+  "bgRemovedPct": 72,
+  "pocketsRemoved": 58587,
+  "whiteStripped": 0,
+  "regionRemoved": 0,
+  "modulate": {
+    "brightness": 0.92,
+    "saturation": 0.75
+  },
+  "cropped": [
+    1690,
+    1398
+  ]
+}

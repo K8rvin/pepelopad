@@ -1,0 +1,9 @@
+{
+  "id": "furn_table_v1",
+  "prompt": "Isometric 2D game sprite, dimetric 2:1 projection, three-quarter view from above, clean silhouette. A simple wooden kitchen table, four legs, worn scratched top. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, post-apocalyptic suburb mood. The whole object fully visible, centered, not touching the image edges, on a plain solid white background, no shadow, no ground plane, no text.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\furn_table_v1.png",
+  "createdAt": "2026-11-20T10:25:06.465Z"
+}

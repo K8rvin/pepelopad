@@ -9,6 +9,7 @@ import {
   updateVehicle,
   refuelCar,
   fuelText,
+  openTrunk,
 } from "./systems/vehicles.js";
 import { PITCH } from "./world/cityGen.js";
 import { createCity, buildSolidIndex } from "./world/cityGen.js";
@@ -21,7 +22,6 @@ import {
   makeContainer,
   makeTires,
   makeFence,
-  makeCar,
   makeActor,
 } from "./render/sprites.js";
 import {
@@ -30,7 +30,13 @@ import {
   renderWorld,
 } from "./render/renderer.js";
 import { createLighting, fitLighting } from "./render/lighting.js";
-import { initActors, updatePlayer, updateZombies } from "./systems/actors.js";
+import {
+  initActors,
+  updatePlayer,
+  updateZombies,
+  spawnZombie,
+  alertNear,
+} from "./systems/actors.js";
 import {
   createCombat,
   initCombat,
@@ -44,11 +50,13 @@ import {
   addItem,
   countItem,
   removeItem,
+  resizeInventory,
 } from "./systems/inventory.js";
 import {
   createLoot,
   nearestContainer,
   openContainer,
+  containerItems,
   takeFrom,
   takeAll,
   registerInterior,
@@ -89,6 +97,13 @@ import {
   updateSurvival,
   useConsumable,
 } from "./systems/survival.js";
+import {
+  createSkills,
+  gainXp,
+  modifiers,
+  NEUTRAL_MODS,
+} from "./systems/skills.js";
+import { SKILLS, ATTRS } from "./data/skills.js";
 import { w2s } from "./core/geo.js";
 
 export async function boot() {
@@ -104,13 +119,6 @@ export async function boot() {
   initActors(seed);
 
   const groundSet = makeGroundSet();
-  const carSpriteCache = new Map();
-  const carSprite = (car) => {
-    const key = car.color + car.axis + (car.wreck ? "w" : "");
-    if (!carSpriteCache.has(key))
-      carSpriteCache.set(key, makeCar(car.color, car.wreck, car.axis));
-    return carSpriteCache.get(key);
-  };
   const SPR = {
     trees: [0, 1, 2].map((v) => makeTree(false, v)),
     deadTrees: [0, 1, 2].map((v) => makeTree(true, v)),
@@ -120,7 +128,6 @@ export async function boot() {
     tires: makeTires(),
     fenceX: makeFence("x"),
     fenceY: makeFence("y"),
-    cars: city.cars.map(carSprite),
     player: [makeActor("player", 0), makeActor("player", 1)],
     zombie: [makeActor("zombie", 0), makeActor("zombie", 1)],
   };
@@ -157,11 +164,16 @@ export async function boot() {
   const combat = createCombat();
   initCombat(seed);
   const survival = createSurvival();
+  const skills = createSkills();
+  const craftRng = mulberry32(seed * 31 + 11);
+  let mods = NEUTRAL_MODS;
   // лут и инвентарь
   const inv = createInventory(24);
   const loot = createLoot(city);
   const quests = createQuests();
   const veh = { inCar: null };
+  let trunkCar = null;
+  let search = null; // {c, t, dur} — обыск с шкалой до окна лута
   initVehicles(city);
   const npcs = createNpcs(city, PITCH);
   const dlg = createDialog();
@@ -171,7 +183,16 @@ export async function boot() {
   if (hasSave() && !wantNew) {
     const data = loadGameData();
     if (data && data.seed === seed && data.nb === nb) {
-      applySave(data, { city, player, combat, survival, inv, loot, quests });
+      applySave(data, {
+        city,
+        player,
+        combat,
+        survival,
+        inv,
+        loot,
+        quests,
+        skills,
+      });
       buildSolidIndex(city); // машины могли переехать с позиций генерации
       loaded = true;
     }
@@ -181,11 +202,23 @@ export async function boot() {
     addItem(inv, "can", 2); // немного еды на старт
     addItem(inv, "meds", 1);
   }
+  mods = modifiers(skills);
+  resizeInventory(inv, mods.carrySlots);
+  combat.playerMaxHp = mods.maxHp;
   let toastMsg = "",
     toastT = 0;
   const toast = (msg) => {
     toastMsg = msg;
     toastT = 2.5;
+  };
+  // XP навыков: повышения показываем тостом; Сила растит рюкзак
+  const skillXp = (id, n) => {
+    for (const ev of gainXp(skills, id, n)) {
+      const def = ev.kind === "skill" ? SKILLS[ev.id] : ATTRS[ev.id];
+      toast(`${def.icon} ${def.name}: уровень ${ev.level}`);
+      if (ev.kind === "attr" && ev.id === "strength")
+        resizeInventory(inv, modifiers(skills).carrySlots);
+    }
   };
   // квестовые события: kill / loot / visit
   const questEvent = (type, data) => {
@@ -195,12 +228,33 @@ export async function boot() {
       toast(`Квест выполнен: «${done.name}»! Награда получена.`);
     }
   };
-  combat.onKill = () => questEvent("kill");
+  combat.onKill = (source, z) => {
+    questEvent("kill");
+    if (source === "ram") skillXp("driving", 10);
+    else skillXp("archery", 15);
+    if (z?.type === "boss") {
+      addItem(inv, "meds", 3);
+      addItem(inv, "part", 2);
+      toast("Матка мертва. Награда: бинты ×3, детали ×2.");
+    }
+  };
+  combat.onHit = () => skillXp("archery", 6);
   const useItem = (id) => {
-    const msg = useConsumable(survival, combat, inv, id, (i, n) =>
-      removeItem(inv, i, n),
+    const hpBefore = combat.playerHp;
+    const hungry = survival.hunger < 60;
+    const msg = useConsumable(
+      survival,
+      combat,
+      inv,
+      id,
+      (i, n) => removeItem(inv, i, n),
+      mods,
     );
-    if (msg) toast(msg);
+    if (msg) {
+      toast(msg);
+      if (id === "meds" && combat.playerHp > hpBefore) skillXp("medicine", 10);
+      if (id === "can" && hungry) skillXp("survival", 5);
+    }
     ui.render();
   };
   const ui = createUI({
@@ -210,13 +264,21 @@ export async function boot() {
       const { id, took } = takeFrom(loot, c, i, (id2, n) =>
         addItem(inv, id2, n),
       );
-      if (took > 0) questEvent("loot", { id, n: took });
+      if (took > 0) {
+        questEvent("loot", { id, n: took });
+        skillXp("scavenging", took);
+      }
+      // контейнер опустел — окно обыска больше не нужно
+      if ((loot.opened.get(c.id) || []).every((s) => !s)) ui.close();
     },
     onTakeAll: (c) => {
       for (const [id, took] of takeAll(loot, c, (id2, n) =>
         addItem(inv, id2, n),
-      ))
+      )) {
         questEvent("loot", { id, n: took });
+        skillXp("scavenging", took);
+      }
+      if ((loot.opened.get(c.id) || []).every((s) => !s)) ui.close();
     },
     onUse: (id) => useItem(id),
     onDrop: (slotIndex) => {
@@ -228,10 +290,30 @@ export async function boot() {
     },
     onCraft: (id) => {
       const r = RECIPES.find((r) => r.id === id);
-      if (r && craft(inv, r)) toast(`Создано: ${r.name}`);
+      if (r && craft(inv, r, mods.craftBonus, craftRng)) {
+        toast(`Создано: ${r.name}`);
+        skillXp("crafting", 8);
+      }
     },
     canCraft: (r) => canCraft(inv, r),
     onClose: () => {},
+    getSkills: () => skills,
+    getMods: () => mods,
+    onTrunkTake: (i) => {
+      const tr = trunkCar?.trunk;
+      const s = tr?.slots[i];
+      if (!s) return;
+      const left = addItem(inv, s.id, s.n);
+      s.n = left;
+      if (!left) tr.slots[i] = null;
+    },
+    onTrunkPut: (i) => {
+      const tr = trunkCar?.trunk;
+      const s = inv.slots[i];
+      if (!tr || !s) return;
+      const left = addItem(tr, s.id, s.n);
+      inv.slots[i] = left ? { id: s.id, n: left } : null;
+    },
   });
   let zoom = 1;
   const mouse = { x: 0, y: 0 };
@@ -248,7 +330,7 @@ export async function boot() {
     if (e.button !== 0 || ui.isOpen()) return;
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
-    releaseBow(combat, player, aim, inv, city);
+    if (releaseBow(combat, player, aim, inv, city, mods)) skillXp("archery", 2);
   });
   addEventListener("keydown", (e) => {
     keys[e.code] = true;
@@ -282,15 +364,8 @@ export async function boot() {
         set.add(w.key);
         city.brokenWindows.set(w.bid, set);
         toast("Окно разбито. Шум слышен далеко...");
-        // шум: зомби в 12 м идут к игроку
-        for (const z of city.zombies) {
-          if (z.dead) continue;
-          if (Math.hypot(z.x - player.x, z.y - player.y) < 12) {
-            z.tx = player.x;
-            z.ty = player.y;
-            z.retarget = 0;
-          }
-        }
+        // шум: зомби в 12 м идут к игроку, тревога разойдётся по стае
+        alertNear(city, player.x, player.y, 12, 8);
       }
     }
     // машины: посадка/высадка/заправка
@@ -310,9 +385,25 @@ export async function boot() {
         );
       }
     }
+    if (e.code === "KeyT" && !combat.dead) {
+      if (ui.isOpen()) ui.close();
+      else {
+        const car = veh.inCar || nearestCar(city, player.x, player.y, 3);
+        if (!car) toast("Рядом нет машины");
+        else if (!openTrunk(car)) toast("У остова нет багажника");
+        else {
+          trunkCar = car;
+          ui.openTrunk(car);
+        }
+      }
+    }
     if (e.code === "KeyC") {
       if (ui.isOpen()) ui.close();
       else ui.openCraft();
+    }
+    if (e.code === "KeyP") {
+      if (ui.isOpen()) ui.close();
+      else ui.openCharacter();
     }
     // интерфейс: рюкзак и обыск
     if (e.code === "KeyI" || e.code === "Tab") {
@@ -321,6 +412,7 @@ export async function boot() {
       else ui.openInventory();
     }
     if (e.code === "KeyE") {
+      if (search) return; // идёт обыск — действия заблокированы
       if (ui.isOpen()) {
         ui.close();
       } else if (dlg.npc) {
@@ -371,8 +463,15 @@ export async function boot() {
                 frameState.insideB,
               );
               if (c) {
-                openContainer(loot, c);
-                ui.openLoot(c);
+                // обыск занимает время; навык поиска ускоряет
+                search = {
+                  c,
+                  t: 0,
+                  dur: Math.max(
+                    0.5,
+                    1.5 - 0.06 * skills.skills.scavenging.level,
+                  ),
+                };
               }
             }
           }
@@ -443,7 +542,15 @@ export async function boot() {
       cam.y = y;
     },
     setTod: (v) => (survival.tod = v),
-    save: () => saveGame({ city, player, combat, survival, inv, loot }),
+    skills,
+    veh,
+    gainXp: skillXp,
+    spawn: (x, y, type) => spawnZombie(city, x, y, type),
+    alertNear: (x, y, r) => alertNear(city, x, y, r),
+    search: () => search,
+    peek: (c) => containerItems(c, mods.lootBonus),
+    save: () =>
+      saveGame({ city, player, combat, survival, inv, loot, quests, skills }),
   };
 
   // автосохранение: каждые 15 с и при скрытии страницы
@@ -451,7 +558,7 @@ export async function boot() {
   let visitT = 0;
   const frameState = { insideB: null, stairsNear: false };
   const doSave = () =>
-    saveGame({ city, player, combat, survival, inv, loot, quests });
+    saveGame({ city, player, combat, survival, inv, loot, quests, skills });
   // строка квеста для HUD
   function questHudText() {
     const q = mainQuest(quests, QUESTS);
@@ -511,18 +618,51 @@ export async function boot() {
         npcs,
         stairsNear: frameState.stairsNear,
         windowNear: frameState.windowNear,
+        search,
       });
       hud.textContent = `ПЕПЕЛОПАД: Город — ПАУЗА\n${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)}`;
       requestAnimationFrame(frame);
       return;
     }
     const t0 = performance.now();
-    if (!ui.isOpen() && !dlg.npc) {
+    mods = modifiers(skills);
+    combat.playerMaxHp = mods.maxHp;
+    if (combat.playerHp > combat.playerMaxHp)
+      combat.playerHp = combat.playerMaxHp;
+    // обыск: движение/урон отменяют, по завершении — окно лута
+    if (search) {
+      const moving = keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD;
+      if (moving || combat.dead || combat.hurtFlash > 0) search = null;
+      else {
+        search.t += dt;
+        if (search.t >= search.dur) {
+          const c = search.c;
+          search = null;
+          openContainer(loot, c, mods.lootBonus);
+          skillXp("scavenging", 6);
+          ui.openLoot(c);
+        }
+      }
+    }
+    if (!ui.isOpen() && !dlg.npc && !search) {
       if (veh.inCar)
-        updateVehicle(city, veh.inCar, keys, player, combat, dt, null);
-      else updatePlayer(city, player, keys, dt);
+        updateVehicle(city, veh.inCar, keys, player, combat, dt, mods, (m) =>
+          skillXp("driving", m / 100),
+        );
+      else
+        updatePlayer(city, player, keys, dt, mods, (m, run) =>
+          skillXp("athletics", (m * (run ? 1.5 : 1)) / 40),
+        );
     } else keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
-    updateSurvival(survival, combat, player, city, inv, dt);
+    const dayBefore = survival.day;
+    updateSurvival(survival, combat, player, city, inv, dt, mods);
+    if (survival.day > dayBefore) skillXp("survival", 20); // пережил сутки
+    if (survival.pendingBoss) {
+      const p = survival.pendingBoss;
+      survival.pendingBoss = null;
+      spawnZombie(city, p.x, p.y, "boss");
+      toast("Матка пришла к больнице. Она зовёт подкрепление...");
+    }
     const dark = darknessFor(survival.tod);
     const night = dark > 0.4;
     updateZombies(
@@ -540,13 +680,16 @@ export async function boot() {
         frameState.insideB,
         getInterior(city, frameState.insideB),
       );
-    loot.nearest = nearestContainer(
+    const nearC = nearestContainer(
       loot,
       player.x,
       player.y,
       1.6,
       frameState.insideB,
     );
+    // пустые контейнеры не предлагают обыск
+    loot.nearest =
+      nearC && containerItems(nearC, mods.lootBonus).length ? nearC : null;
     toastT = Math.max(0, toastT - dt);
     // квесты: визит к POI (раз в 0,5 с)
     visitT -= dt;
@@ -573,6 +716,7 @@ export async function boot() {
       dt,
       t / 1000,
       !!veh.inCar || player.level > 0,
+      mods,
     );
     // внутри какого здания и у лестницы ли
     frameState.insideB = playerInside(city, player);
@@ -643,6 +787,7 @@ export async function boot() {
       npcs,
       stairsNear: frameState.stairsNear,
       windowNear: frameState.windowNear,
+      search,
     });
     // пепел дрейфует
     for (const a of ashP) {
@@ -666,7 +811,7 @@ export async function boot() {
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}${player.level > 0 ? ` · этаж ${player.level + 1}` : ""}
 ${questHudText()}
-${veh.inCar ? "WASD — руль · E — выйти · F — заправить" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · Q — еда · H — бинт"}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
+${veh.inCar ? "WASD — руль · E — выйти · F — заправить · T — багажник" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · P — персонаж · T — багажник · Q — еда · H — бинт"}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

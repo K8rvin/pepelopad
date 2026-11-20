@@ -59,16 +59,61 @@ function makeRoofTexture() {
   return c;
 }
 
+// сайдинг пригородного дома (горизонтальная доска)
+function makeSidingTexture() {
+  const c = mkCanvas(96, 96);
+  const g = c.getContext("2d");
+  const r = mulberry32(131);
+  g.fillStyle = "#8f9484";
+  g.fillRect(0, 0, 96, 96);
+  for (let y = 0; y < 96; y += 8) {
+    g.fillStyle = "rgba(16,20,26,0.25)";
+    g.fillRect(0, y + 7, 96, 1.5);
+    g.fillStyle = "rgba(230,230,220,0.12)";
+    g.fillRect(0, y, 96, 1);
+  }
+  for (let i = 0; i < 160; i++) {
+    g.fillStyle = r() < 0.5 ? "rgba(16,20,26,0.06)" : "rgba(230,230,220,0.05)";
+    g.fillRect(r() * 96, r() * 96, 1 + r() * 2, 1 + r() * 2);
+  }
+  return c;
+}
+
+// черепица двускатной крыши (гонты со смещением рядов)
+function makeShingleTexture() {
+  const c = mkCanvas(64, 64);
+  const g = c.getContext("2d");
+  const r = mulberry32(477);
+  g.fillStyle = "#6a625a";
+  g.fillRect(0, 0, 64, 64);
+  for (let y = 0; y < 64; y += 8) {
+    g.fillStyle = "rgba(16,20,26,0.3)";
+    g.fillRect(0, y + 7, 64, 1.5);
+    for (let x = (y / 8) % 2 ? 0 : 8; x < 64; x += 16) {
+      g.fillStyle = "rgba(16,20,26,0.22)";
+      g.fillRect(x, y, 1.5, 8);
+    }
+  }
+  for (let i = 0; i < 90; i++) {
+    g.fillStyle = r() < 0.6 ? "rgba(16,20,26,0.08)" : "rgba(230,230,220,0.07)";
+    g.fillRect(r() * 64, r() * 64, 1 + r() * 2, 1 + r() * 2);
+  }
+  return c;
+}
+
 let wallTex = null,
-  roofTex = null;
+  roofTex = null,
+  shingleTex = null;
 function ensureFallbackTextures() {
   if (!wallTex)
     wallTex = {
       panel: makePanelTexture("panel"),
       brick: makePanelTexture("brick"),
       kiosk: makePanelTexture("kiosk"),
+      house: makeSidingTexture(),
     };
   if (!roofTex) roofTex = makeRoofTexture();
+  if (!shingleTex) shingleTex = makeShingleTexture();
 }
 
 // окна
@@ -147,8 +192,24 @@ function bakeBuilding(b, seedKey) {
     c10z = w2s(bx + b.w, by, Z),
     c11z = w2s(bx + b.w, by + b.h, Z),
     c00z = w2s(bx, by, Z);
-  const xs = [c000, c100, c010, c110, c00z, c10z, c11z, c01z].map((p) => p.x);
-  const ys = [c000, c100, c010, c110, c00z, c10z, c11z, c01z].map((p) => p.y);
+  // двускатная крыша дома: конёк вдоль длинной оси на +1,6 м
+  const house = b.style === "house";
+  const wide = b.w >= b.h;
+  const Zr = Z + 1.6;
+  const rA = house
+    ? wide
+      ? w2s(bx, by + b.h / 2, Zr)
+      : w2s(bx + b.w / 2, by, Zr)
+    : null;
+  const rB = house
+    ? wide
+      ? w2s(bx + b.w, by + b.h / 2, Zr)
+      : w2s(bx + b.w / 2, by + b.h, Zr)
+    : null;
+  const corners = [c000, c100, c010, c110, c00z, c10z, c11z, c01z];
+  if (house) corners.push(rA, rB);
+  const xs = corners.map((p) => p.x);
+  const ys = corners.map((p) => p.y);
   const minX = Math.floor(Math.min(...xs)) - 4,
     minY = Math.floor(Math.min(...ys)) - 4;
   const maxX = Math.ceil(Math.max(...xs)) + 4,
@@ -180,41 +241,109 @@ function bakeBuilding(b, seedKey) {
   }
   wall(c100, -1, b.h, true); // восточная, в тени
   wall(c010, 1, b.w, false); // южная
-  // крыша
-  g.save();
-  g.beginPath();
-  g.moveTo(c00z.x, c00z.y);
-  g.lineTo(c10z.x, c10z.y);
-  g.lineTo(c11z.x, c11z.y);
-  g.lineTo(c01z.x, c01z.y);
-  g.closePath();
-  if (TEX.roof_felt) {
+  // крыша: плоская (рубероид) или двускатная (черепица) у домов
+  if (house) {
+    // видимый скат: южный у широких домов, восточный у вытянутых
+    const slope = wide ? [c01z, c11z, rB, rA] : [c10z, c11z, rB, rA];
+    const gable = wide ? [c10z, c11z, rB] : [c01z, c11z, rB];
+    const sm = wide
+      ? [1, 0.5, -1, 0.5 + 3.2 / b.h, rA.x - minX, rA.y - minY]
+      : [-1, 0.5, 1, 0.5 + 3.2 / b.w, rA.x - minX, rA.y - minY];
+    const ss = wide ? [b.w * 32, (b.h / 2) * 32] : [b.h * 32, (b.w / 2) * 32];
+    const gm = wide
+      ? [-1, 0.5, 0, -1, c10z.x - minX, c10z.y - minY]
+      : [1, 0.5, 0, -1, c01z.x - minX, c01z.y - minY];
+    const gs = wide ? b.h * 32 : b.w * 32;
+    const poly = (pts) => {
+      g.beginPath();
+      g.moveTo(pts[0].x, pts[0].y);
+      for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
+      g.closePath();
+    };
+    // дальний скат (северный у широких, западный у вытянутых): при подъёме
+    // камеры 26,6° и уклоне крыши ~20° над коньком видна его полоса
+    const far = wide ? [c00z, c10z, rB, rA] : [c00z, c01z, rB, rA];
+    const fm = wide
+      ? [1, 0.5, 1, -0.5 - 3.2 / b.h, rA.x - minX, rA.y - minY]
+      : [-1, 0.5, -1, -0.5 - 3.2 / b.w, rA.x - minX, rA.y - minY];
+    const fs = wide ? [b.w * 32, (b.h / 2) * 32] : [b.h * 32, (b.w / 2) * 32];
+    g.save();
+    poly(far);
     g.clip();
-    g.setTransform(1, 0.5, -1, 0.5, c00z.x - minX, c00z.y - minY);
-    g.fillStyle = g.createPattern(TEX.roof_felt, "repeat");
-    g.fillRect(0, 0, b.w * 32, b.h * 32);
+    g.setTransform(...fm);
+    g.fillStyle = g.createPattern(TEX.roof_shingles || shingleTex, "repeat");
+    g.fillRect(0, 0, fs[0], fs[1]);
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = "rgba(40,44,48,0.35)";
+    g.fillStyle = "rgba(16,20,26,0.35)";
     g.fill();
+    g.restore();
+    g.save();
+    poly(slope);
+    g.clip();
+    g.setTransform(...sm);
+    g.fillStyle = g.createPattern(TEX.roof_shingles || shingleTex, "repeat");
+    g.fillRect(0, 0, ss[0], ss[1]);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = "rgba(40,44,48,0.25)";
+    g.fill();
+    g.restore();
+    g.save();
+    poly(gable);
+    g.clip();
+    g.setTransform(...gm);
+    g.fillStyle = g.createPattern(tex, "repeat");
+    g.fillRect(0, 0, gs, 52); // v вверх (d=-1): фронтон над кромкой стены
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = "rgba(16,20,26,0.22)";
+    g.fill();
+    g.restore();
+    // конёк и кромки ската
+    g.strokeStyle = "rgba(16,20,26,0.7)";
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(rA.x, rA.y);
+    g.lineTo(rB.x, rB.y);
+    g.moveTo(slope[0].x, slope[0].y);
+    g.lineTo(rA.x, rA.y);
+    g.moveTo(slope[1].x, slope[1].y);
+    g.lineTo(rB.x, rB.y);
+    g.stroke();
   } else {
-    g.fillStyle = g.createPattern(roofTex, "repeat");
-    g.fill();
-  }
-  g.strokeStyle = "rgba(16,20,26,0.7)";
-  g.lineWidth = 3;
-  g.stroke();
-  g.restore();
-  // вентиляция
-  const r = mulberry32(seedKey);
-  const vents = b.w * b.h > 150 ? 2 : 1;
-  for (let i = 0; i < vents; i++) {
-    const vx = bx + 2 + r() * (b.w - 4),
-      vy = by + 2 + r() * (b.h - 4);
-    const p = w2s(vx, vy, Z);
-    g.fillStyle = "#43484a";
-    g.fillRect(p.x - 5, p.y - 12, 10, 12);
-    g.fillStyle = "#5f6466";
-    g.fillRect(p.x - 5, p.y - 12, 10, 3);
+    g.save();
+    g.beginPath();
+    g.moveTo(c00z.x, c00z.y);
+    g.lineTo(c10z.x, c10z.y);
+    g.lineTo(c11z.x, c11z.y);
+    g.lineTo(c01z.x, c01z.y);
+    g.closePath();
+    if (TEX.roof_felt) {
+      g.clip();
+      g.setTransform(1, 0.5, -1, 0.5, c00z.x - minX, c00z.y - minY);
+      g.fillStyle = g.createPattern(TEX.roof_felt, "repeat");
+      g.fillRect(0, 0, b.w * 32, b.h * 32);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.fillStyle = "rgba(40,44,48,0.35)";
+      g.fill();
+    } else {
+      g.fillStyle = g.createPattern(roofTex, "repeat");
+      g.fill();
+    }
+    g.strokeStyle = "rgba(16,20,26,0.7)";
+    g.lineWidth = 3;
+    g.stroke();
+    g.restore();
+    // вентиляция на плоской крыше
+    const r = mulberry32(seedKey);
+    const vents = b.w * b.h > 150 ? 2 : 1;
+    for (let i = 0; i < vents; i++) {
+      const vx = bx + 2 + r() * (b.w - 4),
+        vy = by + 2 + r() * (b.h - 4);
+      const p = w2s(vx, vy, Z);
+      g.fillStyle = "#43484a";
+      g.fillRect(p.x - 5, p.y - 12, 10, 12);
+      g.fillStyle = "#5f6466";
+      g.fillRect(p.x - 5, p.y - 12, 10, 3);
+    }
   }
   // окна + ночная подложка
   const lit = mkCanvas(cnv.width, cnv.height);

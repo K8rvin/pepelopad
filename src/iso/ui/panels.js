@@ -1,8 +1,16 @@
-// DOM-интерфейс: рюкзак (действия по клику на ячейку), обыск, крафт.
+// DOM-интерфейс: рюкзак (действия по клику на ячейку), обыск, крафт, персонаж.
 // Отделён от игрового цикла.
 import { ITEMS } from "../data/items.js";
 import { RECIPES } from "../data/recipes.js";
 import { CONTAINER_NAMES } from "../systems/loot.js";
+import {
+  SKILLS,
+  ATTRS,
+  MAX_LEVEL,
+  SKILL_XP_BASE,
+  ATTR_XP_BASE,
+} from "../data/skills.js";
+import { xpToNext } from "../systems/skills.js";
 
 export function createUI({
   getInventory,
@@ -14,15 +22,21 @@ export function createUI({
   onCraft,
   canCraft,
   onClose,
+  getSkills,
+  getMods,
+  onTrunkTake,
+  onTrunkPut,
 }) {
   const root = document.getElementById("ui");
-  let mode = null; // null | 'inv' | 'loot' | 'craft'
+  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk'
   let lootTarget = null;
+  let trunkCar = null;
   let ctxSlot = -1; // слот с открытым контекстным меню
 
   function close() {
     mode = null;
     lootTarget = null;
+    trunkCar = null;
     ctxSlot = -1;
     root.innerHTML = "";
     root.style.display = "none";
@@ -37,11 +51,16 @@ export function createUI({
   function slotActions(s, i) {
     if (ctxSlot !== i || !s) return "";
     const def = ITEMS[s.id];
+    const m = getMods?.();
     const btns = [];
     if (s.id === "can")
-      btns.push(`<button data-act="use">Съесть (+40 сытости)</button>`);
+      btns.push(
+        `<button data-act="use">Съесть (+${40 + (m?.foodBonus ?? 0)} сытости)</button>`,
+      );
     if (s.id === "meds")
-      btns.push(`<button data-act="use">Перевязать (+30 HP)</button>`);
+      btns.push(
+        `<button data-act="use">Перевязать (+${30 + (m?.healBonus ?? 0)} HP)</button>`,
+      );
     btns.push(`<button data-act="drop">Выбросить</button>`);
     return `<div class="ctxmenu" data-slot="${i}">${btns.join("")}</div>`;
   }
@@ -89,6 +108,44 @@ export function createUI({
       <div class="hint">C / Esc — закрыть</div></div>`;
   }
 
+  function charPanel() {
+    const S = getSkills();
+    const row = (def, st, base) => {
+      const max = st.level >= MAX_LEVEL;
+      const pct = max
+        ? 100
+        : Math.min(100, Math.floor((st.xp / xpToNext(st.level, base)) * 100));
+      return `<div class="skill-row"><span class="ic">${def.icon}</span><span class="nm">${def.name}</span><span class="lv">${max ? "МАКС" : "ур. " + st.level}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="ds">${def.desc}</span></div>`;
+    };
+    return `<div class="panel wide"><h3>Характеристики</h3>
+      ${Object.entries(ATTRS)
+        .map(([id, a]) => row(a, S.attrs[id], ATTR_XP_BASE))
+        .join("")}
+      <h3>Навыки</h3>
+      ${Object.entries(SKILLS)
+        .map(([id, s]) => row(s, S.skills[id], SKILL_XP_BASE))
+        .join("")}
+      <div class="hint">Навыки растут от действий: стрельба, бег, крафт, обыск, вождение, лечение, пережитые ночи. P / Esc — закрыть</div></div>`;
+  }
+
+  function trunkPanel() {
+    const tr = trunkCar.trunk;
+    const inv = getInventory();
+    const grid = (slots, side) =>
+      slots
+        .map((s, i) => {
+          if (!s)
+            return `<div class="slot" data-side="${side}" data-slot="${i}"></div>`;
+          const def = ITEMS[s.id];
+          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${def.name}"><span class="ic">${def.icon}</span><span class="n">${s.n}</span></div>`;
+        })
+        .join("");
+    return `<div class="panel wide"><h3>Багажник (${tr.size} слотов)</h3>
+      <div class="grid">${grid(tr.slots, "trunk")}</div>
+      <h3>Рюкзак</h3><div class="grid">${grid(inv.slots, "inv")}</div>
+      <div class="hint">клик по предмету — переложить стак целиком · T / Esc — закрыть</div></div>`;
+  }
+
   function render() {
     if (!mode) return;
     root.innerHTML =
@@ -96,8 +153,23 @@ export function createUI({
         ? invPanel()
         : mode === "craft"
           ? craftPanel()
-          : lootPanel();
+          : mode === "char"
+            ? charPanel()
+            : mode === "trunk"
+              ? trunkPanel()
+              : lootPanel();
     root.style.display = "flex";
+    if (mode === "trunk") {
+      root.querySelectorAll(".slot[data-side]").forEach((el) =>
+        el.addEventListener("click", () => {
+          const i = Number(el.dataset.slot);
+          if (el.dataset.side === "trunk") onTrunkTake?.(i);
+          else onTrunkPut?.(i);
+          render();
+        }),
+      );
+      return;
+    }
     // слоты: клик → контекстное меню действий
     root.querySelectorAll(".slot[data-slot]").forEach((el) =>
       el.addEventListener("click", (e) => {
@@ -156,6 +228,17 @@ export function createUI({
     },
     openCraft() {
       mode = "craft";
+      ctxSlot = -1;
+      render();
+    },
+    openCharacter() {
+      mode = "char";
+      ctxSlot = -1;
+      render();
+    },
+    openTrunk(car) {
+      mode = "trunk";
+      trunkCar = car;
       ctxSlot = -1;
       render();
     },

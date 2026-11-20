@@ -1,0 +1,19 @@
+{
+  "id": "house_wall_v1",
+  "prompt": "Seamless tileable texture, top-down orthographic flat view, no perspective. Muted desaturated palette, ash grey and dirty beige, overcast flat lighting, no bright colors, grime and wear. The texture fills the entire frame edge to edge, no objects, no shadows of objects, no text. Suburban house siding wall: horizontal clapboard boards, muted sage-grey paint, weathered streaks and dirt.",
+  "references": [],
+  "mode": "Создание изображений",
+  "aspectRatio": "default UI setting (not changed)",
+  "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\house_wall_v1.png",
+  "createdAt": "2026-11-20T10:29:38.170Z",
+  "originalFormat": "jpeg",
+  "originalSize": [
+    2048,
+    2048
+  ],
+  "processed": {
+    "output": "public/assets/textures/house_wall.png",
+    "size": 512,
+    "note": "center-crop square + lanczos3"
+  }
+}

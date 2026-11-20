@@ -8,6 +8,7 @@ export default defineConfig({
       "**/dist/**",
       "**/.git/**",
       "**/.cache/**",
+      "**/.qwen/**", // worktrees — отдельные checkout'ы, не тесты корня
       "assets-src/**",
     ],
   },

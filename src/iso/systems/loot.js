@@ -106,21 +106,30 @@ export function nearestContainer(L, x, y, r = 1.6, insideB = null) {
   return best;
 }
 
-// содержимое контейнера: генерируется один раз по сиду id
-export function openContainer(L, c) {
-  if (!L.opened.has(c.id)) {
-    const seed = c.id
-      .split("")
-      .reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 5);
-    const r = mulberry32(seed);
-    const table = LOOT_TABLES[c.kind] || [];
-    const items = [];
-    for (const [id, mn, mx, chance] of table) {
-      if (r() > chance) continue;
+// содержимое контейнера: детерминировано по сиду id (без записи в состояние).
+// bonusChance (навык поиска + восприятие) даёт доп. стак по каждой строке.
+// Позволяет заранее знать, пуст ли контейнер (подсказка обыска не показывается).
+export function containerItems(c, bonusChance = 0) {
+  const seed = c.id
+    .split("")
+    .reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 5);
+  const r = mulberry32(seed);
+  // часть контейнеров изначально пуста (обыск им не предлагается)
+  if (r() < 0.15) return [];
+  const table = LOOT_TABLES[c.kind] || [];
+  const items = [];
+  for (const [id, mn, mx, chance] of table) {
+    if (r() > chance) continue;
+    items.push({ id, n: mn + Math.floor(r() * (mx - mn + 1)) });
+    if (bonusChance > 0 && r() < bonusChance)
       items.push({ id, n: mn + Math.floor(r() * (mx - mn + 1)) });
-    }
-    L.opened.set(c.id, items);
   }
+  return items;
+}
+
+// содержимое фиксируется при первом обыске и сохраняется
+export function openContainer(L, c, bonusChance = 0) {
+  if (!L.opened.has(c.id)) L.opened.set(c.id, containerItems(c, bonusChance));
   return L.opened.get(c.id);
 }
 
