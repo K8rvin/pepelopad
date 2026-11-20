@@ -1,0 +1,16 @@
+{
+  "source": "G:/Work/YandexGames/pepelopad/assets-src/generated/win_broken_v2_v1.png",
+  "output": "G:/Work/YandexGames/pepelopad/public/assets/gen/win_broken.png",
+  "bgRemovedPct": 51,
+  "pocketsRemoved": 5292,
+  "whiteStripped": 0,
+  "regionRemoved": 0,
+  "modulate": {
+    "brightness": 0.92,
+    "saturation": 0.75
+  },
+  "cropped": [
+    1754,
+    1379
+  ]
+}

@@ -34,6 +34,13 @@ export function addItem(inv, id, n = 1) {
   return left;
 }
 
+// вырастить рюкзак (Сила): новые пустые слоты в конец; существующие не трогаем
+export function resizeInventory(inv, size) {
+  if (size <= inv.size) return;
+  while (inv.slots.length < size) inv.slots.push(null);
+  inv.size = size;
+}
+
 export function removeItem(inv, id, n = 1) {
   let left = n;
   for (let i = inv.size - 1; i >= 0 && left > 0; i--) {

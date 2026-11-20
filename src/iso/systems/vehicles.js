@@ -82,7 +82,16 @@ export function exitCar(city, state, player) {
   state.inCar = null;
 }
 
-export function updateVehicle(city, car, keys, player, combat, dt, rng) {
+export function updateVehicle(
+  city,
+  car,
+  keys,
+  player,
+  combat,
+  dt,
+  mods = null,
+  onDrive = null,
+) {
   // газ/тормоз/руль (A — влево, D — вправо; при заднем ходу знак скорости сам
   // переворачивает отклик, как у настоящей машины)
   const fwd = keys.KeyW ? 1 : 0,
@@ -91,7 +100,8 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
   if (car.fuel <= 0) {
     car.v *= Math.max(0, 1 - DRAG * dt * 3);
   } else {
-    if (fwd) car.v = Math.min(MAX_SPEED, car.v + ACCEL * dt);
+    if (fwd)
+      car.v = Math.min(MAX_SPEED, car.v + ACCEL * (mods?.accelK ?? 1) * dt);
     if (back) car.v = Math.max(-MAX_SPEED * 0.4, car.v - BRAKE * dt);
   }
   car.v *= Math.max(0, 1 - DRAG * dt * (fwd || back ? 0.25 : 1.2));
@@ -103,7 +113,12 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
   if (Math.abs(car.v) > 0.2) {
     const before = carDims(car);
     car.heading +=
-      steer * STEER * dt * Math.min(1, Math.abs(car.v) / 8) * Math.sign(car.v);
+      steer *
+      STEER *
+      (mods?.steerK ?? 1) *
+      dt *
+      Math.min(1, Math.abs(car.v) / 8) *
+      Math.sign(car.v);
     // перепад доминирующей оси AABB: сохраняем центр машины
     const after = carDims(car);
     if (after.w !== before.w) {
@@ -142,7 +157,9 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
     car.x += dx;
     car.y += dy;
     car.moved = true;
-    car.fuel = Math.max(0, car.fuel - Math.abs(car.v) * dt * FUEL_PER_M);
+    const meters = Math.abs(car.v) * dt;
+    car.fuel = Math.max(0, car.fuel - meters * FUEL_PER_M * (mods?.fuelK ?? 1));
+    onDrive?.(meters);
   }
   // таран зомби
   for (const z of city.zombies) {
@@ -150,13 +167,13 @@ export function updateVehicle(city, car, keys, player, combat, dt, rng) {
     if (Math.abs(z.x - cx) + Math.abs(z.y - cy) > 6) continue;
     const d = Math.hypot(z.x - cx, z.y - cy);
     if (d < 2.2 && Math.abs(car.v) > 3) {
-      z.hp = (z.hp ?? 70) - Math.abs(car.v) * 9;
+      z.hp = (z.hp ?? 70) - Math.abs(car.v) * 9 * (mods?.ramK ?? 1);
       combat.blood.push({ x: z.x, y: z.y, r: 1, t: 0 });
       if (z.hp <= 0) {
         z.dead = true;
         combat.kills++;
         combat.corpses.push({ x: z.x, y: z.y, t: 0, pose: 1 });
-        combat.onKill?.();
+        combat.onKill?.("ram", z);
       }
       car.hp = Math.max(0, car.hp - 1.5);
       car.v *= 0.88;
@@ -180,4 +197,14 @@ export function refuelCar(car, inv, countItem, removeItem) {
 
 export function fuelText(car) {
   return `${car.fuel.toFixed(1)} / ${TANK} л`;
+}
+
+// багажник: отдельное хранилище на машине, слоты создаются при первом открытии
+export const TRUNK_SLOTS = { sedan: 8, van: 12, wreck: 0 };
+
+export function openTrunk(car) {
+  const n = TRUNK_SLOTS[car.wreck ? "wreck" : car.kind || "sedan"];
+  if (!n) return null;
+  if (!car.trunk) car.trunk = { slots: new Array(n).fill(null), size: n };
+  return car.trunk;
 }

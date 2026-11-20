@@ -11,13 +11,30 @@ import {
   buildingAtPoint,
 } from "../world/interiors.js";
 import { carDims, carCenter } from "../world/cityGen.js";
+import { CAR_SHAPES } from "../data/carShapes.js";
+import { ZTYPES } from "../data/zombies.js";
 
 export function createRenderer() {
   return {
     chunkCache: new Map(),
     drawCalls: 0,
     vignette: null,
+    bFade: new Map(), // buildingId → текущая альфа фейда (состояние рендера, не игры)
   };
+}
+
+// здание перекрывает игрока на экране: игрок севернее/западнее юго-восточного
+// угла (иначе актёр рисуется поверх) и его силуэт попадает в bbox спрайта.
+// Чистая функция в экранных координатах w2s (без cam/zoom — они общие).
+export function occludesPlayer(b, px, py) {
+  if (px > b.x + b.w - 0.2 || py > b.y + b.h - 0.2) return false;
+  const sx = (px - py) * 32,
+    sy = (px + py) * 16;
+  const sx0 = (b.x - b.y - b.h) * 32,
+    sx1 = (b.x + b.w - b.y) * 32;
+  const sy0 = (b.x + b.y) * 16 - b.floors * 96 - 20,
+    sy1 = (b.x + b.w + b.y + b.h) * 16;
+  return sx > sx0 && sx < sx1 && sy - 60 < sy1 && sy > sy0;
 }
 
 export function bakeVignette(W, H) {
@@ -64,6 +81,7 @@ export function renderWorld({
   npcs,
   stairsNear,
   windowNear,
+  search,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -126,7 +144,10 @@ export function renderWorld({
       dx + hw > -60 && dx - hw < W + 60 && dy + hh > -60 && dy - hh < H + 60
     );
   };
-  const push = (depth, layer, f) => items.push({ depth, layer, f });
+  // base — вторичный ключ сортировки: при общем бусте от здания порядок
+  // актёров между собой решает их собственная глубина, а не глубина здания
+  const push = (depth, layer, f, base = depth) =>
+    items.push({ depth, layer, f, base });
 
   for (const b of city.buildings) {
     if (
@@ -156,6 +177,13 @@ export function renderWorld({
         );
       }
     } else {
+      // снаружи: здание, прячущее игрока, плавно уходит в прозрачность
+      const target = occludesPlayer(b, player.x, player.y) ? 0.3 : 1;
+      let a = R.bFade.get(b.id);
+      if (a === undefined) a = 1;
+      a += (target - a) * 0.25;
+      if (Math.abs(a - target) < 0.02) a = target;
+      R.bFade.set(b.id, a);
       push(b.x + b.w + (b.y + b.h), 1, () =>
         drawBuilding(
           ctx,
@@ -167,6 +195,7 @@ export function renderWorld({
           player,
           city.brokenWindows.get(b.id),
           loot,
+          a,
         ),
       );
     }
@@ -209,7 +238,7 @@ export function renderWorld({
   }
   for (const bch of city.benches) {
     if (!vis(bch.x, bch.y, 45, 30)) continue;
-    push(bch.x + bch.y, 1, () => {
+    push(actorDepth(city, bch), 1, () => {
       const p = w2s(bch.x, bch.y);
       const img = SPRTEX.bench;
       if (img) {
@@ -229,7 +258,8 @@ export function renderWorld({
   }
   for (const cn of city.containers) {
     if (!vis(cn.x, cn.y, 40, 35)) continue;
-    push(cn.x + cn.y, 1, () => {
+    // парный тест со зданиями: контейнер перед домом — на переднем плане
+    push(actorDepth(city, cn), 1, () => {
       const p = w2s(cn.x, cn.y);
       const img = SPRTEX.dumpster;
       if (img) {
@@ -249,7 +279,7 @@ export function renderWorld({
   }
   for (const t of city.tires) {
     if (!vis(t.x, t.y, 32, 25)) continue;
-    push(t.x + t.y, 1, () => {
+    push(actorDepth(city, t), 1, () => {
       const p = w2s(t.x, t.y);
       const img = SPRTEX.tires;
       if (img) {
@@ -269,7 +299,7 @@ export function renderWorld({
   }
   for (const br of city.barrels) {
     if (!vis(br.x, br.y, 20, 22)) continue;
-    push(br.x + br.y, 1, () => {
+    push(actorDepth(city, br), 1, () => {
       const p = w2s(br.x, br.y);
       const img = SPRTEX.barrel;
       if (img) {
@@ -310,13 +340,19 @@ export function renderWorld({
     if (z.dead) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
     z._insideB = inside || buildingAtPoint(city, z.x, z.y);
-    push(actorDepth(city, z), 2, () =>
-      drawActor(ctx, z, SPR, toX, toY, zoom, false),
+    push(
+      actorDepth(city, z),
+      2,
+      () => drawActor(ctx, z, SPR, toX, toY, zoom, false),
+      z.x + z.y,
     );
   }
   if (!inCar)
-    push(actorDepth(city, player) + 0.01, 2, () =>
-      drawActor(ctx, player, SPR, toX, toY, zoom, true),
+    push(
+      actorDepth(city, player) + 0.01,
+      2,
+      () => drawActor(ctx, player, SPR, toX, toY, zoom, true),
+      player.x + player.y,
     );
 
   // NPC (спрайт выжившего + подпись вблизи)
@@ -361,18 +397,61 @@ export function renderWorld({
         const p = w2s(a.x, a.y, 0.9); // стрела летит на высоте ~0,9 м
         const dx = toX(p.x),
           dy = toY(p.y);
-        ctx.strokeStyle = "#d9cba6";
-        ctx.lineWidth = 2 * zoom;
+        // экранное направление полёта из мирового курса
+        const vx = (a.dx - a.dy) * 32,
+          vy = (a.dx + a.dy) * 16;
+        const vl = Math.hypot(vx, vy) || 1;
+        const ux = vx / vl,
+          uy = vy / vl;
+        const px = -uy,
+          py = ux;
+        const L = 15 * zoom;
+        const tx = dx - ux * L,
+          ty = dy - uy * L;
+        // древко
+        ctx.strokeStyle = "#c9b98f";
+        ctx.lineWidth = 1.6 * zoom;
         ctx.beginPath();
-        ctx.moveTo(dx, dy);
-        ctx.lineTo(dx - a.dx * 10 * zoom, dy - a.dy * 6 * zoom);
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(dx - ux * 3 * zoom, dy - uy * 3 * zoom);
         ctx.stroke();
-        R.drawCalls++;
+        // наконечник
+        ctx.fillStyle = "#8f8a7c";
+        ctx.beginPath();
+        ctx.moveTo(dx + ux * 3 * zoom, dy + uy * 3 * zoom);
+        ctx.lineTo(
+          dx - ux * 4 * zoom + px * 2.2 * zoom,
+          dy - uy * 4 * zoom + py * 2.2 * zoom,
+        );
+        ctx.lineTo(
+          dx - ux * 4 * zoom - px * 2.2 * zoom,
+          dy - uy * 4 * zoom - py * 2.2 * zoom,
+        );
+        ctx.closePath();
+        ctx.fill();
+        // оперение
+        ctx.strokeStyle = "#e0d8c0";
+        ctx.lineWidth = 1.2 * zoom;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(
+          tx + ux * 3 * zoom + px * 2.4 * zoom,
+          ty + uy * 3 * zoom + py * 2.4 * zoom,
+        );
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(
+          tx + ux * 3 * zoom - px * 2.4 * zoom,
+          ty + uy * 3 * zoom - py * 2.4 * zoom,
+        );
+        ctx.stroke();
+        R.drawCalls += 3;
       });
     }
   }
 
-  items.sort((a, b) => a.depth - b.depth || a.layer - b.layer);
+  items.sort(
+    (a, b) => a.depth - b.depth || a.base - b.base || a.layer - b.layer,
+  );
   for (const it of items) it.f();
 
   if (night) {
@@ -399,6 +478,29 @@ export function renderWorld({
     R.drawCalls++;
   }
 
+  // полоса HP Матки, когда она на экране
+  const boss = zombies.find((z) => !z.dead && z.type === "boss");
+  if (boss && vis(boss.x, boss.y, 90, 140)) {
+    const bp = w2s(boss.x, boss.y);
+    const bx = toX(bp.x),
+      by = toY(bp.y) - 130 * zoom;
+    const bw = 70 * zoom;
+    ctx.fillStyle = "rgba(16,20,26,0.75)";
+    ctx.fillRect(bx - bw / 2 - 2, by - 2, bw + 4, 10 * zoom + 4);
+    ctx.fillStyle = "#8a2a22";
+    ctx.fillRect(
+      bx - bw / 2,
+      by,
+      (bw * Math.max(0, boss.hp)) / ZTYPES.boss.hp,
+      10 * zoom,
+    );
+    ctx.font = `${10 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e0b0a0";
+    ctx.fillText("МАТКА", bx, by - 5 * zoom);
+    ctx.textAlign = "left";
+    R.drawCalls += 3;
+  }
   // боевые оверлеи: прицел, дуга натяжения, вспышка урона, смерть
   if (combat && !combat.dead) {
     // прицел в точке aim
@@ -488,6 +590,28 @@ export function renderWorld({
       R.drawCalls++;
     }
   }
+  // шкала обыска над контейнером
+  if (search) {
+    const p = w2s(search.c.x, search.c.y);
+    const dx = toX(p.x),
+      dy = toY(p.y) - 46 * zoom;
+    const bw = 44 * zoom;
+    ctx.fillStyle = "rgba(16,20,26,0.75)";
+    ctx.fillRect(dx - bw / 2 - 2, dy - 2, bw + 4, 8 * zoom + 4);
+    ctx.fillStyle = "#ffb23e";
+    ctx.fillRect(
+      dx - bw / 2,
+      dy,
+      bw * Math.min(1, search.t / search.dur),
+      8 * zoom,
+    );
+    ctx.font = `${10 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ece5d0";
+    ctx.fillText("Обыск...", dx, dy - 6 * zoom);
+    ctx.textAlign = "left";
+    R.drawCalls += 3;
+  }
   // подсказка обыска у контейнера
   if (lootNearest && !uiOpen && !(combat && combat.dead)) {
     const p = w2s(lootNearest.x, lootNearest.y);
@@ -568,13 +692,25 @@ const FURN_STYLE = {
   crate: { c: "#7a6a4a", h: 0.7, top: "#8a7854" },
 };
 
-function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
+function drawBuilding(
+  ctx,
+  b,
+  toX,
+  toY,
+  zoom,
+  ghost,
+  player,
+  brokenSet,
+  loot,
+  alpha = 1,
+) {
   if (ghost) {
     // внутри: вместо shell — интерьер (перегородки к югу/востоку от игрока — полупрозрачные)
     drawInteriorWalls(ctx, b, toX, toY, zoom, player);
     drawFurniture(ctx, b, toX, toY, zoom, player, loot);
     return;
   }
+  ctx.globalAlpha = alpha;
   const spr = buildingSprite(b);
   const ox = (b.x - b.y) * 32 + spr.minX,
     oy = (b.x + b.y) * 16 + spr.minY;
@@ -611,33 +747,13 @@ function drawBuilding(ctx, b, toX, toY, zoom, ghost, player, brokenSet, loot) {
       ctx.restore();
     }
   }
+  ctx.globalAlpha = 1;
 }
 
-// машина: процедурная тень под полным курсом (T-матрица) + кадр турнтейбла с кроссфейдом
-// раскладка кадров атласов: мировой курс в градусах по индексам кадров (подобрано визуально)
-const CAR_DIRS = {
-  sedan: [100, 190, 225, 292, 168, 18, 45, 78],
-  van: [110, 135, 180, 225, 270, 315, 0, 45],
-  wreck: [135, 100, 45, 0, 315, 292, 225, 180],
-};
-function angDiffDeg(a, b) {
-  let d = a - b;
-  while (d > 180) d -= 360;
-  while (d < -180) d += 360;
-  return d;
-}
-function pickCarFrame(deg, dirs) {
-  let best = 0,
-    bd = 999;
-  for (let i = 0; i < dirs.length; i++) {
-    const d = Math.abs(angDiffDeg(deg, dirs[i]));
-    if (d < bd) {
-      bd = d;
-      best = i;
-    }
-  }
-  return best;
-}
+// машина: процедурная тень под полным курсом (T-матрица) + процедурная iso-модель
+// кузова (точные проекции боксов на любой курс — без ступенек турнтейбла).
+// Gemini-турнтейблы 8/16 кадров отвергнуты: неравномерная сетка курсов и плоские
+// виды (три генерации 16, см. этап 18 плана). Это НЕ ctx.rotate спрайта.
 
 function drawCar(ctx, car, i, toX, toY, zoom) {
   const cc = carCenter(car);
@@ -676,85 +792,171 @@ function drawCar(ctx, car, i, toX, toY, zoom) {
     ctx.fill();
   }
   ctx.restore();
-  // кадр турнтейбла (атлас по типу машины; остов — свой атлас)
-  const kind = car.wreck ? "wreck" : car.kind || "sedan";
-  const set = SPRTEX.car8?.[kind] || SPRTEX.car8?.sedan;
-  const atlas = set?.img,
-    meta = set?.meta;
-  if (atlas && meta) {
-    const deg = ((((heading * 180) / Math.PI) % 360) + 360) % 360;
-    const dirs = CAR_DIRS[kind] || CAR_DIRS.sedan;
-    const frame = pickCarFrame(deg, dirs);
-    if (car.visFrame === undefined) car.visFrame = frame;
-    if (car.visBlend === undefined) car.visBlend = 1;
-    if (frame !== car.visFrame) {
-      car.visFrom = car.visFrame;
-      car.visFrame = frame;
-      car.visBlend = 0;
+  const shape = CAR_SHAPES[car.wreck ? "wreck" : car.kind || "sedan"];
+  // c/s (cos/sin курса) объявлены выше для тени
+  const pt = (lx, ly, z) => {
+    const q = w2s(cc.x + lx * c - ly * s, cc.y + lx * s + ly * c, z);
+    return { x: toX(q.x), y: toY(q.y) };
+  };
+  const poly = (pts) => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (const q of pts.slice(1)) ctx.lineTo(q.x, q.y);
+    ctx.closePath();
+    ctx.fill();
+  };
+  const shade = (hex, f) => {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, ((n >> 16) & 255) * f) | 0;
+    const g = Math.min(255, ((n >> 8) & 255) * f) | 0;
+    const b = Math.min(255, (n & 255) * f) | 0;
+    return `rgb(${r},${g},${b})`;
+  };
+  const base = shape.charred ? "#4a4038" : car.color || "#7a3a2a";
+  const glass = shape.charred ? "#141210" : "#22303c";
+  // бокс: 4 боковые грани painter-сортировкой по глубине + верх.
+  // inset сужает верхнюю прямоугольную грань → скосы лобового/заднего стекла
+  const box = (l0, l1, w0, w1, z0, z1, sideCol, topCol, inset) => {
+    const cor = [
+      [l0, w0],
+      [l1, w0],
+      [l1, w1],
+      [l0, w1],
+    ];
+    const top = inset
+      ? [
+          [l0 + inset.dl0, w0 + inset.dw],
+          [l1 - inset.dl1, w0 + inset.dw],
+          [l1 - inset.dl1, w1 - inset.dw],
+          [l0 + inset.dl0, w1 - inset.dw],
+        ]
+      : cor;
+    const faces = [];
+    for (let e = 0; e < 4; e++) {
+      const a = cor[e],
+        b = cor[(e + 1) % 4];
+      const ta = top[e],
+        tb = top[(e + 1) % 4];
+      const mx = (a[0] + b[0]) / 2,
+        my = (a[1] + b[1]) / 2;
+      const ex = b[0] - a[0],
+        ey = b[1] - a[1];
+      const nl = Math.hypot(ex, ey) || 1;
+      const nx = ey / nl,
+        ny = -ex / nl;
+      const wnx = nx * c - ny * s,
+        wny = nx * s + ny * c;
+      const f = 0.62 + 0.38 * Math.max(0, wny * 0.85 + wnx * 0.15);
+      faces.push({ d: mx * c - my * s + mx * s + my * c, a, b, ta, tb, f });
     }
-    car.visBlend = Math.min(1, car.visBlend + 0.09);
-    const fw = meta.frameW,
-      fh = meta.frameH,
-      cols = meta.cols;
-    const drawW = 165 * zoom,
-      drawH = drawW * (fh / fw);
-    const drawFrame = (idx, alpha) => {
-      if (alpha <= 0) return;
-      const col = idx % cols,
-        row = Math.floor(idx / cols);
-      // якоря в JSON — в координатах АТЛАСА; внутри кадра — минус смещение колонки/ряда
-      const ax = ((meta.anchors[idx].x - col * fw) / fw) * drawW,
-        ay = ((meta.anchors[idx].y - row * fh) / fh) * drawH;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(
-        atlas,
-        col * fw,
-        row * fh,
-        fw,
-        fh,
-        sx - ax,
-        sy - ay,
-        drawW,
-        drawH,
-      );
-    };
-    if (car.visBlend < 1 && car.visFrom !== undefined)
-      drawFrame(car.visFrom, 1 - car.visBlend);
-    drawFrame(car.visFrame, car.visBlend);
-    ctx.globalAlpha = 1;
-    return;
+    faces.sort((p, q) => p.d - q.d);
+    for (const fc of faces) {
+      ctx.fillStyle = shade(sideCol, fc.f);
+      poly([
+        pt(fc.a[0], fc.a[1], z0),
+        pt(fc.b[0], fc.b[1], z0),
+        pt(fc.tb[0], fc.tb[1], z1),
+        pt(fc.ta[0], fc.ta[1], z1),
+      ]);
+    }
+    ctx.fillStyle = topCol;
+    poly(top.map(([x, y]) => pt(x, y, z1)));
+  };
+  // колёса под кузовом
+  ctx.fillStyle = "#191c1e";
+  for (const lx of [-shape.wheelbase / 2, shape.wheelbase / 2])
+    for (const ly of [-shape.track / 2, shape.track / 2]) {
+      const q = pt(lx, ly, 0.3);
+      ctx.beginPath();
+      ctx.ellipse(q.x, q.y, 0.33 * 32 * zoom, 0.33 * 16 * zoom, 0, 0, 7);
+      ctx.fill();
+    }
+  const hl = shape.len / 2;
+  box(
+    -hl,
+    hl,
+    -shape.wid / 2,
+    shape.wid / 2,
+    shape.body.z0,
+    shape.body.z1,
+    base,
+    shade(base, 1.08),
+  );
+  // бамперы
+  const bump = shape.charred ? "#26221e" : "#2e3134";
+  box(
+    hl - 0.06,
+    hl + 0.1,
+    -shape.wid / 2 + 0.08,
+    shape.wid / 2 - 0.08,
+    0.28,
+    0.5,
+    bump,
+    shade(bump, 1.2),
+  );
+  box(
+    -hl - 0.1,
+    -hl + 0.06,
+    -shape.wid / 2 + 0.08,
+    shape.wid / 2 - 0.08,
+    0.28,
+    0.5,
+    bump,
+    shade(bump, 1.2),
+  );
+  // арки колёс на видимом борту (нормаль борта смотрит в камеру)
+  const sideLy = c - s >= 0 ? shape.wid / 2 : -shape.wid / 2;
+  const archAng = Math.atan2((c + s) * 16, (c - s) * 32);
+  ctx.fillStyle = "rgba(16,18,20,0.85)";
+  for (const lx of [-shape.wheelbase / 2, shape.wheelbase / 2]) {
+    const q = pt(lx, sideLy, 0.42);
+    ctx.beginPath();
+    ctx.ellipse(q.x, q.y, 0.36 * 32 * zoom, 0.3 * 32 * zoom, archAng, 0, 7);
+    ctx.fill();
   }
-  // фолбэк: статичные спрайты по типу или процедурная коробка
-  const img = car.wreck
-    ? SPRTEX.car_wreck
-    : car.kind === "van"
-      ? SPRTEX.car_van
-      : SPRTEX.car_sedan;
-  if (img) {
-    ctx.save();
-    ctx.translate(sx, sy);
-    const vx = Math.cos(heading),
-      vy = Math.sin(heading);
-    const sAng = Math.atan2((vx + vy) * 16, (vx - vy) * 32);
-    ctx.rotate(sAng - Math.PI);
-    const wpx = 170 * zoom,
-      hpx = wpx * (img.height / img.width);
-    ctx.drawImage(img, -wpx / 2, -hpx / 2, wpx, hpx);
-    ctx.restore();
-  } else {
-    ctx.drawImage(
-      SPR.cars[i],
-      sx - 112 * zoom,
-      sy - 85 * zoom,
-      224 * zoom,
-      170 * zoom,
-    );
+  const cb = shape.cabin;
+  box(
+    cb.l0,
+    cb.l1,
+    -cb.w,
+    cb.w,
+    cb.z0,
+    cb.z1,
+    glass,
+    shape.charred ? shade(base, 0.8) : shade(base, 1.12),
+    shape.cabinInset,
+  );
+  // фары и габариты
+  ctx.fillStyle = shape.charred ? "#3a3733" : "#d9cba6";
+  for (const ly of [-shape.wid * 0.32, shape.wid * 0.32]) {
+    const q = pt(hl, ly, shape.body.z1 - 0.12);
+    ctx.fillRect(q.x - 2 * zoom, q.y - 2 * zoom, 4 * zoom, 3 * zoom);
+  }
+  ctx.fillStyle = "#8a2a22";
+  for (const ly of [-shape.wid * 0.32, shape.wid * 0.32]) {
+    const q = pt(-hl, ly, shape.body.z1 - 0.12);
+    ctx.fillRect(q.x - 2 * zoom, q.y - 2 * zoom, 4 * zoom, 3 * zoom);
   }
 }
 
-// стены интерьера + фасадные с проёмами — как сортированные сегменты
+// стены интерьера + фасадные с проёмами — как сортированные сегменты.
+// Длинные стены режем на куски ≤1 м: painter-порядок по max(x+y) работает
+// только локально, иначе северная стена рисуется поверх мебели перед ней.
 function interiorSegments(b, it, city) {
-  const walls = it.walls.map((w) => ({ ...w, inside: true }));
+  const walls = [];
+  const chunk = (x1, y1, x2, y2) => {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const n = Math.max(1, Math.ceil(len));
+    for (let i = 0; i < n; i++)
+      walls.push({
+        x1: x1 + ((x2 - x1) * i) / n,
+        y1: y1 + ((y2 - y1) * i) / n,
+        x2: x1 + ((x2 - x1) * (i + 1)) / n,
+        y2: y1 + ((y2 - y1) * (i + 1)) / n,
+        inside: true,
+      });
+  };
+  for (const w of it.walls) chunk(w.x1, w.y1, w.x2, w.y2);
   const du = it.doorU,
     W = b.w,
     H = b.h;
@@ -773,7 +975,7 @@ function interiorSegments(b, it, city) {
     [0, 0, 0, H],
     ...wallWithGaps(W, 0, W, H, eastGaps),
   ])
-    walls.push({ x1, y1, x2, y2 });
+    chunk(x1, y1, x2, y2);
   return walls;
 }
 
@@ -786,8 +988,14 @@ function drawWallSeg(ctx, b, s, toX, toY, zoom, player) {
   const fade =
     (horizontal && s.y1 > ply + 0.1) || (!horizontal && s.x1 > plx + 0.1);
   if (fade) ctx.globalAlpha = 0.25;
-  const a = w2s(b.x + s.x1, b.y + s.y1);
-  const c = w2s(b.x + s.x2, b.y + s.y2);
+  // куски стены перекрываются на 2 см: иначе AA-кромки дают светлые швы
+  const dx = s.x2 - s.x1,
+    dy = s.y2 - s.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ex = (dx / len) * 0.02,
+    ey = (dy / len) * 0.02;
+  const a = w2s(b.x + s.x1 - ex, b.y + s.y1 - ey);
+  const c = w2s(b.x + s.x2 + ex, b.y + s.y2 + ey);
   const ax = toX(a.x),
     ay = toY(a.y),
     cx2 = toX(c.x),
@@ -822,6 +1030,32 @@ function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
   const fade = cy - b.y > ply + 0.1 || cx - b.x > plx + 0.1;
   if (fade) ctx.globalAlpha = 0.55;
   const hgt = st.h * 32 * zoom;
+  // спрайт мебели (этап 18): якорь низ-центр по южному углу footprint
+  const img = SPRTEX["furn_" + f.kind];
+  if (img) {
+    const sp = w2s(b.x + f.x + f.w, b.y + f.y + f.h);
+    // ширина по footprint; высоту ограничиваем физическим боксом
+    // (Gemini-«изометрия» круче 2:1 — без клампа мебель великанами)
+    let dw = (f.w + f.h) * 32 * zoom,
+      dh = dw * (img.height / img.width);
+    const maxH = (st.h * 32 + (f.w + f.h) * 16) * zoom * 1.15;
+    if (dh > maxH) {
+      dh = maxH;
+      dw = dh * (img.width / img.height);
+    }
+    ctx.drawImage(img, toX(sp.x) - dw / 2, toY(sp.y) - dh, dw, dh);
+    const cont = it.containers.find(
+      (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
+    );
+    if (cont && loot && !loot.opened.has(cont.id)) {
+      ctx.fillStyle = "#ffb23e";
+      ctx.beginPath();
+      ctx.arc(dx, dy - hgt - 8 * zoom, 3.5 * zoom, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
   const s = w2s(b.x + f.x, b.y + f.y + f.h);
   const e = w2s(b.x + f.x + f.w, b.y + f.y);
   ctx.fillStyle = st.c;
@@ -1035,15 +1269,34 @@ function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
   ctx.restore();
 }
 
+// tint-варианты спрайта зомби по типам (кэш рендера, не состояние игры)
+const zTintCache = new Map();
+function tintedZombie(img, tint) {
+  let c = zTintCache.get(tint);
+  if (!c) {
+    c = mkCanvas(img.width, img.height);
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = tint;
+    g.fillRect(0, 0, c.width, c.height);
+    zTintCache.set(tint, c);
+  }
+  return c;
+}
+
 function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
   const p = w2s(a.x, a.y);
+  const zt = isPlayer ? null : ZTYPES[a.type || "walker"];
+  const scale = zt?.scale ?? 1;
   ctx.fillStyle = "rgba(16,20,26,0.35)";
   ctx.beginPath();
-  ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
+  ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom * scale, 6 * zoom * scale, 0, 0, 7);
   ctx.fill();
-  const img = SPRTEX[isPlayer ? "survivor" : "zombie"];
+  const base = SPRTEX[isPlayer ? "survivor" : "zombie"];
+  const img = base && zt?.tint ? tintedZombie(base, zt.tint) : base;
   if (img) {
-    const h = 78 * zoom; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
+    const h = 78 * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
     const w = h * (img.width / img.height);
     const bob = Math.sin(a.animT * 2.2) * 2.5 * zoom;
     ctx.save();

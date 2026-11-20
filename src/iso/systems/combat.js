@@ -4,6 +4,7 @@
 // Зомби: кусают в контакте с кулдауном; урон игроку; кровь; смерть.
 import { mulberry32 } from "../core/rng.js";
 import { countItem, removeItem } from "./inventory.js";
+import { ZTYPES } from "../data/zombies.js";
 
 let rng = mulberry32(7);
 export function initCombat(seed) {
@@ -49,14 +50,18 @@ export function updateCombat(
   dt,
   now,
   protectedFlag = false,
+  mods = null,
 ) {
   if (C.dead) {
     C.deadT += dt;
     return;
   }
-  // натяжение лука
+  // натяжение лука (ловкость ускоряет)
   if (C.bowDrawing)
-    C.bowCharge = Math.min(1, C.bowCharge + dt / BOW_CHARGE_TIME);
+    C.bowCharge = Math.min(
+      1,
+      C.bowCharge + dt / (BOW_CHARGE_TIME * (mods?.chargeK ?? 1)),
+    );
   // стрелы
   for (const a of C.arrows) {
     if (!a.alive) continue;
@@ -67,12 +72,37 @@ export function updateCombat(
       a.alive = false;
       continue;
     }
-    // попадание: отрезок (prev→new) против круга зомби — никакого туннелирования
+    // попадание: отрезок стрелы (на высоте 0,9 м) против экранного силуэта
+    // зомби (колонка от ног до головы) — целимся в тело, а не в ноги
     for (const z of city.zombies) {
       if (z.dead) continue;
-      if (segmentHitsCircle(a.x, a.y, nx, ny, z.x, z.y, 0.45)) {
+      const zs = ZTYPES[z.type || "walker"].scale;
+      const zx = (z.x - z.y) * 32,
+        zy = (z.x + z.y) * 16;
+      const ax = (a.x - a.y) * 32,
+        ay = (a.x + a.y) * 16 - 28.8;
+      const bx = (nx - ny) * 32,
+        by = (nx + ny) * 16 - 28.8;
+      if (
+        segHitsRect(
+          ax,
+          ay,
+          bx,
+          by,
+          zx - 16 * zs,
+          zy - 74 * zs,
+          zx + 16 * zs,
+          zy,
+        )
+      ) {
         a.alive = false;
-        hurtZombie(C, z, 34 + Math.floor(rng() * 17), a);
+        C.onHit?.();
+        hurtZombie(
+          C,
+          z,
+          Math.round((34 + Math.floor(rng() * 17)) * (mods?.bowDmgK ?? 1)),
+          a,
+        );
         break;
       }
     }
@@ -89,7 +119,7 @@ export function updateCombat(
         z.attackCd = (z.attackCd || 0) - dt;
         if (z.attackCd <= 0) {
           z.attackCd = ZOMBIE_ATTACK_CD;
-          C.playerHp -= ZOMBIE_DMG + Math.floor(rng() * 5);
+          C.playerHp -= ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
           C.hurtFlash = 1;
           C.shake = 6;
           if (C.playerHp <= 0) {
@@ -117,9 +147,10 @@ export function updateCombat(
 
 function hurtZombie(C, z, dmg, arrow) {
   z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
-  // отброс по направлению стрелы
-  z.x += arrow.dx * 0.35;
-  z.y += arrow.dy * 0.35;
+  // отброс по направлению стрелы (громилы и Матка почти не сдвигаются)
+  const knock = 0.35 * ZTYPES[z.type || "walker"].knock;
+  z.x += arrow.dx * knock;
+  z.y += arrow.dy * knock;
   // зомби слышит/чует и идёт к источнику
   z.tx = arrow.x - arrow.dx * 2;
   z.ty = arrow.y - arrow.dy * 2;
@@ -130,7 +161,7 @@ function hurtZombie(C, z, dmg, arrow) {
     C.kills++;
     C.corpses.push({ x: z.x, y: z.y, t: 0, pose: rng() < 0.5 ? 0 : 1 });
     C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
-    C.onKill?.();
+    C.onKill?.("arrow", z);
   }
 }
 
@@ -141,35 +172,50 @@ function solidBuildingHit(city, x, y) {
   return false;
 }
 
-// расстояние от точки до отрезка (для хит-теста стрел)
-function segmentHitsCircle(x1, y1, x2, y2, cx, cy, r) {
+// отрезок против AABB (Liang-Barsky): экранный силуэт зомби
+function segHitsRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
+  let t0 = 0,
+    t1 = 1;
   const dx = x2 - x1,
     dy = y2 - y1;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return Math.hypot(cx - x1, cy - y1) < r;
-  let t = ((cx - x1) * dx + (cy - y1) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(cx - (x1 + t * dx), cy - (y1 + t * dy)) < r;
+  const p = [-dx, dx, -dy, dy];
+  const q = [x1 - rx0, rx1 - x1, y1 - ry0, ry1 - y1];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false;
+    } else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return true;
 }
 
-// выстрел при отпускании ЛКМ; стрелы расходуются из инвентаря
-export function releaseBow(C, player, aim, inv, city) {
-  if (!C.bowDrawing) return;
+// выстрел при отпускании ЛКМ; стрелы расходуются из инвентаря.
+// Возвращает true, если стрела ушла (для XP стрельбы).
+export function releaseBow(C, player, aim, inv, city, mods = null) {
+  if (!C.bowDrawing) return false;
   C.bowDrawing = false;
   if (C.bowCharge < 0.15) {
     C.bowCharge = 0;
-    return; // слабый спуск — не стреляем
+    return false; // слабый спуск — не стреляем
   }
   if (countItem(inv, "arrow") < 1) {
     C.bowCharge = 0;
     C.noArrowsT = 1.2; // подсказка «нет стрел»
-    return;
+    return false;
   }
   removeItem(inv, "arrow", 1);
   const dx = aim.x - player.x,
     dy = aim.y - player.y;
   const d = Math.hypot(dx, dy) || 1;
-  const spread = (1 - C.bowCharge) * 0.12;
+  const spread = (1 - C.bowCharge) * 0.12 * (mods?.spreadK ?? 1);
   const ang = Math.atan2(dy, dx) + (rng() - 0.5) * spread;
   C.arrows.push({
     x: player.x,
@@ -187,8 +233,11 @@ export function releaseBow(C, player, aim, inv, city) {
       z.tx = player.x;
       z.ty = player.y;
       z.retarget = 0;
+      z.alertT = 6;
+      z.propagated = false;
     }
   }
+  return true;
 }
 
 export function respawn(C, player, spawnX, spawnY) {

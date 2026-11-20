@@ -108,6 +108,41 @@
       #ui .dim {
         color: #9a9478;
       }
+      #ui .panel.wide {
+        min-width: 640px;
+        max-width: 92vw;
+      }
+      #ui .skill-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        border-bottom: 1px solid #262c1e;
+      }
+      #ui .skill-row .nm {
+        min-width: 118px;
+      }
+      #ui .skill-row .lv {
+        color: #ffb23e;
+        min-width: 52px;
+      }
+      #ui .skill-row .bar {
+        flex: 1;
+        min-width: 70px;
+        height: 7px;
+        background: #262c1e;
+        border: 1px solid #39402e;
+      }
+      #ui .skill-row .bar i {
+        display: block;
+        height: 100%;
+        background: #c96a35;
+      }
+      #ui .skill-row .ds {
+        color: #9a9478;
+        font-size: 10px;
+        max-width: 260px;
+      }
       #ui .slot.sel {
         border-color: #ffb23e;
       }
@@ -222,8 +257,8 @@
         <button id="pZoom">Зум: ×1</button>
         <button id="pNew">Новая игра (сброс)</button>
         <div class="hint">
-          WASD — движение/руль · ЛКМ — лук · E — обыск/сесть/лестница · I — рюкзак · C — крафт<br />
-          Q — еда · H — бинт · B — разбить окно · X — спуск с этажа · F — заправить · R — возрождение<br />
+          WASD — движение/руль · ЛКМ — лук · E — обыск/сесть/лестница · I — рюкзак · C — крафт · P — персонаж<br />
+          Q — еда · H — бинт · B — разбить окно · X — спуск с этажа · F — заправить · T — багажник · R — возрождение<br />
           Автосохранение каждые 15 с. Новая игра также через ?new=1 в адресе.
         </div>
       </div>

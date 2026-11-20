@@ -1,44 +1,52 @@
 // Загрузка ассетов: Gemini-текстуры (земля/стены) и спрайты с альфа-каналом.
 // Текстуры раскладываются в бесшовную 2×2 зеркальную композицию с запечённой тонировкой.
+// Пути относительные + BASE_URL: на GitHub Pages игра живёт в /pepelopad/,
+// корневые "/assets/..." там уходили бы в корень домена и не грузились.
 import { mkCanvas } from "../core/geo.js";
+
+const BASE = (import.meta.env && import.meta.env.BASE_URL) || "/";
 
 export const TEX = {}; // плоские текстуры (после process_texture)
 export const SPRTEX = {}; // спрайты с альфа (после process_sprite)
 
 export const TEX_FILES = {
-  asphalt: "/assets/textures/asphalt.png",
-  dead_grass: "/assets/textures/dead_grass.png",
-  dirt: "/assets/textures/dirt_ground.png",
-  sidewalk: "/assets/textures/sidewalk.png",
-  wood_floor: "/assets/textures/wood_floor.png",
-  panel_wall: "/assets/textures/panel_wall.png",
-  brick_wall: "/assets/textures/brick_wall.png",
-  roof_felt: "/assets/textures/roof_felt.png",
+  asphalt: "assets/textures/asphalt.png",
+  dead_grass: "assets/textures/dead_grass.png",
+  dirt: "assets/textures/dirt_ground.png",
+  sidewalk: "assets/textures/sidewalk.png",
+  wood_floor: "assets/textures/wood_floor.png",
+  panel_wall: "assets/textures/panel_wall.png",
+  brick_wall: "assets/textures/brick_wall.png",
+  roof_felt: "assets/textures/roof_felt.png",
+  // пригород (фаза B): сайдинг и черепица; до генерации — процедурный fallback
+  house_wall: "assets/textures/house_wall.png",
+  roof_shingles: "assets/textures/roof_shingles.png",
 };
 
-// турнтейбл-атласы по типам машин (kind): седан, фургон, остов
-export const CAR_ATLASES = {
-  sedan: ["/assets/gen/car8_sedan.png", "/assets/gen/car8_sedan.json"],
-  van: ["/assets/gen/car8_van.png", "/assets/gen/car8_van.json"],
-  wreck: ["/assets/gen/car8_wreck.png", "/assets/gen/car8_wreck.json"],
-};
+// Машины рисуются процедурной iso-моделью (data/carShapes.js): турнтейбл-атласы
+// Gemini не дали равномерной сетки курсов (этап 18), атласы больше не грузятся.
 
 export const SPRITE_FILES = {
-  tree: "/assets/gen/tree_poplar.png",
-  tree_dead: "/assets/gen/tree_dead.png",
-  tree_birch: "/assets/gen/tree_birch.png",
-  zombie: "/assets/gen/zombie.png",
-  survivor: "/assets/gen/survivor.png",
-  bench: "/assets/gen/bench.png",
-  dumpster: "/assets/gen/dumpster.png",
-  tires: "/assets/gen/tires.png",
-  barrel: "/assets/gen/barrel.png",
-  car_sedan: "/assets/gen/car_sedan.png",
-  car_wreck: "/assets/gen/car_wreck.png",
-  car_van: "/assets/gen/car_van.png",
-  win_intact: "/assets/gen/win_intact.png",
-  win_broken: "/assets/gen/win_broken.png",
-  door_entry: "/assets/gen/door_entry.png",
+  tree: "assets/gen/tree_poplar.png",
+  tree_dead: "assets/gen/tree_dead.png",
+  tree_birch: "assets/gen/tree_birch.png",
+  zombie: "assets/gen/zombie.png",
+  survivor: "assets/gen/survivor.png",
+  bench: "assets/gen/bench.png",
+  dumpster: "assets/gen/dumpster.png",
+  tires: "assets/gen/tires.png",
+  barrel: "assets/gen/barrel.png",
+  win_intact: "assets/gen/win_intact.png",
+  win_broken: "assets/gen/win_broken.png",
+  door_entry: "assets/gen/door_entry.png",
+  // мебель интерьера (этап 18); до генерации — процедурные изо-коробки
+  furn_fridge: "assets/gen/furn_fridge.png",
+  furn_table: "assets/gen/furn_table.png",
+  furn_bed: "assets/gen/furn_bed.png",
+  furn_wardrobe: "assets/gen/furn_wardrobe.png",
+  furn_sofa: "assets/gen/furn_sofa.png",
+  furn_shelf: "assets/gen/furn_shelf.png",
+  furn_crate: "assets/gen/furn_crate.png",
 };
 
 function loadSet(files, target) {
@@ -52,38 +60,14 @@ function loadSet(files, target) {
             res();
           };
           img.onerror = () => res(); // fallback: процедурные спрайты
-          img.src = src;
+          img.src = BASE + src;
         }),
     ),
   );
 }
 
 export async function loadAssets() {
-  await Promise.all([
-    loadSet(TEX_FILES, TEX),
-    loadSet(SPRITE_FILES, SPRTEX),
-    // турнтейбл-атласы машин: SPRTEX.car8 = { sedan: {img, meta}, ... }
-    (async () => {
-      const out = {};
-      await Promise.all(
-        Object.entries(CAR_ATLASES).map(async ([kind, [imgSrc, metaSrc]]) => {
-          try {
-            const [img, meta] = await Promise.all([
-              new Promise((res) => {
-                const i = new Image();
-                i.onload = () => res(i);
-                i.onerror = () => res(null);
-                i.src = imgSrc;
-              }),
-              fetch(metaSrc).then((r) => r.json()),
-            ]);
-            if (img) out[kind] = { img, meta };
-          } catch {}
-        }),
-      );
-      if (Object.keys(out).length) SPRTEX.car8 = out;
-    })(),
-  ]);
+  await Promise.all([loadSet(TEX_FILES, TEX), loadSet(SPRITE_FILES, SPRTEX)]);
 }
 
 // бесшовная 2×2 зеркальная композиция + запечённая multiply-тонировка

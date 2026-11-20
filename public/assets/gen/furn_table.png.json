@@ -1,0 +1,16 @@
+{
+  "source": "assets-src/generated/furn_table_v1.png",
+  "output": "public/assets/gen/furn_table.png",
+  "bgRemovedPct": 80,
+  "pocketsRemoved": 0,
+  "whiteStripped": 0,
+  "regionRemoved": 0,
+  "modulate": {
+    "brightness": 0.92,
+    "saturation": 0.75
+  },
+  "cropped": [
+    1528,
+    1390
+  ]
+}
