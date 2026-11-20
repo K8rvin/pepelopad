@@ -11,6 +11,11 @@ import {
   ATTR_XP_BASE,
 } from "../data/skills.js";
 import { xpToNext } from "../systems/skills.js";
+import { countItem } from "../systems/inventory.js";
+import { campDef, trustLevel, residents, canAfford } from "../systems/camps.js";
+import { TRUST_NAMES, DON_VALUES } from "../data/camps.js";
+import { baseCapacity, baseDefense } from "../systems/base.js";
+import { BASE_STRUCTURES } from "../data/base.js";
 
 export function createUI({
   getInventory,
@@ -26,17 +31,29 @@ export function createUI({
   getMods,
   onTrunkTake,
   onTrunkPut,
+  onCampBuy,
+  onCampDonate,
+  onCampDeliver,
+  onCampBuild,
+  onCampService,
+  getBase,
+  onBaseFound,
+  onBaseBuild,
+  onBaseTake,
+  onBasePut,
 }) {
   const root = document.getElementById("ui");
-  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk'
+  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk' | 'camp' | 'base'
   let lootTarget = null;
   let trunkCar = null;
+  let campTarget = null;
   let ctxSlot = -1; // слот с открытым контекстным меню
 
   function close() {
     mode = null;
     lootTarget = null;
     trunkCar = null;
+    campTarget = null;
     ctxSlot = -1;
     root.innerHTML = "";
     root.style.display = "none";
@@ -146,6 +163,92 @@ export function createUI({
       <div class="hint">клик по предмету — переложить стак целиком · T / Esc — закрыть</div></div>`;
   }
 
+  function campPanel() {
+    const c = campTarget;
+    const def = campDef(c);
+    const inv = getInventory();
+    const lv = trustLevel(c);
+    const cost = (ct) =>
+      Object.entries(ct || {})
+        .map(([id, n]) => `${ITEMS[id].icon}${n}`)
+        .join(" ") || "бесплатно";
+    const rows = c.stock
+      .map((s, i) => {
+        if (s.n <= 0) return "";
+        const gate = lv < (s.minTrust || 0);
+        const ok = !gate && canAfford(inv, s.cost || {});
+        return `<div class="loot-row ${ok ? "" : "dim"}"><span class="ic">${ITEMS[s.id].icon}</span> ${ITEMS[s.id].name} ×${s.n} <span class="dim">(${cost(s.cost)})</span>
+        <button data-camp="buy" data-i="${i}" ${ok ? "" : "disabled"}>${gate ? `доверие ${s.minTrust}` : "купить"}</button></div>`;
+      })
+      .join("");
+    const req = c.request;
+    const reqHtml = req
+      ? `<div class="loot-row"><span class="ic">${ITEMS[req.id].icon}</span> ${ITEMS[req.id].name} ×${req.n} <span class="dim">→ +${req.trust} доверия, ${req.reward.map(([id, n]) => `${ITEMS[id].icon}${n}`).join(" ")}</span>
+        <button data-camp="deliver" ${canAfford(inv, { [req.id]: req.n }) ? "" : "disabled"}>отдать</button></div>`
+      : '<div class="dim">Поручений нет — загляни завтра.</div>';
+    const don = Object.keys(DON_VALUES)
+      .map((id) => {
+        const have = countItem(inv, id);
+        return `<button data-camp="donate" data-id="${id}" ${have ? "" : "disabled"} title="${ITEMS[id].name}">${ITEMS[id].icon}+${DON_VALUES[id]}</button>`;
+      })
+      .join(" ");
+    const ups = def.upgrades
+      .map((u, i) => {
+        const built = c.upgrades.includes(u.id);
+        const ok = !built && canAfford(inv, u.cost);
+        return `<div class="loot-row ${built || ok ? "" : "dim"}"><span class="nm">${u.name}</span> <span class="dim">${u.desc} (${cost(u.cost)})</span>
+        <button data-camp="build" data-i="${i}" ${ok ? "" : "disabled"}>${built ? "построено" : "строить"}</button></div>`;
+      })
+      .join("");
+    const heal = def.upgrades.find((u) => u.service === "heal");
+    const healHtml =
+      heal && c.upgrades.includes(heal.id)
+        ? `<button data-camp="service">Лазарет: +30 HP (раз в день)</button>`
+        : "";
+    return `<div class="panel wide"><h3>${def.name} · ${TRUST_NAMES[lv]} · ${residents(c)} жит.</h3>
+      <div class="hint">${def.npc.lines[0]}</div>
+      <h3>Поручение</h3><div class="loot-list">${reqHtml}</div>
+      <h3>Торговля (бартер)</h3><div class="loot-list">${rows || '<div class="dim">склад пуст</div>'}</div>
+      <h3>Пожертвовать (+доверие)</h3><div class="loot-row">${don}</div>
+      <h3>Постройки</h3><div class="loot-list">${ups}</div>
+      ${healHtml}
+      <div class="hint">доверие ${c.trust} · E / Esc — закрыть</div></div>`;
+  }
+
+  function basePanel() {
+    const b = getBase();
+    const inv = getInventory();
+    if (!b.founded)
+      return `<div class="panel"><h3>База</h3>
+        <div class="hint">Основать базу на этом месте? Нужен открытый газон вне зданий.</div>
+        <button data-base="found">Основать базу</button>
+        <div class="hint">V / Esc — закрыть</div></div>`;
+    const cost = (ct) =>
+      Object.entries(ct)
+        .map(([id, n]) => `${ITEMS[id].icon}${n}`)
+        .join(" ") || "бесплатно";
+    const ups = BASE_STRUCTURES.map((s, i) => {
+      const n = b.structures.filter((k) => k === s.id).length;
+      const ok = canAfford(inv, s.cost);
+      return `<div class="loot-row ${ok ? "" : "dim"}"><span class="nm">${s.name}${n ? ` ×${n}` : ""}</span> <span class="dim">${s.desc} (${cost(s.cost)})</span>
+        <button data-base="build" data-i="${i}" ${ok ? "" : "disabled"}>строить</button></div>`;
+    }).join("");
+    const grid = (slots, side) =>
+      slots
+        .map((s, i) => {
+          if (!s)
+            return `<div class="slot" data-side="${side}" data-slot="${i}"></div>`;
+          const d = ITEMS[s.id];
+          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${d.name}"><span class="ic">${d.icon}</span><span class="n">${s.n}</span></div>`;
+        })
+        .join("");
+    return `<div class="panel wide"><h3>База · жителей ${b.residents}/${baseCapacity(b)} · защита ${baseDefense(b)}</h3>
+      <h3>Постройки</h3><div class="loot-list">${ups}</div>
+      <h3>Склад базы (${b.storage.size})</h3><div class="grid">${grid(b.storage.slots, "base")}</div>
+      <h3>Рюкзак</h3><div class="grid">${grid(inv.slots, "inv")}</div>
+      <div class="hint">клик по предмету — переложить · жители приходят при месте и еде · ночью рейд · V / Esc — закрыть</div></div>`;
+  }
+
   function render() {
     if (!mode) return;
     root.innerHTML =
@@ -157,8 +260,45 @@ export function createUI({
             ? charPanel()
             : mode === "trunk"
               ? trunkPanel()
-              : lootPanel();
+              : mode === "camp"
+                ? campPanel()
+                : mode === "base"
+                  ? basePanel()
+                  : lootPanel();
     root.style.display = "flex";
+    if (mode === "base") {
+      root.querySelectorAll("button[data-base]").forEach((btn) =>
+        btn.addEventListener("click", () => {
+          const a = btn.dataset.base;
+          if (a === "found") onBaseFound?.();
+          if (a === "build") onBaseBuild?.(Number(btn.dataset.i));
+          render();
+        }),
+      );
+      root.querySelectorAll(".slot[data-side]").forEach((el) =>
+        el.addEventListener("click", () => {
+          const i = Number(el.dataset.slot);
+          if (el.dataset.side === "base") onBaseTake?.(i);
+          else onBasePut?.(i);
+          render();
+        }),
+      );
+      return;
+    }
+    if (mode === "camp") {
+      root.querySelectorAll("button[data-camp]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const act = b.dataset.camp;
+          if (act === "buy") onCampBuy?.(Number(b.dataset.i));
+          if (act === "donate") onCampDonate?.(b.dataset.id);
+          if (act === "deliver") onCampDeliver?.();
+          if (act === "build") onCampBuild?.(Number(b.dataset.i));
+          if (act === "service") onCampService?.();
+          render();
+        }),
+      );
+      return;
+    }
     if (mode === "trunk") {
       root.querySelectorAll(".slot[data-side]").forEach((el) =>
         el.addEventListener("click", () => {
@@ -239,6 +379,17 @@ export function createUI({
     openTrunk(car) {
       mode = "trunk";
       trunkCar = car;
+      ctxSlot = -1;
+      render();
+    },
+    openCamp(camp) {
+      mode = "camp";
+      campTarget = camp;
+      ctxSlot = -1;
+      render();
+    },
+    openBase() {
+      mode = "base";
       ctxSlot = -1;
       render();
     },
