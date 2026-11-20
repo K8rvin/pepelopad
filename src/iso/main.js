@@ -620,7 +620,7 @@ export async function boot() {
         windowNear: frameState.windowNear,
         search,
       });
-      hud.textContent = `ПЕПЕЛОПАД: Город — ПАУЗА\n${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)}`;
+      hud.textContent = `МЁРТВЫЙ РАЙОН — ПАУЗА\n${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)}`;
       requestAnimationFrame(frame);
       return;
     }
@@ -807,7 +807,7 @@ export async function boot() {
       saveT = 15;
       doSave();
     }
-    hud.textContent = `ПЕПЕЛОПАД: Город · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
+    hud.textContent = `МЁРТВЫЙ РАЙОН · ${city.SIZE}×${city.SIZE} м · зданий ${city.buildings.length} · сид ${seed}
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}${player.level > 0 ? ` · этаж ${player.level + 1}` : ""}
 ${questHudText()}

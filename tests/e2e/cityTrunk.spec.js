@@ -5,7 +5,7 @@ test("багажник: T открывает, клик перекладывае�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/city.html?new=1");
+  await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.veh);
 
   // подходим к исправной машине и садимся
@@ -44,7 +44,7 @@ test("багажник: T открывает, клик перекладывае�
 
   // сейв и перезагрузка: багажник на месте
   await page.evaluate(() => window.__city.save());
-  await page.goto("/city.html");
+  await page.goto("/");
   await page.waitForFunction(() => window.__city?.veh);
   await page.keyboard.press("KeyT");
   await expect(page.locator("#ui .panel.wide h3").first()).toContainText(

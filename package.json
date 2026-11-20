@@ -1,18 +1,17 @@
 {
-  "name": "pepelopad",
-  "version": "0.4.0",
+  "name": "mertvyj-rajon",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
-  "description": "ПЕПЕЛОПАД — браузерный top-down survival-шутер",
+  "description": "МЁРТВЫЙ РАЙОН — браузерный изометрический survival про зомби в пригороде",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "validate": "node scripts/validate.mjs",
-    "format": "prettier --write index.html vite.config.js playwright.config.js vitest.config.js src scripts tests",
-    "format:check": "prettier --check index.html vite.config.js playwright.config.js vitest.config.js src scripts tests"
+    "format": "prettier --write index.html vite.config.js playwright.config.js vitest.config.js src tests",
+    "format:check": "prettier --check index.html vite.config.js playwright.config.js vitest.config.js src tests"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

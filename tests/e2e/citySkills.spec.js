@@ -5,7 +5,7 @@ test("навыки: панель P, XP от действий, рюкзак от 
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/city.html?new=1");
+  await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.skills);
 
   // панель персонажа: 4 характеристики + 7 навыков
@@ -48,7 +48,7 @@ test("навыки: панель P, XP от действий, рюкзак от 
     () => JSON.parse(localStorage.getItem("pepelopad_city_v4")).v,
   );
   expect(v).toBe(4);
-  await page.goto("/city.html");
+  await page.goto("/");
   await page.waitForFunction(() => window.__city?.skills);
   const after = await page.evaluate(() => ({
     arch: window.__city.skills.skills.archery.level,

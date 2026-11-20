@@ -5,7 +5,7 @@ test("типы зомби, стадность и Матка: спавн, тре�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/city.html?new=1");
+  await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.spawn);
 
   // спавним бегуна и громилу рядом с игроком, проверяем типы и hp
