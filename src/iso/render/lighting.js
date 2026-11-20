@@ -68,6 +68,15 @@ export function renderNight({
     440 * zoom * s,
     220 * zoom * s,
   );
+  // факел в руке игрока освещает округу тёплым
+  if (player.torch)
+    g.drawImage(
+      L.glowLamp,
+      (toX(pp.x) - 144 * zoom) * s,
+      (toY(pp.y) - 60 * zoom) * s,
+      288 * zoom * s,
+      144 * zoom * s,
+    );
   // костры лагерей освещают округу
   if (camps)
     for (const c of camps) {
@@ -111,6 +120,14 @@ export function renderNight({
         144 * zoom * s,
       );
     }
+  if (player.torch)
+    wc.drawImage(
+      L.glowWarmLamp,
+      (toX(pp.x) - 144 * zoom) * s,
+      (toY(pp.y) - 60 * zoom) * s,
+      288 * zoom * s,
+      144 * zoom * s,
+    );
 
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(L.lightCv, 0, 0, W, H);

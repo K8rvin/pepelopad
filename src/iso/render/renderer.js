@@ -1427,11 +1427,32 @@ function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
   if (img) {
     const h = 78 * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
     const w = h * (img.width / img.height);
-    const bob = Math.sin(a.animT * 2.2) * 2.5 * zoom;
+    // ходьба: покачивание + наклон по кадру pose (2 кадра), стоя — ровно
+    const mv = a.moving;
+    const bob = mv ? Math.sin(a.animT * 2.2) * 3 * zoom : 0;
+    const lean = mv ? (a.pose ? 0.06 : -0.06) : 0;
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
-    ctx.rotate(Math.sin(a.animT * 2.2) * 0.04);
+    ctx.rotate(lean + (mv ? Math.sin(a.animT * 2.2) * 0.02 : 0));
     ctx.drawImage(img, -w / 2, -h + bob, w, h);
+    // факел в руке игрока
+    if (isPlayer && a.torch) {
+      const fx = w * 0.32,
+        fy = -h * 0.55 + bob;
+      const f = 0.8 + 0.25 * Math.sin(a.animT * 9);
+      ctx.fillStyle = "#c96a35";
+      ctx.beginPath();
+      ctx.moveTo(fx - 3 * zoom, fy);
+      ctx.quadraticCurveTo(fx, fy - 10 * zoom * f, fx + 3 * zoom, fy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#ffb23e";
+      ctx.beginPath();
+      ctx.moveTo(fx - 1.5 * zoom, fy);
+      ctx.quadraticCurveTo(fx, fy - 6 * zoom * f, fx + 1.5 * zoom, fy);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.restore();
   } else {
     ctx.drawImage(
