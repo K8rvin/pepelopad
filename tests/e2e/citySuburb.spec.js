@@ -5,7 +5,7 @@ test("пригород: один этаж, без заборов, здание �
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/city.html?new=1");
+  await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.city);
 
   const gen = await page.evaluate(() => ({

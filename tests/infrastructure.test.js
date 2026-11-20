@@ -7,28 +7,26 @@ const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("инфраструктура проекта", () => {
-  it("не изменяет замороженный эталон index_v4.html", () => {
+  it("не изменяет архивный эталон старой версии", () => {
     const hash = createHash("sha256")
-      .update(read("index_v4.html"))
+      .update(read("Архив/index_v4.html"))
       .digest("hex");
     expect(hash).toBe(
       "52f76c8cd8303dfb407f626efd6385f637a17fcadbb6d7c4638ae602ba3951f6",
     );
   });
 
-  it("использует index.html и src/main.js как игровую точку входа", () => {
+  it("использует index.html и src/iso/main.js как единственную точку входа", () => {
     const html = read("index.html");
     expect(html).toContain('<canvas id="cv">');
-    expect(html).toContain('<script type="module" src="/src/main.js">');
+    expect(html).toContain('<script type="module" src="/src/iso/main.js">');
   });
 
-  it("компилирует точку входа и игровой модуль", () => {
-    for (const file of ["src/main.js", "src/game.js"]) {
-      const result = spawnSync(process.execPath, ["--check", file], {
-        encoding: "utf8",
-      });
-      expect(result.stderr).toBe("");
-      expect(result.status).toBe(0);
-    }
+  it("компилирует точку входа", () => {
+    const result = spawnSync(process.execPath, ["--check", "src/iso/main.js"], {
+      encoding: "utf8",
+    });
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
   });
 });
