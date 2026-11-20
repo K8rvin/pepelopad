@@ -198,7 +198,9 @@ function genBlock(city, bx0, by0, r) {
         color: pick(r, CAR_COLORS),
         wreck: r() < 0.25,
       });
-    if (r() < 0.5) city.containers.push({ x: dx - 1.2, y: y + arch.h + 0.8 });
+    // мусорка у восточного края (не перекрывает дверной проём по центру)
+    if (r() < 0.5)
+      city.containers.push({ x: x + arch.w - 1.5, y: y + arch.h + 0.8 });
     x += arch.w + 6 + Math.floor(r() * 6);
   }
   // северный ряд: двери к общему газону, дорожка от двери

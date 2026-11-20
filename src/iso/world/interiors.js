@@ -11,7 +11,8 @@ const CLEAR = 1.1;
 
 // сгенерировать планировку здания (детерминированно по id)
 export function getInterior(city, b) {
-  let it = cache.get(b.id);
+  const key = b.id + "f" + b.floors;
+  let it = cache.get(key);
   if (it) return it;
   const r = mulberry32(b.id * 7919 + 13);
   const w = Math.floor(b.w),
@@ -182,7 +183,7 @@ export function getInterior(city, b) {
           : { x: corrA - 0.5, y: 1.5, w: 3, h: 3 }
         : null,
   };
-  cache.set(b.id, it);
+  cache.set(key, it);
   return it;
 }
 

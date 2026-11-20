@@ -358,6 +358,8 @@ export function renderWorld({
   player._insideB = inside;
   for (const z of zombies) {
     if (z.dead) continue;
+    // зомби другого этажа не рисуем (игрок upstairs/downstairs)
+    if ((z.level || 0) !== (player.level || 0)) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
     z._insideB = inside || buildingAtPoint(city, z.x, z.y);
     push(

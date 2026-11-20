@@ -122,6 +122,12 @@ import {
   baseNewDay,
   baseRaid,
 } from "./systems/base.js";
+import {
+  createStory,
+  storyNear,
+  applyChoice,
+  storyHud,
+} from "./systems/story.js";
 import { w2s } from "./core/geo.js";
 
 export async function boot() {
@@ -193,11 +199,31 @@ export async function boot() {
   let trunkCar = null;
   let search = null; // {c, t, dur} — обыск с шкалой до окна лута
   initVehicles(city);
-  const npcs = createNpcs(city, PITCH);
+  // Олег живёт в парковом лагере; отдельные NPC истории — у больницы
+  const npcs = createNpcs(city, PITCH).filter((n) => n.name !== "Олег");
+  const hosp = poiBuilding(city, "Больница");
+  if (hosp) {
+    npcs.push({
+      name: "Рая",
+      lines: [
+        "Рая: «Не шуми. Дети спят.»",
+        "Рая: «Инсулин в холодильнике. Не трогай.»",
+      ],
+      x: hosp.x + hosp.doorU,
+      y: hosp.y + hosp.h + 1.5,
+    });
+    npcs.push({
+      name: "Маша",
+      lines: ["Маша: «...»", "Маша: «Не подходи. Пожалуйста.»"],
+      x: hosp.x + hosp.w / 2,
+      y: hosp.y - 3,
+    });
+  }
   const dlg = createDialog();
   const camps = createCamps(city);
   let campTarget = null;
   const base = createBase();
+  const story = createStory();
   // загрузка сохранения (если есть и не форсирована новая игра через ?new=1)
   const wantNew = params.get("new") === "1";
   let loaded = false;
@@ -215,6 +241,7 @@ export async function boot() {
         skills,
         camps,
         base,
+        story,
       });
       buildSolidIndex(city); // машины могли переехать с позиций генерации
       loaded = true;
@@ -489,6 +516,12 @@ export async function boot() {
       if (search) return; // идёт обыск — действия заблокированы
       if (ui.isOpen()) {
         ui.close();
+      } else if (dlg.beat) {
+        // история: листаем реплики; на последней — выбор кликом
+        if (dlg.line < dlg.beat.lines.length - 1) {
+          dlg.line++;
+          renderDialog(dlg, null);
+        }
       } else if (dlg.npc) {
         if (!advanceDialog(dlg)) renderDialog(dlg, null);
         else renderDialog(dlg, dlg.npc);
@@ -508,6 +541,14 @@ export async function boot() {
               return;
             }
           }
+        }
+        const sb = storyNear(story, city, camps, player);
+        if (sb) {
+          dlg.beat = sb.beat;
+          dlg.line = 0;
+          dlg.npc = null;
+          renderDialog(dlg, null);
+          return;
         }
         const camp = campNear(camps, player.x, player.y);
         const npc = npcNear(npcs, player.x, player.y);
@@ -636,6 +677,7 @@ export async function boot() {
     peek: (c) => containerItems(c, mods.lootBonus),
     camps,
     base,
+    story,
     save: () =>
       saveGame({
         city,
@@ -648,6 +690,7 @@ export async function boot() {
         skills,
         camps,
         base,
+        story,
       }),
   };
 
@@ -667,6 +710,7 @@ export async function boot() {
       skills,
       camps,
       base,
+      story,
     });
   // строка квеста для HUD
   function questHudText() {
@@ -683,6 +727,18 @@ export async function boot() {
     msE = 16;
   const dlgEl = document.getElementById("dlg");
   function renderDialog(D, npc) {
+    if (D.beat) {
+      dlgEl.style.display = "block";
+      const b = D.beat;
+      const last = D.line >= b.lines.length - 1;
+      const choices = last
+        ? `<div class="dlg-choices">${b.choices
+            .map((c, i) => `<button data-ci="${i}">${c.text}</button>`)
+            .join("")}</div>`
+        : `<div class="hint">E — дальше</div>`;
+      dlgEl.innerHTML = `<div class="who">${b.title}</div><div>${b.lines[D.line]}</div>${choices}`;
+      return;
+    }
     if (!npc) {
       dlgEl.style.display = "none";
       return;
@@ -690,6 +746,15 @@ export async function boot() {
     dlgEl.style.display = "block";
     dlgEl.innerHTML = `<div class="who">${npc.name}</div><div>${npc.lines[D.line]}</div><div class="hint">E — дальше</div>`;
   }
+  dlgEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-ci]");
+    if (!btn || !dlg.beat) return;
+    const ch = applyChoice(story, Number(btn.dataset.ci), { inv, camps, base });
+    if (ch) toast(`Выбор: ${ch.text}`);
+    dlg.beat = null;
+    dlg.line = 0;
+    renderDialog(dlg, null);
+  });
   function frame(t) {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
@@ -936,6 +1001,7 @@ export async function boot() {
 FPS ${fpsE.toFixed(0)} · кадр ${msE.toFixed(1)} мс · drawImage ${R.drawCalls} · чанков ${R.chunkCache.size}
 ${clockText(survival)} · HP ${Math.ceil(combat.playerHp)}/${combat.playerMaxHp} · сытость ${Math.ceil(survival.hunger)} · стрелы ${countItem(inv, "arrow")} · убито ${combat.kills}${veh.inCar ? ` · 🚗 ${Math.abs(veh.inCar.v * 3.6).toFixed(0)} км/ч · ${fuelText(veh.inCar)}` : ""}${player.level > 0 ? ` · этаж ${player.level + 1}` : ""}
 ${questHudText()}
+${storyHud(story)}
 ${veh.inCar ? "WASD — руль · E — выйти · F — заправить · T — багажник" : "WASD — движение · ЛКМ — лук · E — обыск/сесть · I — рюкзак · C — крафт · P — персонаж · T — багажник · Q — еда · H — бинт"}${campNear(camps, player.x, player.y) ? ` · E — лагерь «${campDef(campNear(camps, player.x, player.y)).name}»` : ""}${combat.noArrowsT > 0 ? "  ← НЕТ СТРЕЛ!" : ""}${toastT > 0 ? "\n▸ " + toastMsg : ""}`;
     requestAnimationFrame(frame);
   }
