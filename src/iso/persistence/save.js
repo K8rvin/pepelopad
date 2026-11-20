@@ -24,6 +24,7 @@ export function saveGame({
   skills,
   camps,
   base,
+  story,
 }) {
   const data = {
     v: 4,
@@ -71,6 +72,7 @@ export function saveGame({
           storage: { slots: base.storage.slots, size: base.storage.size },
         }
       : null,
+    story: story ? { i: story.i, flags: story.flags } : null,
     wrecked: {
       lamps: city.lamps.map((l, i) => (l.dead ? i : -1)).filter((i) => i >= 0),
       fences: city.fences
@@ -144,7 +146,19 @@ export function deleteSave() {
 // применить загруженное состояние к живой игре (город уже создан из сида)
 export function applySave(
   data,
-  { city, player, combat, survival, inv, loot, quests, skills, camps, base },
+  {
+    city,
+    player,
+    combat,
+    survival,
+    inv,
+    loot,
+    quests,
+    skills,
+    camps,
+    base,
+    story,
+  },
 ) {
   survival.day = data.survival.day;
   survival.tod = data.survival.tod;
@@ -172,6 +186,10 @@ export function applySave(
       slots: data.base.storage.slots,
       size: data.base.storage.size,
     };
+  }
+  if (story && data.story) {
+    story.i = data.story.i || 0;
+    story.flags = data.story.flags || {};
   }
   if (camps && data.camps)
     for (const cs of data.camps) {

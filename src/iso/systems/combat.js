@@ -77,6 +77,7 @@ export function updateCombat(
     // зомби (колонка от ног до головы) — целимся в тело, а не в ноги
     for (const z of city.zombies) {
       if (z.dead) continue;
+      if ((z.level || 0) !== (player.level || 0)) continue;
       const zs = ZTYPES[z.type || "walker"].scale;
       const zx = (z.x - z.y) * 32,
         zy = (z.x + z.y) * 16;
@@ -115,6 +116,7 @@ export function updateCombat(
   if (!protectedFlag)
     for (const z of city.zombies) {
       if (z.dead) continue;
+      if ((z.level || 0) !== (player.level || 0)) continue;
       const d = Math.hypot(z.x - player.x, z.y - player.y);
       if (d < 0.7) {
         z.attackCd = (z.attackCd || 0) - dt;

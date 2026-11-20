@@ -3,6 +3,7 @@
 // Случайность поведения — seeded RNG (не глобальный Math.random).
 import { clamp, mulberry32 } from "../core/rng.js";
 import { solidRectAt } from "../world/cityGen.js";
+import { buildingAtPoint, getInterior } from "../world/interiors.js";
 import { ZTYPES, ZOMBIE_CAP } from "../data/zombies.js";
 
 let rng = mulberry32(1);
@@ -133,9 +134,40 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
           );
       }
     }
-    const dx = z.tx - z.x,
-      dy = z.ty - z.y,
+    // навигация в зданиях: снаружи — к двери, внутри при застревании — через
+    // коридор; лестницы поднимают зомби за игроком на его этаж
+    let tx = z.tx,
+      ty = z.ty;
+    const zb = buildingAtPoint(city, z.x, z.y);
+    const pb = buildingAtPoint(city, player.x, player.y);
+    const sameLvl = (z.level || 0) === (player.level || 0);
+    if (pb) {
+      const it = getInterior(city, pb);
+      // лестницы поднимают зомби за игроком даже при разных этажах
+      if (it.stairs && (player.level || 0) > (z.level || 0)) {
+        const sx = pb.x + it.stairs.x + it.stairs.w / 2,
+          sy = pb.y + it.stairs.y + it.stairs.h / 2;
+        if (Math.hypot(z.x - sx, z.y - sy) < 1.5) z.level = player.level;
+      }
+      if (sameLvl) {
+        const doorX = pb.x + it.doorU,
+          doorY = pb.y + pb.h;
+        if (zb !== pb) {
+          if (Math.hypot(z.x - doorX, z.y - doorY) > 1.2) {
+            tx = doorX;
+            ty = doorY + 0.6;
+          }
+        } else if (z.detourT > 0) {
+          tx = pb.x + pb.w / 2;
+          ty = pb.y + (it.corrA + it.corrB) / 2;
+        }
+      }
+    }
+    if (z.detourT > 0) z.detourT -= dt;
+    const dx = tx - z.x,
+      dy = ty - z.y,
       d = Math.hypot(dx, dy);
+    const moved = Math.hypot(z.x - (z.px ?? z.x), z.y - (z.py ?? z.y));
     if (d > 0.3) {
       moveActor(
         city,
@@ -145,6 +177,15 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
       );
       z.animT += dt * 4 * speedK;
       z.pose = Math.floor(z.animT) % 2;
+      if (moved < 0.01 && zb) {
+        z.stuck = (z.stuck || 0) + dt;
+        if (z.stuck > 0.5) {
+          z.detourT = 1.2;
+          z.stuck = 0;
+        }
+      } else z.stuck = 0;
     }
+    z.px = z.x;
+    z.py = z.y;
   }
 }
