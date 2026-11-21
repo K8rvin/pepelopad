@@ -5,6 +5,7 @@
 import { mulberry32 } from "../core/rng.js";
 import { countItem, removeItem } from "./inventory.js";
 import { ZTYPES } from "../data/zombies.js";
+import { solidInteriorAt } from "../world/interiors.js";
 
 let rng = mulberry32(7);
 export function initCombat(seed) {
@@ -63,53 +64,62 @@ export function updateCombat(
       1,
       C.bowCharge + dt / (BOW_CHARGE_TIME * (mods?.chargeK ?? 1)),
     );
-  // стрелы
+  // стрелы: подшаги ≤0,25 м — тонкие стены не проскакиваются за кадр
+  const level = player.level || 0;
   for (const a of C.arrows) {
     if (!a.alive) continue;
-    const nx = a.x + a.dx * ARROW_SPEED * dt,
-      ny = a.y + a.dy * ARROW_SPEED * dt;
-    a.dist += ARROW_SPEED * dt;
-    if (a.dist > ARROW_RANGE || solidBuildingHit(city, nx, ny)) {
-      a.alive = false;
-      continue;
-    }
-    // попадание: отрезок стрелы (на высоте 0,9 м) против экранного силуэта
-    // зомби (колонка от ног до головы) — целимся в тело, а не в ноги
-    for (const z of city.zombies) {
-      if (z.dead) continue;
-      if ((z.level || 0) !== (player.level || 0)) continue;
-      const zs = ZTYPES[z.type || "walker"].scale;
-      const zx = (z.x - z.y) * 32,
-        zy = (z.x + z.y) * 16;
-      const ax = (a.x - a.y) * 32,
-        ay = (a.x + a.y) * 16 - 28.8;
-      const bx = (nx - ny) * 32,
-        by = (nx + ny) * 16 - 28.8;
-      if (
-        segHitsRect(
-          ax,
-          ay,
-          bx,
-          by,
-          zx - 16 * zs,
-          zy - 74 * zs,
-          zx + 16 * zs,
-          zy,
-        )
-      ) {
+    const move = ARROW_SPEED * dt;
+    const n = Math.max(1, Math.ceil(move / 0.25));
+    const sx = (a.dx * move) / n,
+      sy = (a.dy * move) / n;
+    for (let i = 0; i < n && a.alive; i++) {
+      const nx = a.x + sx,
+        ny = a.y + sy;
+      a.dist += move / n;
+      // стены и перегородки с проёмами дверей/разбитых окон; внутри здания
+      // стрела летит свободно, пока не упёрлась в стену или мебель
+      if (a.dist > ARROW_RANGE || solidInteriorAt(city, nx, ny, 0.05, level)) {
         a.alive = false;
-        C.onHit?.();
-        hurtZombie(
-          C,
-          z,
-          Math.round((34 + Math.floor(rng() * 17)) * (mods?.bowDmgK ?? 1)),
-          a,
-        );
         break;
       }
+      // попадание: отрезок стрелы (на высоте 0,9 м) против экранного силуэта
+      // зомби (колонка от ног до головы) — целимся в тело, а не в ноги
+      for (const z of city.zombies) {
+        if (z.dead) continue;
+        if ((z.level || 0) !== level) continue;
+        const zs = ZTYPES[z.type || "walker"].scale;
+        const zx = (z.x - z.y) * 32,
+          zy = (z.x + z.y) * 16;
+        const ax = (a.x - a.y) * 32,
+          ay = (a.x + a.y) * 16 - 28.8;
+        const bx = (nx - ny) * 32,
+          by = (nx + ny) * 16 - 28.8;
+        if (
+          segHitsRect(
+            ax,
+            ay,
+            bx,
+            by,
+            zx - 16 * zs,
+            zy - 74 * zs,
+            zx + 16 * zs,
+            zy,
+          )
+        ) {
+          a.alive = false;
+          C.onHit?.();
+          hurtZombie(
+            C,
+            z,
+            Math.round((34 + Math.floor(rng() * 17)) * (mods?.bowDmgK ?? 1)),
+            a,
+          );
+          break;
+        }
+      }
+      a.x = nx;
+      a.y = ny;
     }
-    a.x = nx;
-    a.y = ny;
   }
   C.arrows = C.arrows.filter((a) => a.alive);
   // зомби атакуют
@@ -174,13 +184,6 @@ function hurtZombie(C, z, dmg, arrow) {
     C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
     C.onKill?.("arrow", z);
   }
-}
-
-function solidBuildingHit(city, x, y) {
-  // стрелы не пролетают сквозь здания
-  for (const b of city.buildings)
-    if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) return true;
-  return false;
 }
 
 // отрезок против AABB (Liang-Barsky): экранный силуэт зомби
