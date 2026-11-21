@@ -1,8 +1,8 @@
 // Основной проход: земля-чанки → высокий слой (z-сортировка по max(x+y)) →
 // ночное освещение → пепел → виньетка. Рендер только читает состояние.
 import { w2s, mkCanvas, PAL } from "../core/geo.js";
-import { CH, getChunk, evictIfNeeded } from "./chunks.js";
-import { buildingSprite } from "./buildings.js";
+import { CH, getChunk, bakeChunk, evictIfNeeded } from "./chunks.js";
+import { buildingSprite, hasBuildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
 import { reconcileStreetDepths } from "./streetDepth.js";
@@ -11,7 +11,8 @@ import {
   wallWithGaps,
   buildingAtPoint,
 } from "../world/interiors.js";
-import { carDims, carCenter } from "../world/cityGen.js";
+import { carDims, carCenter, tileAt } from "../world/cityGen.js";
+import { T_ASPHALT, T_SIDEWALK } from "./tiles.js";
 import { CAR_SHAPES } from "../data/carShapes.js";
 import { FURNITURE } from "../data/furniture.js";
 import { ZTYPES } from "../data/zombies.js";
@@ -23,7 +24,42 @@ export function createRenderer() {
     drawCalls: 0,
     vignette: null,
     bFade: new Map(), // buildingId → текущая альфа фейда (состояние рендера, не игры)
+    bakeQueue: new Set(), // ключи чанков, ждущих полной запечки по бюджету
+    phQueue: new Set(), // ключи чанков, ждущих lite-запечки placeholder'а
+    phCache: new Map(), // lite-placeholder'ы (дешёвая земля без текстур/теней)
+    bldQueue: new Map(), // buildingId → здание, ждущее запечки фасада
   };
+}
+
+// дешёвая «коробка» здания на время бюджетной запечки фасада: стены + крыша
+function drawBuildingMassing(ctx, b, toX, toY, alpha) {
+  const H = b.floors * 3;
+  const c = [
+    [b.x, b.y],
+    [b.x + b.w, b.y],
+    [b.x + b.w, b.y + b.h],
+    [b.x, b.y + b.h],
+  ].map(([x, y]) => ({ g: w2s(x, y), t: w2s(x, y, H) }));
+  const quad = (i, j, col) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(toX(c[i].g.x), toY(c[i].g.y));
+    ctx.lineTo(toX(c[j].g.x), toY(c[j].g.y));
+    ctx.lineTo(toX(c[j].t.x), toY(c[j].t.y));
+    ctx.lineTo(toX(c[i].t.x), toY(c[i].t.y));
+    ctx.closePath();
+    ctx.fill();
+  };
+  ctx.globalAlpha = alpha;
+  quad(3, 2, "#8a8378"); // южная стена
+  quad(2, 1, "#767065"); // восточная стена
+  ctx.fillStyle = "#7c786e";
+  ctx.beginPath();
+  ctx.moveTo(toX(c[0].t.x), toY(c[0].t.y));
+  for (let i = 1; i < 4; i++) ctx.lineTo(toX(c[i].t.x), toY(c[i].t.y));
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
 }
 
 // здание перекрывает игрока на экране: игрок севернее/западнее юго-восточного
@@ -106,6 +142,17 @@ export function renderWorld({
   const nCh = Math.ceil(city.SIZE / CH);
   const cw = (CH * 64 + 4) * zoom,
     chh = (CH * 32 + 4) * zoom;
+  const camCx = Math.floor(cam.x / CH),
+    camCy = Math.floor(cam.y / CH);
+  // упреждающая очередь вокруг камеры: при ходьбе чанки запекаются до входа
+  // в кадр, плоские ромбы остаются только для резких телепортов
+  for (let cy = camCy - 4; cy <= camCy + 4; cy++)
+    for (let cx = camCx - 4; cx <= camCx + 4; cx++) {
+      const k = cx + "," + cy;
+      if (R.chunkCache.has(k)) continue;
+      if (R.phCache.has(k)) R.bakeQueue.add(k);
+      else R.phQueue.add(k);
+    }
   for (let cy = -2; cy < nCh + 2; cy++)
     for (let cx = -2; cx < nCh + 2; cx++) {
       const sx = (cx - cy - 1) * 256 - 2,
@@ -113,15 +160,87 @@ export function renderWorld({
       const dx = (sx - camS.x) * zoom + W / 2,
         dy = (sy - camS.y) * zoom + H / 2;
       if (dx > W || dy > H || dx + cw < 0 || dy + chh < 0) continue;
-      ctx.drawImage(
-        getChunk(city, groundSet, R.chunkCache, cx, cy).canvas,
-        dx,
-        dy,
-        cw,
-        chh,
-      );
+      const k = cx + "," + cy;
+      const ch = R.chunkCache.get(k);
+      if (ch) {
+        ctx.drawImage(ch.canvas, dx, dy, cw, chh);
+        R.drawCalls++;
+        continue;
+      }
+      // под камерой — полная запечка сразу; периферия — lite-placeholder и
+      // очередь полной запечки с бюджетом кадра: телепорт не фризит на
+      // синхронной запечке десятков чанков
+      const ph = R.phCache.get(k);
+      if (ph) {
+        ctx.drawImage(ph.canvas, dx, dy, cw, chh);
+        R.bakeQueue.add(k);
+      } else {
+        // плоский ромб (1 путь) до lite-запечки; lite и полная — в очередях
+        R.phQueue.add(k);
+        const t = tileAt(city, cx * CH + 4, cy * CH + 4);
+        ctx.fillStyle =
+          t === T_ASPHALT
+            ? PAL.asphalt
+            : t === T_SIDEWALK
+              ? PAL.concrete
+              : PAL.grass;
+        const ax = cx * CH,
+          ay = cy * CH;
+        const q = [
+          [ax, ay],
+          [ax + CH, ay],
+          [ax + CH, ay + CH],
+          [ax, ay + CH],
+        ].map(([x, y]) => w2s(x, y));
+        ctx.beginPath();
+        ctx.moveTo(toX(q[0].x), toY(q[0].y));
+        for (let i = 1; i < 4; i++) ctx.lineTo(toX(q[i].x), toY(q[i].y));
+        ctx.closePath();
+        ctx.fill();
+      }
       R.drawCalls++;
     }
+  // общий бюджет запечки ≤6 мс за кадр (фасады → lite → полная земля):
+  // одна тяжёлая запечка может превысить бюджет, но кадр остаётся <25 мс
+  const bakeT0 = performance.now();
+  const bakeOver = () => performance.now() - bakeT0 > 6;
+  for (const [id, b] of [...R.bldQueue]) {
+    if (bakeOver()) break;
+    buildingSprite(b);
+    R.bldQueue.delete(id);
+  }
+  for (const k of [...R.phQueue]) {
+    if (bakeOver()) break;
+    const [qx, qy] = k.split(",").map(Number);
+    if (Math.abs(qx - camCx) > 6 || Math.abs(qy - camCy) > 6) {
+      R.phQueue.delete(k);
+      continue;
+    }
+    const ph = bakeChunk(city, groundSet, qx, qy, true);
+    if (R.phCache.size > 900) R.phCache.clear();
+    R.phCache.set(k, ph);
+    R.phQueue.delete(k);
+    R.bakeQueue.add(k);
+  }
+  if (R.bakeQueue.size) {
+    for (const k of [...R.bakeQueue]) {
+      const [qx, qy] = k.split(",").map(Number);
+      if (Math.abs(qx - camCx) > 6 || Math.abs(qy - camCy) > 6)
+        R.bakeQueue.delete(k);
+    }
+    const keys = [...R.bakeQueue]
+      .map((k) => k.split(",").map(Number))
+      .sort(
+        (a, b) =>
+          Math.hypot(a[0] - camCx, a[1] - camCy) -
+          Math.hypot(b[0] - camCx, b[1] - camCy),
+      );
+    for (const [qx, qy] of keys) {
+      if (bakeOver()) break;
+      getChunk(city, groundSet, R.chunkCache, qx, qy);
+      R.bakeQueue.delete(qx + "," + qy);
+    }
+  }
   evictIfNeeded(R.chunkCache, camS.x, camS.y);
 
   // кровь на земле (плоская, до высокого слоя)
@@ -205,20 +324,27 @@ export function renderWorld({
       a += (target - a) * 0.25;
       if (Math.abs(a - target) < 0.02) a = target;
       R.bFade.set(b.id, a);
-      push(b.x + b.w + (b.y + b.h), 1, () =>
-        drawBuilding(
-          ctx,
-          b,
-          toX,
-          toY,
-          zoom,
-          false,
-          player,
-          city.brokenWindows.get(b.id),
-          loot,
-          a,
-        ),
-      );
+      const depth = b.x + b.w + (b.y + b.h);
+      if (hasBuildingSprite(b))
+        push(depth, 1, () =>
+          drawBuilding(
+            ctx,
+            b,
+            toX,
+            toY,
+            zoom,
+            false,
+            player,
+            city.brokenWindows.get(b.id),
+            loot,
+            a,
+          ),
+        );
+      else {
+        // фасад ещё не запечён: коробка-placeholder, запечка в бюджете кадра
+        R.bldQueue.set(b.id, b);
+        push(depth, 1, () => drawBuildingMassing(ctx, b, toX, toY, a));
+      }
     }
   }
   const streetEntries = [];

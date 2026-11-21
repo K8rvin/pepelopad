@@ -700,6 +700,8 @@ export async function boot() {
     base,
     story,
     levelFx,
+    frameMs: () => msLast,
+    bakeQueueSize: () => R.bakeQueue.size + R.bldQueue.size + R.phQueue.size,
     save: () =>
       saveGame({
         city,
@@ -746,7 +748,8 @@ export async function boot() {
 
   let lastT = performance.now();
   let fpsE = 60,
-    msE = 16;
+    msE = 16,
+    msLast = 0;
   const dlgEl = document.getElementById("dlg");
   function renderDialog(D, npc) {
     if (D.beat) {
@@ -1029,6 +1032,7 @@ export async function boot() {
       }
     }
     const ms = performance.now() - t0;
+    msLast = ms;
     msE += (ms - msE) * 0.06;
     fpsE += (1 / Math.max(dt, 1e-4) - fpsE) * 0.06;
     // автосохранение раз в 15 с

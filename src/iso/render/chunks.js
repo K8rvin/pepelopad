@@ -12,7 +12,9 @@ export function createChunkCache() {
   return new Map();
 }
 
-export function bakeChunk(city, groundSet, cx, cy) {
+// lite — дешёвая запечка только procedural-земли (без текстур, бордюров,
+// теней и листвы): placeholder на время бюджетной дозапечки полного чанка
+export function bakeChunk(city, groundSet, cx, cy, lite = false) {
   const c = mkCanvas(CH * 64 + 4, CH * 32 + 4); // поле 2px под вылет тайлов
   const g = c.getContext("2d");
   const ax = cx * CH,
@@ -52,7 +54,7 @@ export function bakeChunk(city, groundSet, cx, cy) {
     for (let tx = ax; tx < ax + CH; tx++) {
       const t = tileAt(city, tx, ty);
       const p = local(tx, ty);
-      if (fillTextured(t, tx, ty, p)) continue;
+      if (!lite && fillTextured(t, tx, ty, p)) continue;
       g.drawImage(groundSet[t][tileVariant(tx, ty)], p.x - 34, p.y - 2);
     }
 
@@ -78,78 +80,104 @@ export function bakeChunk(city, groundSet, cx, cy) {
   g.setLineDash([]);
 
   // бордюры: кромка тротуара к проезжей части
-  for (let ty = ay - 1; ty <= ay + CH; ty++)
-    for (let tx = ax - 1; tx <= ax + CH; tx++) {
-      if (tileAt(city, tx, ty) !== T_SIDEWALK) continue;
-      const p = local(tx, ty);
-      const edges = [
-        [tileAt(city, tx, ty - 1) === T_ASPHALT, p.x, p.y - 16, p.x + 32, p.y],
-        [tileAt(city, tx + 1, ty) === T_ASPHALT, p.x + 32, p.y, p.x, p.y + 16],
-        [tileAt(city, tx, ty + 1) === T_ASPHALT, p.x, p.y + 16, p.x - 32, p.y],
-        [tileAt(city, tx - 1, ty) === T_ASPHALT, p.x - 32, p.y, p.x, p.y - 16],
-      ];
-      for (const [hit, x1, y1, x2, y2] of edges) {
-        if (!hit) continue;
-        g.strokeStyle = "rgba(16,20,26,0.55)";
-        g.lineWidth = 3;
-        g.beginPath();
-        g.moveTo(x1, y1 + 1);
-        g.lineTo(x2, y2 + 1);
-        g.stroke();
-        g.strokeStyle = "#83868c";
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(x1, y1 - 1);
-        g.lineTo(x2, y2 - 1);
-        g.stroke();
+  if (!lite)
+    for (let ty = ay - 1; ty <= ay + CH; ty++)
+      for (let tx = ax - 1; tx <= ax + CH; tx++) {
+        if (tileAt(city, tx, ty) !== T_SIDEWALK) continue;
+        const p = local(tx, ty);
+        const edges = [
+          [
+            tileAt(city, tx, ty - 1) === T_ASPHALT,
+            p.x,
+            p.y - 16,
+            p.x + 32,
+            p.y,
+          ],
+          [
+            tileAt(city, tx + 1, ty) === T_ASPHALT,
+            p.x + 32,
+            p.y,
+            p.x,
+            p.y + 16,
+          ],
+          [
+            tileAt(city, tx, ty + 1) === T_ASPHALT,
+            p.x,
+            p.y + 16,
+            p.x - 32,
+            p.y,
+          ],
+          [
+            tileAt(city, tx - 1, ty) === T_ASPHALT,
+            p.x - 32,
+            p.y,
+            p.x,
+            p.y - 16,
+          ],
+        ];
+        for (const [hit, x1, y1, x2, y2] of edges) {
+          if (!hit) continue;
+          g.strokeStyle = "rgba(16,20,26,0.55)";
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(x1, y1 + 1);
+          g.lineTo(x2, y2 + 1);
+          g.stroke();
+          g.strokeStyle = "#83868c";
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(x1, y1 - 1);
+          g.lineTo(x2, y2 - 1);
+          g.stroke();
+        }
       }
-    }
 
   // тени зданий (солнце с NW → тень на SE) + AO у основания
-  for (const b of city.buildings) {
-    if (
-      b.x + b.w + 4 < ax ||
-      b.y + b.h + 4 < ay ||
-      b.x - 1 > ax + CH ||
-      b.y - 1 > ay + CH
-    )
-      continue;
-    const Z = b.floors * 3;
-    const off = { x: Z * 7, y: Z * 3.5 };
-    const pts = [
-      [b.x, b.y],
-      [b.x + b.w, b.y],
-      [b.x + b.w, b.y + b.h],
-      [b.x, b.y + b.h],
-    ].map(([wx, wy]) => local(wx, wy));
-    g.fillStyle = "rgba(16,20,26,0.30)";
-    g.beginPath();
-    g.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < 4; i++) g.lineTo(pts[i].x, pts[i].y);
-    for (let i = 3; i >= 0; i--) g.lineTo(pts[i].x + off.x, pts[i].y + off.y);
-    g.closePath();
-    g.fill();
-    g.strokeStyle = "rgba(16,20,26,0.28)";
-    g.lineWidth = 6;
-    g.beginPath();
-    g.moveTo(pts[3].x, pts[3].y + 2);
-    g.lineTo(pts[2].x, pts[2].y + 2);
-    g.lineTo(pts[1].x, pts[1].y + 2);
-    g.stroke();
-    // пепельные наносы у стен
-    g.fillStyle = "rgba(194,190,178,0.13)";
-    g.beginPath();
-    g.moveTo(pts[3].x, pts[3].y + 7);
-    g.lineTo(pts[2].x, pts[2].y + 7);
-    g.lineTo(pts[2].x, pts[2].y + 12);
-    g.lineTo(pts[3].x, pts[3].y + 12);
-    g.closePath();
-    g.fill();
-  }
+  if (!lite)
+    for (const b of city.buildings) {
+      if (
+        b.x + b.w + 4 < ax ||
+        b.y + b.h + 4 < ay ||
+        b.x - 1 > ax + CH ||
+        b.y - 1 > ay + CH
+      )
+        continue;
+      const Z = b.floors * 3;
+      const off = { x: Z * 7, y: Z * 3.5 };
+      const pts = [
+        [b.x, b.y],
+        [b.x + b.w, b.y],
+        [b.x + b.w, b.y + b.h],
+        [b.x, b.y + b.h],
+      ].map(([wx, wy]) => local(wx, wy));
+      g.fillStyle = "rgba(16,20,26,0.30)";
+      g.beginPath();
+      g.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < 4; i++) g.lineTo(pts[i].x, pts[i].y);
+      for (let i = 3; i >= 0; i--) g.lineTo(pts[i].x + off.x, pts[i].y + off.y);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = "rgba(16,20,26,0.28)";
+      g.lineWidth = 6;
+      g.beginPath();
+      g.moveTo(pts[3].x, pts[3].y + 2);
+      g.lineTo(pts[2].x, pts[2].y + 2);
+      g.lineTo(pts[1].x, pts[1].y + 2);
+      g.stroke();
+      // пепельные наносы у стен
+      g.fillStyle = "rgba(194,190,178,0.13)";
+      g.beginPath();
+      g.moveTo(pts[3].x, pts[3].y + 7);
+      g.lineTo(pts[2].x, pts[2].y + 7);
+      g.lineTo(pts[2].x, pts[2].y + 12);
+      g.lineTo(pts[3].x, pts[3].y + 12);
+      g.closePath();
+      g.fill();
+    }
 
   // масляные пятна на дорогах (только без текстуры)
   const r = mulberry32(cx * 733 + cy * 91 + 1);
-  if (!tex2x("asphalt", null))
+  if (!lite && !tex2x("asphalt", null))
     for (let i = 0; i < 4; i++) {
       const wx = ax + r() * CH,
         wy = ay + r() * CH;
@@ -161,13 +189,14 @@ export function bakeChunk(city, groundSet, cx, cy) {
       g.fill();
     }
   // листва под деревьями
-  for (const t of city.trees) {
-    if (t.x < ax || t.x >= ax + CH || t.y < ay || t.y >= ay + CH) continue;
-    const p = local(t.x, t.y);
-    g.fillStyle = t.dead ? "rgba(90,74,56,0.4)" : "rgba(61,71,53,0.5)";
-    for (let i = 0; i < 14; i++)
-      g.fillRect(p.x - 24 + r() * 48, p.y - 10 + r() * 22, 2.5, 1.6);
-  }
+  if (!lite)
+    for (const t of city.trees) {
+      if (t.x < ax || t.x >= ax + CH || t.y < ay || t.y >= ay + CH) continue;
+      const p = local(t.x, t.y);
+      g.fillStyle = t.dead ? "rgba(90,74,56,0.4)" : "rgba(61,71,53,0.5)";
+      for (let i = 0; i < 14; i++)
+        g.fillRect(p.x - 24 + r() * 48, p.y - 10 + r() * 22, 2.5, 1.6);
+    }
   return { canvas: c, sx: (ax - ay - CH) * 32 - 2, sy: (ax + ay) * 16 - 2 };
 }
 

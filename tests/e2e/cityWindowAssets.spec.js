@@ -18,6 +18,9 @@ test("новое окно: B создаёт проход, WASD входит, с�
       for (const w of groundWindows(b).filter((v) => v.face === "S")) {
         if (solidInteriorAt(c.city, w.x, w.y - 1.2, 0.35)) continue;
         c.teleport(w.x, w.y + 0.8);
+        // зомби не толкают игрока в проём: вход проверяется, а не случайность
+        for (const z of c.city.zombies)
+          if (Math.hypot(z.x - w.x, z.y - w.y) < 8) z.dead = true;
         return { bid: b.id, key: `${w.face}:${w.u}`, wallY: w.y };
       }
     }
@@ -33,14 +36,22 @@ test("новое окно: B создаёт проход, WASD входит, с�
     ),
   ).toBe(true);
 
-  await page.keyboard.down("KeyW");
-  await page.keyboard.down("KeyD");
-  await page.waitForTimeout(750);
-  await page.keyboard.up("KeyW");
-  await page.keyboard.up("KeyD");
-  expect(await page.evaluate(() => window.__city.player.y)).toBeLessThan(
-    selected.wallY - 0.3,
+  // обе клавиши одним DOM-событием: раздельные down дают кадры «только W»,
+  // сносящие x из узкого проёма окна (проходимость ±0,1 м)
+  await page.evaluate(() => {
+    for (const code of ["KeyW", "KeyD"])
+      window.dispatchEvent(new KeyboardEvent("keydown", { code }));
+  });
+  // ждём фактического входа, а не фиксированное время (dt-clamp под нагрузкой)
+  await page.waitForFunction(
+    (wallY) => window.__city.player.y < wallY - 0.3,
+    selected.wallY,
+    { timeout: 5000 },
   );
+  await page.evaluate(() => {
+    for (const code of ["KeyW", "KeyD"])
+      window.dispatchEvent(new KeyboardEvent("keyup", { code }));
+  });
 
   await page.evaluate(() => window.__city.save());
   await page.goto("/");
