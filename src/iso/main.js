@@ -62,6 +62,13 @@ import {
   registerInterior,
 } from "./systems/loot.js";
 import { createUI } from "./ui/panels.js";
+import {
+  createLevelUp,
+  pushLevelUp,
+  updateLevelUp,
+  showLevelUpBanner,
+} from "./ui/levelup.js";
+import { playLevelUp } from "./ui/sound.js";
 import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
@@ -103,7 +110,6 @@ import {
   modifiers,
   NEUTRAL_MODS,
 } from "./systems/skills.js";
-import { SKILLS, ATTRS } from "./data/skills.js";
 import {
   createCamps,
   campNear,
@@ -263,11 +269,12 @@ export async function boot() {
     toastMsg = msg;
     toastT = 2.5;
   };
-  // XP навыков: повышения показываем тостом; Сила растит рюкзак
+  // XP навыков: повышения — в очередь празднования (баннер + искры + звук);
+  // Сила растит рюкзак
+  const levelFx = createLevelUp();
   const skillXp = (id, n) => {
     for (const ev of gainXp(skills, id, n)) {
-      const def = ev.kind === "skill" ? SKILLS[ev.id] : ATTRS[ev.id];
-      toast(`${def.icon} ${def.name}: уровень ${ev.level}`);
+      pushLevelUp(levelFx, ev, player.x, player.y);
       if (ev.kind === "attr" && ev.id === "strength")
         resizeInventory(inv, modifiers(skills).carrySlots);
     }
@@ -692,6 +699,7 @@ export async function boot() {
     camps,
     base,
     story,
+    levelFx,
     save: () =>
       saveGame({
         city,
@@ -905,6 +913,11 @@ export async function boot() {
       : null;
     loot.nearest = nearC && nearItems.some((s) => s) ? nearC : null;
     toastT = Math.max(0, toastT - dt);
+    const luStarted = updateLevelUp(levelFx, dt);
+    if (luStarted) {
+      showLevelUpBanner(luStarted);
+      playLevelUp();
+    }
     // квесты: визит к POI (раз в 0,5 с)
     visitT -= dt;
     if (visitT <= 0) {
@@ -1004,6 +1017,7 @@ export async function boot() {
       search,
       camps,
       base,
+      levelFx,
     });
     // пепел дрейфует
     for (const a of ashP) {
