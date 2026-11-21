@@ -113,7 +113,7 @@ describe("видимость: здание фейдится, когда пряч
   });
 });
 
-describe("сейв v4: миграция с несовместимой карты v3", () => {
+describe("сейв v5: миграции карты и интерьеров", () => {
   beforeEach(() => mockStorage());
 
   const saveState = () => {
@@ -130,11 +130,11 @@ describe("сейв v4: миграция с несовместимой карты
     };
   };
 
-  it("v3 → v4: мировые дельты и позиция сброшены, прогресс сохранён", () => {
+  it("v3 → v5: мировые дельты и позиция сброшены, прогресс сохранён", () => {
     const st = saveState();
     gainXp(st.skills, "archery", 500);
     const data = saveGame(st);
-    localStorage.removeItem("pepelopad_city_v4");
+    localStorage.removeItem("pepelopad_city_v5");
     data.v = 3;
     data.zombies = [{ x: 1, y: 2, hp: 70, dead: false }];
     data.cars = [{ fuel: 10, hp: 100, heading: 0, x: 3, y: 4 }];
@@ -143,7 +143,7 @@ describe("сейв v4: миграция с несовместимой карты
     data.player = { x: 500, y: 500, level: 2 };
     localStorage.setItem("pepelopad_city_v3", JSON.stringify(data));
     const loaded = loadGameData();
-    expect(loaded.v).toBe(4);
+    expect(loaded.v).toBe(5);
     expect(loaded.zombies).toEqual([]);
     expect(loaded.cars).toEqual([]);
     expect(loaded.windows).toEqual([]);
@@ -156,5 +156,27 @@ describe("сейв v4: миграция с несовместимой карты
     );
     expect(fresh.quests.done).toEqual(["m1"]);
     expect(fresh.player.x).toBe(PITCH + 42);
+  });
+
+  it("v4 → v5: старые индексные интерьерные ID отфильтрованы, мировой лут сохранён", () => {
+    const st = saveState();
+    const data = saveGame(st);
+    localStorage.removeItem("pepelopad_city_v5");
+    data.v = 4;
+    data.opened = [
+      ["int0_0", [{ id: "meds", n: 1 }]],
+      ["dn0", [{ id: "can", n: 2 }]],
+      ["br0", [{ id: "fuel", n: 1 }]],
+    ];
+    localStorage.setItem("pepelopad_city_v4", JSON.stringify(data));
+    const loaded = loadGameData();
+    expect(loaded.v).toBe(5);
+    expect(loaded.opened.map(([id]) => id)).toEqual(["dn0", "br0"]);
+    expect(loaded.inv).toEqual(st.inv.slots);
+    expect(loaded.quests.done).toEqual(["m1"]);
+    const fresh = saveState();
+    applySave(loaded, fresh);
+    expect(fresh.loot.opened.has("int0_0")).toBe(false);
+    expect(fresh.loot.opened.get("dn0")).toEqual([{ id: "can", n: 2 }]);
   });
 });

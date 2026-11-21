@@ -1,0 +1,23 @@
+{
+  "id": "tree_birch",
+  "source": "GPT",
+  "prompt": "Isolated 2D isometric birch with sparse pale autumn foliage and opaque white-grey bark, transparent gaps between branches, no ground or shadow.",
+  "originalImport": "tmp/Изометрическая берёза с осенней листвой.png",
+  "createdAt": "2026-11-20T19:55:43.615229+00:00",
+  "sha256": "cd6090bbfb9af9c70ad8acdb7243f99c4e66fc90e40c163ac3677b031e4d1e3f",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/tree_birch.png",
+  "runtimeSize": [
+    464,
+    768
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

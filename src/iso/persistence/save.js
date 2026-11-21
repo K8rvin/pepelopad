@@ -3,11 +3,14 @@
 // v3: навыки и характеристики (прогрессия «учись делая»).
 // v4: одноэтажный пригород — карта несовместима с v3; мировые дельты и позиция
 // сбрасываются, прогресс (навыки, квесты, инвентарь, сутки) сохраняется.
+// v5: новые пригородные интерьеры; старые индексные ID внутренних контейнеров
+// отделены от семантических ID комнат, мировой лут и остальной прогресс сохраняются.
 import { restoreSkills } from "../systems/skills.js";
 import { PITCH } from "../world/cityGen.js";
 
-const SKEY = "pepelopad_city_v4";
+const SKEY = "pepelopad_city_v5";
 const OLD_KEYS = [
+  "pepelopad_city_v4",
   "pepelopad_city_v3",
   "pepelopad_city_v2",
   "pepelopad_city_v1",
@@ -27,7 +30,7 @@ export function saveGame({
   story,
 }) {
   const data = {
-    v: 4,
+    v: 5,
     savedAt: Date.now(),
     seed: city.seed,
     nb: city.nb,
@@ -100,7 +103,8 @@ export function saveGame({
   return data;
 }
 
-// миграции: v1 → v2 (квесты), v2 → v3 (навыки), v3 → v4 (новая карта)
+// миграции: v1 → v2 (квесты), v2 → v3 (навыки), v3 → v4 (новая карта),
+// v4 → v5 (семантические ID контейнеров новых интерьеров).
 function migrate(data) {
   if (data.v === 1) {
     data.v = 2;
@@ -118,6 +122,12 @@ function migrate(data) {
     data.opened = [];
     data.player = { x: PITCH + 42, y: PITCH + 42, level: 0 };
   }
+  if (data.v === 4) {
+    data.v = 5;
+    data.opened = (data.opened || []).filter(
+      ([id]) => !String(id).startsWith("int"),
+    );
+  }
   return data;
 }
 
@@ -131,7 +141,7 @@ export function loadGameData() {
   if (!raw) return null;
   try {
     const data = migrate(JSON.parse(raw));
-    if (data.v !== 4) return null;
+    if (data.v !== 5) return null;
     return data;
   } catch {
     return null;

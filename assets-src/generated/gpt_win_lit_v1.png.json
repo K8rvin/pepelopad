@@ -1,0 +1,24 @@
+{
+  "id": "win_lit",
+  "source": "GPT",
+  "prompt": "The same intact window at night with softly glowing warm glass, unchanged frame and transparent background, no wall or external glow.",
+  "originalImport": "tmp/Старинное окно с тёплым светом.png",
+  "createdAt": "2026-11-20T20:56:06.054746+00:00",
+  "sha256": "f6090f24b3f3026651a44ebe29d2ec8a7241d1d593c120db73111ab0a06ff680",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/win_lit.png",
+  "runtimeSize": [
+    186,
+    256
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "alignment": "aligned to win_intact outer frame"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "furn_stove",
+  "source": "GPT",
+  "prompt": "Single isometric four-burner off-white enamel stove with oven and four knobs, light wear, no cookware, wall or floor.",
+  "originalImport": "tmp/Винтажная кухонная плита с потертостями.png",
+  "createdAt": "2026-11-20T21:42:54.805588+00:00",
+  "sha256": "9a85b29c875c8c7452882da94e4b468410008b88db3b92639731ed1ebc42b53d",
+  "originalSize": [
+    1231,
+    1277
+  ],
+  "runtime": "public/assets/gen/furn_stove.png",
+  "runtimeSize": [
+    350,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

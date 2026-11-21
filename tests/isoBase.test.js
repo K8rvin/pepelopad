@@ -106,7 +106,7 @@ describe("база: жители, производство, рейды", () => {
   });
 });
 
-describe("база в сейве v4", () => {
+describe("база в сейве v5", () => {
   beforeEach(() => mockStorage());
   const saveState = () => {
     const c = createCity(11, 3);

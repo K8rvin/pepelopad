@@ -5,6 +5,7 @@ import { CH, getChunk, evictIfNeeded } from "./chunks.js";
 import { buildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
+import { reconcileStreetDepths } from "./streetDepth.js";
 import {
   getInterior,
   wallWithGaps,
@@ -12,6 +13,7 @@ import {
 } from "../world/interiors.js";
 import { carDims, carCenter } from "../world/cityGen.js";
 import { CAR_SHAPES } from "../data/carShapes.js";
+import { FURNITURE } from "../data/furniture.js";
 import { ZTYPES } from "../data/zombies.js";
 import { campDef } from "../systems/camps.js";
 
@@ -218,26 +220,43 @@ export function renderWorld({
       );
     }
   }
+  const streetEntries = [];
   for (const t of city.trees) {
     if (!vis(t.x, t.y, 70, 120)) continue;
-    push(t.x + t.y, 1, () => {
-      const p = w2s(t.x, t.y);
-      const key = t.dead ? "tree_dead" : t.v === 1 ? "tree_birch" : "tree";
-      const img = SPRTEX[key];
-      if (img) {
-        const h = (176 + t.v * 24) * zoom,
-          w = h * (img.width / img.height);
-        ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
-      } else {
-        ctx.drawImage(
-          t.dead ? SPR.deadTrees[t.v] : SPR.trees[t.v],
-          toX(p.x) - 64 * zoom,
-          toY(p.y) - 150 * zoom,
-          128 * zoom,
-          160 * zoom,
-        );
-      }
-      R.drawCalls++;
+    const p = w2s(t.x, t.y);
+    const key = t.dead ? "tree_dead" : t.v === 1 ? "tree_birch" : "tree";
+    const img = SPRTEX[key];
+    const h = img ? 176 + t.v * 24 : 160;
+    const w = img ? h * (img.width / img.height) : 128;
+    streetEntries.push({
+      base: t.x + t.y,
+      depth: actorDepth(city, t),
+      bounds: {
+        left: img ? p.x - w / 2 : p.x - 64,
+        top: img ? p.y - h : p.y - 150,
+        right: img ? p.x + w / 2 : p.x + 64,
+        bottom: img ? p.y : p.y + 10,
+      },
+      draw: () => {
+        if (img) {
+          ctx.drawImage(
+            img,
+            toX(p.x) - (w / 2) * zoom,
+            toY(p.y) - h * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        } else {
+          ctx.drawImage(
+            t.dead ? SPR.deadTrees[t.v] : SPR.trees[t.v],
+            toX(p.x) - 64 * zoom,
+            toY(p.y) - 150 * zoom,
+            128 * zoom,
+            160 * zoom,
+          );
+        }
+        R.drawCalls++;
+      },
     });
   }
   for (const l of city.lamps) {
@@ -256,24 +275,43 @@ export function renderWorld({
   }
   for (const bch of city.benches) {
     if (bch.dead || !vis(bch.x, bch.y, 45, 30)) continue;
-    push(actorDepth(city, bch), 1, () => {
-      const p = w2s(bch.x, bch.y);
-      const img = SPRTEX.bench;
-      if (img) {
-        const w = 66 * zoom,
-          h = w * (img.height / img.width);
-        ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
-      } else
-        ctx.drawImage(
-          SPR.bench,
-          toX(p.x) - 40 * zoom,
-          toY(p.y) - 40 * zoom,
-          80 * zoom,
-          48 * zoom,
-        );
-      R.drawCalls++;
+    const p = w2s(bch.x, bch.y);
+    const img = SPRTEX.bench;
+    const w = img ? 66 : 80;
+    const h = img ? w * (img.height / img.width) : 48;
+    streetEntries.push({
+      base: bch.x + bch.y,
+      depth: actorDepth(city, bch),
+      bounds: {
+        left: img ? p.x - w / 2 : p.x - 40,
+        top: img ? p.y - h : p.y - 40,
+        right: img ? p.x + w / 2 : p.x + 40,
+        bottom: img ? p.y : p.y + 8,
+      },
+      draw: () => {
+        if (img) {
+          ctx.drawImage(
+            img,
+            toX(p.x) - (w / 2) * zoom,
+            toY(p.y) - h * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        } else {
+          ctx.drawImage(
+            SPR.bench,
+            toX(p.x) - 40 * zoom,
+            toY(p.y) - 40 * zoom,
+            80 * zoom,
+            48 * zoom,
+          );
+        }
+        R.drawCalls++;
+      },
     });
   }
+  for (const entry of reconcileStreetDepths(streetEntries))
+    push(entry.depth, 1, entry.draw, entry.base);
   for (const cn of city.containers) {
     if (cn.dead || !vis(cn.x, cn.y, 40, 35)) continue;
     // парный тест со зданиями: контейнер перед домом — на переднем плане
@@ -373,7 +411,7 @@ export function renderWorld({
     push(
       actorDepth(city, player) + 0.01,
       2,
-      () => drawActor(ctx, player, SPR, toX, toY, zoom, true),
+      () => drawActor(ctx, player, SPR, toX, toY, zoom, true, combat, aim),
       player.x + player.y,
     );
 
@@ -387,7 +425,8 @@ export function renderWorld({
         ctx.beginPath();
         ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
         ctx.fill();
-        const img = SPRTEX.survivor;
+        const spriteKey = n.id ? `npc_${n.id}` : "survivor";
+        const img = SPRTEX[spriteKey] || SPRTEX.survivor;
         if (img) {
           const h = 78 * zoom,
             w = h * (img.width / img.height);
@@ -811,16 +850,6 @@ export function renderWorld({
   return inside;
 }
 
-const FURN_STYLE = {
-  fridge: { c: "#b8b4a8", h: 1.5, top: "#c8c4b8" },
-  table: { c: "#5a4632", h: 0.8, top: "#6a5440" },
-  bed: { c: "#7a8a9a", h: 0.5, top: "#8a9aa8" },
-  wardrobe: { c: "#6a4a30", h: 1.8, top: "#7a5838" },
-  sofa: { c: "#5a6a4a", h: 0.8, top: "#6a7a58" },
-  shelf: { c: "#6a5a40", h: 1.6, top: "#7a6a4c" },
-  crate: { c: "#7a6a4a", h: 0.7, top: "#8a7854" },
-};
-
 function drawBuilding(
   ctx,
   b,
@@ -864,15 +893,11 @@ function drawBuilding(
       const bx = toX(base.x),
         by = toY(base.y);
       ctx.save();
-      ctx.translate(bx, by);
+      ctx.translate(bx - (face === "S" ? 22 * zoom : 0), by);
       ctx.transform(face === "S" ? 1 : -1, 0.5, 0, 1, 0, 0);
-      ctx.drawImage(
-        SPRTEX.win_broken,
-        face === "S" ? -22 * zoom : 0,
-        -48 * zoom,
-        45 * zoom,
-        48 * zoom,
-      );
+      ctx.fillStyle = "#11181b";
+      ctx.fillRect(6 * zoom, -42 * zoom, 33 * zoom, 37 * zoom);
+      ctx.drawImage(SPRTEX.win_broken, 0, -48 * zoom, 45 * zoom, 48 * zoom);
       ctx.restore();
     }
   }
@@ -1148,7 +1173,7 @@ function drawWallSeg(ctx, b, s, toX, toY, zoom, player) {
 
 // мебель как отдельный сортированный элемент
 function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
-  const st = FURN_STYLE[f.kind] || FURN_STYLE.table;
+  const st = FURNITURE[f.kind] || FURNITURE.table;
   const cx = b.x + f.x + f.w / 2,
     cy = b.y + f.y + f.h / 2;
   const p = w2s(cx, cy);
@@ -1164,7 +1189,7 @@ function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
   if (img) {
     const sp = w2s(b.x + f.x + f.w, b.y + f.y + f.h);
     // ширина по footprint; высоту ограничиваем физическим боксом
-    // (Gemini-«изометрия» круче 2:1 — без клампа мебель великанами)
+    // Генеративные спрайты могут иметь более крутой ракурс: высота ограничивается физическим боксом.
     let dw = (f.w + f.h) * 32 * zoom,
       dh = dw * (img.height / img.width);
     const maxH = (st.h * 32 + (f.w + f.h) * 16) * zoom * 1.15;
@@ -1229,7 +1254,7 @@ function drawFurniture(ctx, b, toX, toY, zoom, player, loot) {
   const plx = player ? player.x - b.x : 0,
     ply = player ? player.y - b.y : 0;
   for (const f of it.furniture) {
-    const st = FURN_STYLE[f.kind] || FURN_STYLE.table;
+    const st = FURNITURE[f.kind] || FURNITURE.table;
     const cx = b.x + f.x + f.w / 2,
       cy = b.y + f.y + f.h / 2;
     const p = w2s(cx, cy);
@@ -1414,7 +1439,17 @@ function tintedZombie(img, tint) {
   return c;
 }
 
-function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
+function drawActor(
+  ctx,
+  a,
+  SPR,
+  toX,
+  toY,
+  zoom,
+  isPlayer,
+  combat = null,
+  aim = null,
+) {
   const p = w2s(a.x, a.y);
   const zt = isPlayer ? null : ZTYPES[a.type || "walker"];
   const scale = zt?.scale ?? 1;
@@ -1422,17 +1457,22 @@ function drawActor(ctx, a, SPR, toX, toY, zoom, isPlayer) {
   ctx.beginPath();
   ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom * scale, 6 * zoom * scale, 0, 0, 7);
   ctx.fill();
-  const base = SPRTEX[isPlayer ? "survivor" : "zombie"];
+  const bowSprite = isPlayer && combat?.bowDrawing && SPRTEX.survivor_bow_draw;
+  const base = bowSprite || SPRTEX[isPlayer ? "survivor" : "zombie"];
   const img = base && zt?.tint ? tintedZombie(base, zt.tint) : base;
   if (img) {
-    const h = 78 * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
+    const h = (base === SPRTEX.survivor_bow_draw ? 96 : 78) * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
     const w = h * (img.width / img.height);
+    const aimPoint =
+      base === SPRTEX.survivor_bow_draw && aim ? w2s(aim.x, aim.y) : null;
+    const flip = aimPoint && aimPoint.x < p.x;
     // ходьба: покачивание + наклон по кадру pose (2 кадра), стоя — ровно
     const mv = a.moving;
     const bob = mv ? Math.sin(a.animT * 2.2) * 3 * zoom : 0;
     const lean = mv ? (a.pose ? 0.06 : -0.06) : 0;
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
+    if (flip) ctx.scale(-1, 1);
     ctx.rotate(lean + (mv ? Math.sin(a.animT * 2.2) * 0.02 : 0));
     ctx.drawImage(img, -w / 2, -h + bob, w, h);
     // факел в руке игрока
@@ -1619,7 +1659,12 @@ function drawCampNpc(ctx, c, def, player, toX, toY, zoom) {
   ctx.beginPath();
   ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
   ctx.fill();
-  const img = SPRTEX.survivor;
+  const spriteKey = {
+    park: "npc_oleg",
+    school: "npc_vera",
+    police: "npc_sanych",
+  }[c.id];
+  const img = SPRTEX[spriteKey] || SPRTEX.survivor;
   if (img) {
     const h = 78 * zoom,
       w = h * (img.width / img.height);
