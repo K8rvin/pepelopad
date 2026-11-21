@@ -3,7 +3,7 @@
 import { mkCanvas } from "../core/geo.js";
 import { w2s } from "../core/geo.js";
 import { makeGlowSprite } from "./buildings.js";
-import { buildingSprite } from "./buildings.js";
+import { buildingSprite, buildingLitCanvas } from "./buildings.js";
 
 export function createLighting() {
   const lightCv = mkCanvas(2, 2);
@@ -145,25 +145,29 @@ export function renderNight({
   ctx.globalCompositeOperation = "lighter";
   for (const b of city.buildings) {
     if (b === inside) continue;
+    // отсев ДО обращения к кэшу: иначе первый ночной кадр печёт фасады
+    // всего города синхронно (секунды фриза)
+    const ccx = b.x + b.w / 2,
+      ccy = b.y + b.h / 2;
+    const px = (ccx - ccy) * 32,
+      py = (ccx + ccy) * 16;
+    const hw = (b.w + b.h) * 16 + 60,
+      hh = ((b.w + b.h) * 16 + b.floors * 96) / 2 + 60;
+    const dx = toX(px),
+      dy = toY(py);
+    if (
+      dx + hw * zoom < 0 ||
+      dx - hw * zoom > W ||
+      dy + hh * zoom < 0 ||
+      dy - hh * zoom > H
+    )
+      continue;
+    const lit = buildingLitCanvas(b);
+    if (!lit) continue; // фасад/lit ещё в очереди бюджетной запечки
     const spr = buildingSprite(b);
     const ox = (b.x - b.y) * 32 + spr.minX,
       oy = (b.x + b.y) * 16 + spr.minY;
-    const dx = toX(ox),
-      dy = toY(oy);
-    if (
-      dx > W ||
-      dy > H ||
-      dx + spr.canvas.width * zoom < 0 ||
-      dy + spr.canvas.height * zoom < 0
-    )
-      continue;
-    ctx.drawImage(
-      spr.litCanvas,
-      dx,
-      dy,
-      spr.litCanvas.width * zoom,
-      spr.litCanvas.height * zoom,
-    );
+    ctx.drawImage(lit, toX(ox), toY(oy), lit.width * zoom, lit.height * zoom);
   }
   ctx.globalCompositeOperation = "source-over";
 }

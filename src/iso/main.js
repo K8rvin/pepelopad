@@ -30,6 +30,7 @@ import {
   renderWorld,
 } from "./render/renderer.js";
 import { createLighting, fitLighting } from "./render/lighting.js";
+import { litQueueSize } from "./render/buildings.js";
 import {
   initActors,
   updatePlayer,
@@ -702,6 +703,7 @@ export async function boot() {
     levelFx,
     frameMs: () => msLast,
     bakeQueueSize: () => R.bakeQueue.size + R.bldQueue.size + R.phQueue.size,
+    litQueueSize,
     save: () =>
       saveGame({
         city,
