@@ -57,33 +57,6 @@ function bob(ctx, img, w, h, u, ph, mv) {
   return b;
 }
 
-// C. «Тазовый маятник»: блок ног shear-ом (ступни на месте, таз качается),
-// торс контр-качанием; мягкий шаркающий шаг без швов и подъёмов
-function shear(ctx, img, w, h, u, ph, mv) {
-  if (!mv) return idle(ctx, img, w, h);
-  const swing = Math.sin(ph);
-  const bob = -Math.abs(Math.cos(ph)) * 1.4 * u;
-  const legH = h * 0.42;
-  const sh = swing * 0.16;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(-w / 2 - 1, -legH, w + 2, legH + 2);
-  ctx.clip();
-  ctx.transform(1, 0, -sh, 1, 0, 0);
-  ctx.drawImage(img, -w / 2, -h, w, h);
-  ctx.restore();
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(-w / 2 - 1, -h - 4 * u, w + 2, h - legH + 3 * u);
-  ctx.clip();
-  // торс следует за тазом (сдв верха ног = sh*legH), иначе шов рвётся
-  ctx.translate(sh * legH, bob);
-  ctx.rotate(0.03 - swing * 0.015);
-  ctx.drawImage(img, -w / 2, -h, w, h);
-  ctx.restore();
-  return bob;
-}
-
 // D. «Маятник от бедра»: половины ног вращаются вокруг таза в противофазе —
 // ступни описывают дугу (естественный вынос), без скольжения по земле
 function hiprot(ctx, img, w, h, u, ph, mv) {
@@ -146,11 +119,12 @@ function knee(ctx, img, w, h, u, ph, mv) {
   return bob;
 }
 
-export const GAITS = { doll, bob, shear, hiprot, knee };
+// Вариант C («маятник таза», shear) удалён 21.11.2026 по verdict пользователя
+// как самый слабый; буквы остальных сохранены для сквозной нумерации в плане
+export const GAITS = { doll, bob, hiprot, knee };
 export const GAIT_LIST = [
   { key: "doll", name: "A · кукла", desc: "ноги скользят в противофазе" },
   { key: "bob", name: "B · пружинка", desc: "цельный спрайт, bob+squash" },
-  { key: "shear", name: "C · маятник таза", desc: "shear ног, шаркающий шаг" },
   { key: "hiprot", name: "D · от бедра", desc: "ноги вращаются вокруг таза" },
   { key: "knee", name: "E · колено", desc: "псевдо-сгиб колена на пике" },
 ];

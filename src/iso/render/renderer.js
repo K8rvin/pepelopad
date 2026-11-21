@@ -33,7 +33,7 @@ export function createRenderer() {
     phQueue: new Set(), // ключи чанков, ждущих lite-запечки placeholder'а
     phCache: new Map(), // lite-placeholder'ы (дешёвая земля без текстур/теней)
     bldQueue: new Map(), // buildingId → здание, ждущее запечки фасада
-    gait: "doll", // выбранный вариант походки (лаборатория G)
+    gait: "bob", // вариант походки по умолчанию (B, решение пользователя 21.11.2026)
   };
 }
 
@@ -1606,7 +1606,7 @@ function drawActor(
   isPlayer,
   combat = null,
   aim = null,
-  gait = "doll",
+  gait = "bob",
 ) {
   const p = w2s(a.x, a.y);
   const zt = isPlayer ? null : ZTYPES[a.type || "walker"];
