@@ -1,0 +1,23 @@
+{
+  "id": "furn_sink",
+  "source": "GPT",
+  "prompt": "Single isometric worn off-white kitchen cabinet with two doors, dark wooden counter, integrated metal sink and faucet, no wall or floor.",
+  "originalImport": "tmp/Старая раковина с тумбой.png",
+  "createdAt": "2026-11-20T21:39:38.376853+00:00",
+  "sha256": "875d015f9a93cbd45e7cdb24f802304016d3b1001765a6b6b9b466ee32c7d36d",
+  "originalSize": [
+    1312,
+    1199
+  ],
+  "runtime": "public/assets/gen/furn_sink.png",
+  "runtimeSize": [
+    460,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

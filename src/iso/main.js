@@ -200,10 +200,11 @@ export async function boot() {
   let search = null; // {c, t, dur} — обыск с шкалой до окна лута
   initVehicles(city);
   // Олег живёт в парковом лагере; отдельные NPC истории — у больницы
-  const npcs = createNpcs(city, PITCH).filter((n) => n.name !== "Олег");
+  const npcs = createNpcs(city, PITCH).filter((n) => n.id !== "oleg");
   const hosp = poiBuilding(city, "Больница");
   if (hosp) {
     npcs.push({
+      id: "raya",
       name: "Рая",
       lines: [
         "Рая: «Не шуми. Дети спят.»",
@@ -213,6 +214,7 @@ export async function boot() {
       y: hosp.y + hosp.h + 1.5,
     });
     npcs.push({
+      id: "masha",
       name: "Маша",
       lines: ["Маша: «...»", "Маша: «Не подходи. Пожалуйста.»"],
       x: hosp.x + hosp.w / 2,

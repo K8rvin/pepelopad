@@ -150,7 +150,7 @@ describe("лагеря: торговля, поручения, постройки
   });
 });
 
-describe("лагеря в сейве v4", () => {
+describe("лагеря в сейве v5", () => {
   beforeEach(() => mockStorage());
 
   const saveState = () => {

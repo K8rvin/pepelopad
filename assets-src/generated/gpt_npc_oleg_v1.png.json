@@ -1,0 +1,23 @@
+{
+  "id": "npc_oleg",
+  "source": "GPT",
+  "prompt": "Full-body Oleg, broad-stocky man around 50 with short grey beard, olive work jacket, rust scarf, tool satchel and belt hatchet, transparent RGBA.",
+  "originalImport": "tmp/Суровый выживший с топором и сумкой.png",
+  "createdAt": "2026-11-20T21:06:39.024737+00:00",
+  "sha256": "055674da78981b1f6794611cb8fc02d62788eff6d432f3fe087decd214cda4e7",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/npc_oleg.png",
+  "runtimeSize": [
+    198,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

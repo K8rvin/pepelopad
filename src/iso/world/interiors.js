@@ -1,8 +1,7 @@
-// Интерьеры (итерация 2 «Генератор + лут» по docs/interiors-qwen.md):
-// коридор вдоль длинной оси + нарезка комнат ВПЛОТНУЮ к фасаду (без узких щелей!),
-// мебель по ролям комнат с зазорами ≥ 0,9 м, контейнеры внутри.
-// Коллизии — отрезки стен + AABB мебели.
+// Жилые одноэтажные дома используют suburbInterior; POI и многоэтажные здания —
+// прежний коридорный генератор. Коллизии — отрезки стен + AABB мебели.
 import { mulberry32 } from "../core/rng.js";
+import { suburbInterior } from "./suburbInterior.js";
 
 const cache = new Map(); // buildingId → interior
 
@@ -11,9 +10,18 @@ const CLEAR = 1.1;
 
 // сгенерировать планировку здания (детерминированно по id)
 export function getInterior(city, b) {
-  const key = b.id + "f" + b.floors;
+  const key = `${b.id}f${b.floors}_${b.w}x${b.h}_${b.style}_${b.doorU}`;
   let it = cache.get(key);
-  if (it) return it;
+  if (!it) {
+    const residential =
+      (b.style === "house" || b.style === "brick") && b.floors === 1;
+    it = residential ? suburbInterior(b) : corridorInterior(b);
+    cache.set(key, it);
+  }
+  return it;
+}
+
+function corridorInterior(b) {
   const r = mulberry32(b.id * 7919 + 13);
   const w = Math.floor(b.w),
     h = Math.floor(b.h);
@@ -167,7 +175,7 @@ export function getInterior(city, b) {
   // id контейнеров
   containers.forEach((c, i) => (c.id = "int" + b.id + "_" + i));
 
-  it = {
+  const it = {
     walls,
     rooms,
     furniture,
@@ -183,7 +191,6 @@ export function getInterior(city, b) {
           : { x: corrA - 0.5, y: 1.5, w: 3, h: 3 }
         : null,
   };
-  cache.set(key, it);
   return it;
 }
 

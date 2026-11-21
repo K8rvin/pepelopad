@@ -1,0 +1,23 @@
+{
+  "id": "npc_sanych",
+  "source": "GPT",
+  "prompt": "Full-body Sanych, heavyset man around 55 with shaved head and grey moustache, dark navy police jacket and baton, no firearm, transparent RGBA.",
+  "originalImport": "tmp/Суровый полицейский с дубинкой.png",
+  "createdAt": "2026-11-20T21:22:00.892074+00:00",
+  "sha256": "c8642c95b22f917c309837267a89e8f49e92f350610277235da6abaced13c8cc",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/npc_sanych.png",
+  "runtimeSize": [
+    194,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

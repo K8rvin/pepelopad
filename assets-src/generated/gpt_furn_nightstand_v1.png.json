@@ -1,0 +1,23 @@
+{
+  "id": "furn_nightstand",
+  "source": "GPT",
+  "prompt": "Single isometric dark wooden bedside nightstand with one drawer and lower cabinet, empty top, no decorations or room.",
+  "originalImport": "tmp/Старинная деревянная тумбочка с патиной.png",
+  "createdAt": "2026-11-20T21:54:46.604496+00:00",
+  "sha256": "1f768ad0cdb06989cfee676db47fa6b924593b9458a023a919324322fa8ccff6",
+  "originalSize": [
+    1229,
+    1280
+  ],
+  "runtime": "public/assets/gen/furn_nightstand.png",
+  "runtimeSize": [
+    393,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

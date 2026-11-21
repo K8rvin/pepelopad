@@ -1,0 +1,23 @@
+{
+  "id": "furn_toilet",
+  "source": "GPT",
+  "prompt": "Single isometric aged porcelain toilet with rear tank and visible bowl, subtle grime, no bathroom walls or floor.",
+  "originalImport": "tmp/Потёртый фарфоровый туалет с поднятым сиденьем.png",
+  "createdAt": "2026-11-20T21:47:44.678459+00:00",
+  "sha256": "976cd361bb7fac56b95aaafd80149dd73be7ea16074bf5a65d669e25a92c4d32",
+  "originalSize": [
+    1183,
+    1330
+  ],
+  "runtime": "public/assets/gen/furn_toilet.png",
+  "runtimeSize": [
+    332,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}
