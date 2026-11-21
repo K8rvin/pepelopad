@@ -70,6 +70,7 @@ import {
   showLevelUpBanner,
 } from "./ui/levelup.js";
 import { playLevelUp } from "./ui/sound.js";
+import { createGaitLab, toggleGaitLab, renderGaitLab } from "./ui/gaitlab.js";
 import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
@@ -273,6 +274,7 @@ export async function boot() {
   // XP навыков: повышения — в очередь празднования (баннер + искры + звук);
   // Сила растит рюкзак
   const levelFx = createLevelUp();
+  const gaitLab = createGaitLab();
   const skillXp = (id, n) => {
     for (const ev of gainXp(skills, id, n)) {
       pushLevelUp(levelFx, ev, player.x, player.y);
@@ -452,6 +454,7 @@ export async function boot() {
     if (e.code === "KeyN")
       survival.tod = darknessFor(survival.tod) > 0.4 ? 7 : 20.9; // отладка: к утру/закату
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
+    if (e.code === "KeyG") toggleGaitLab(gaitLab, R); // лаборатория походки
     if (e.code === "KeyR" && combat.dead)
       respawn(combat, player, spawn.x, spawn.y);
     if (e.code === "KeyQ") useItem("can");
@@ -1024,6 +1027,7 @@ export async function boot() {
       base,
       levelFx,
     });
+    if (gaitLab.open) renderGaitLab(gaitLab, R, SPR, t / 1000);
     // пепел дрейфует
     for (const a of ashP) {
       a.x -= (3 + a.layer * 5) * dt * (1 + 0.3 * Math.sin(t / 900 + a.p));
