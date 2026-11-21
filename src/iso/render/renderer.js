@@ -33,7 +33,7 @@ export function createRenderer() {
     phQueue: new Set(), // ключи чанков, ждущих lite-запечки placeholder'а
     phCache: new Map(), // lite-placeholder'ы (дешёвая земля без текстур/теней)
     bldQueue: new Map(), // buildingId → здание, ждущее запечки фасада
-    gait: "bob", // вариант походки по умолчанию (B, решение пользователя 21.11.2026)
+    gait: "standstep", // вариант походки по умолчанию (G, решение пользователя 21.11.2026)
   };
 }
 
@@ -1606,7 +1606,7 @@ function drawActor(
   isPlayer,
   combat = null,
   aim = null,
-  gait = "bob",
+  gait = "standstep",
 ) {
   const p = w2s(a.x, a.y);
   const zt = isPlayer ? null : ZTYPES[a.type || "walker"];
@@ -1623,13 +1623,31 @@ function drawActor(
     const w = h * (img.width / img.height);
     const aimPoint =
       base === SPRTEX.survivor_bow_draw && aim ? w2s(aim.x, aim.y) : null;
-    const flip = aimPoint && aimPoint.x < p.x;
+    // профильные покадровые варианты смотрят по курсу движения, а не по прицелу
+    const profile = gait === "frames" || gait === "standstep";
+    const flip = aimPoint
+      ? aimPoint.x < p.x
+      : profile && a.moving
+        ? (a.face || 1) < 0
+        : false;
+    // наборы кадров шага по направлениям: профиль / фронт / спина;
+    // отсутствующий ассет → вертикальный ход деградирует в B, не в профиль
+    const altFor = (im) =>
+      im ? { img: im, w: h * (im.width / im.height), h } : null;
+    const alts = isPlayer
+      ? {
+          side: altFor(SPRTEX.survivor_walk),
+          front: altFor(SPRTEX.survivor_walk_front),
+          back: altFor(SPRTEX.survivor_walk_back),
+          dir: a.dir || "right",
+        }
+      : null;
     // походка — выбираемый вариант (лаборатория G); фаза от дистанции
     // (walkPh), поэтому бег чаще ходьбы; стоя — спрайт ровно
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
     if (flip) ctx.scale(-1, 1);
-    const bob = (GAITS[gait] || GAITS.doll)(
+    const bob = (GAITS[gait] || GAITS.bob)(
       ctx,
       img,
       w,
@@ -1637,6 +1655,7 @@ function drawActor(
       zoom * scale,
       a.walkPh || 0,
       a.moving,
+      alts,
     );
     // факел в руке игрока
     if (isPlayer && a.torch) {

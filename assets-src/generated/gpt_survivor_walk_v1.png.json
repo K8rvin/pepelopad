@@ -1,0 +1,26 @@
+{
+  "id": "survivor_walk",
+  "source": "GPT",
+  "prompt": "Тот же персонаж, что на референсе survivor.png (капюшон, серая куртка, тёмные джинсы, ботинки), середина шага: левая нога впереди с пятки, правая сзади на носке, руки в противофазе; полный рост, прозрачный RGBA. (Генерация пользователя 21.11.2026; фактический ракурс — профиль вправо, см. notes.)",
+  "originalImport": "tmp/Странствующий мужчина в потёртой одежде.png",
+  "createdAt": "2026-11-21T19:55:17.215Z",
+  "sha256": "381e650e362d9b175f217491d13e84b7420b98994378a6a1a72c774a9ab306af",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/survivor_walk.png",
+  "runtimeSize": [
+    225,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 512,
+    "pipeline": "scripts/process_walk_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Ракурс профиля вправо отличается от фронтального survivor.png; используется как покадровый вариант F/G в лаборатории походки, зеркаление в рантайме даёт противоположный шаг."
+}

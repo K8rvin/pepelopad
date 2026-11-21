@@ -56,6 +56,14 @@ export function renderGaitLab(L, R, SPR, t) {
   const u = 1.2;
   const h = 78 * u,
     w = h * (img.width / img.height);
+  const altFor = (im) =>
+    im ? { img: im, w: h * (im.width / im.height), h } : null;
+  const alts = {
+    side: altFor(SPRTEX.survivor_walk),
+    front: altFor(SPRTEX.survivor_walk_front),
+    back: altFor(SPRTEX.survivor_walk_back),
+    dir: "right",
+  };
   for (const r of L.rows) {
     const g = r.cv.getContext("2d");
     g.clearRect(0, 0, r.cv.width, r.cv.height);
@@ -80,7 +88,7 @@ export function renderGaitLab(L, R, SPR, t) {
     g.beginPath();
     g.ellipse(0, 0, 14 * u, 6 * u, 0, 0, 7);
     g.fill();
-    GAITS[r.key](g, img, w, h, u, t * 10, true);
+    GAITS[r.key](g, img, w, h, u, t * 10, true, alts);
     g.restore();
   }
 }

@@ -46,6 +46,21 @@ export function updatePlayer(
     // фаза шага от реальной дистанции: упёрся в стену — походка не мельтешит
     const step = Math.hypot(player.x - ox, player.y - oy);
     player.moving = step > 1e-4;
+    // экранный курс (sx=(x−y)·32, sy=(x+y)·16): направление для покадровых
+    // походок (профиль/фронт/спина) и зеркаления профиля
+    if (player.moving) {
+      const sdx = player.x - ox - (player.y - oy);
+      const sdy = player.x - ox + (player.y - oy);
+      player.face = sdx >= 0 ? 1 : -1;
+      player.dir =
+        Math.abs(sdx) >= Math.abs(sdy)
+          ? sdx >= 0
+            ? "right"
+            : "left"
+          : sdy >= 0
+            ? "down"
+            : "up";
+    }
     player.walkPh = (player.walkPh || 0) + (step / STRIDE) * Math.PI * 2;
     player.animT += dt * 7;
     player.pose = Math.floor(player.animT) % 2;
@@ -193,6 +208,19 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
         (dy / d) * t.speed * speedK * dt,
       );
       moved = Math.hypot(z.x - ox, z.y - oy);
+      if (moved > 1e-4) {
+        const sdx = z.x - ox - (z.y - oy);
+        const sdy = z.x - ox + (z.y - oy);
+        z.face = sdx >= 0 ? 1 : -1;
+        z.dir =
+          Math.abs(sdx) >= Math.abs(sdy)
+            ? sdx >= 0
+              ? "right"
+              : "left"
+            : sdy >= 0
+              ? "down"
+              : "up";
+      }
       z.walkPh = (z.walkPh || 0) + (moved / STRIDE) * Math.PI * 2;
       z.animT += dt * 4 * speedK;
       z.pose = Math.floor(z.animT) % 2;

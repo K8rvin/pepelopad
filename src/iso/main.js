@@ -13,7 +13,7 @@ import {
 } from "./systems/vehicles.js";
 import { PITCH } from "./world/cityGen.js";
 import { createCity, buildSolidIndex } from "./world/cityGen.js";
-import { loadAssets } from "./render/assets.js";
+import { loadAssets, SPRTEX } from "./render/assets.js";
 import { makeGroundSet } from "./render/tiles.js";
 import {
   makeTree,
@@ -30,7 +30,7 @@ import {
   renderWorld,
 } from "./render/renderer.js";
 import { createLighting, fitLighting } from "./render/lighting.js";
-import { litQueueSize } from "./render/buildings.js";
+import { litQueueSize, buildingLitCanvas } from "./render/buildings.js";
 import {
   initActors,
   updatePlayer,
@@ -704,9 +704,16 @@ export async function boot() {
     base,
     story,
     levelFx,
+    SPRTEX,
     frameMs: () => msLast,
     bakeQueueSize: () => R.bakeQueue.size + R.bldQueue.size + R.phQueue.size,
     litQueueSize,
+    // serializable-проба lit-подложки (динамический import на живом
+    // dev-сервере даёт новый инстанс модуля с пустыми кэшами)
+    hasLit: (id) => {
+      const b = city.buildings.find((k) => k.id === id);
+      return b ? !!buildingLitCanvas(b) : false;
+    },
     save: () =>
       saveGame({
         city,

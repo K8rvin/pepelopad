@@ -1,8 +1,9 @@
-// Варианты процедурной походки актёра (лаборатория выбора, клавиша G).
-// Контракт: ctx уже свёрнут к точке ступней и отражён по прицелу; функция
-// рисует спрайт (ноги в (0,0)) и возвращает bob торса для привязки факела.
-// u — пиксельная единица (zoom*scale), ph — фаза шага от дистанции, mv — идёт.
-// Ассетные кадры ходьбы (очередь C 21.5) станут отдельным вариантом поверх.
+// Варианты походки актёра (лаборатория выбора, клавиша G).
+// Контракт: ctx уже свёрнут к точке ступней и отражён по прицелу/курсу;
+// функция рисует спрайт (ноги в (0,0)) и возвращает bob торса для факела.
+// u — пиксельная единица (zoom*scale), ph — фаза шага от дистанции, mv — идёт,
+// alts — {side, front, back: {img,w,h}|null, dir} наборы кадров шага по
+// направлениям; отсутствующий набор → деградация в B («пружинка»).
 
 function idle(ctx, img, w, h) {
   ctx.drawImage(img, -w / 2, -h, w, h);
@@ -119,12 +120,86 @@ function knee(ctx, img, w, h, u, ph, mv) {
   return bob;
 }
 
+// кроссфейд двух поз: на границах полупериода текущая поза плавно сменяет
+// предыдущую (окно 18%), внутри полупериода — чистая поза; без «пинг-понга»
+function crossPose(ph, drawCur, drawPrev) {
+  const f = (ph / Math.PI) % 1;
+  const e = 0.18;
+  const wCur = f < e ? f / e : f > 1 - e ? (1 - f) / e : 1;
+  drawPrev(1 - wCur);
+  drawCur(wCur);
+}
+
+// F. «Шаг+зеркало»: ассетный кадр шага и его зеркало (противоположная нога)
+// чередуются по полупериодам с кроссфейдом; профильный цикл без нарезки
+function frames(ctx, img, w, h, u, ph, mv, alts) {
+  const alt = alts?.side;
+  if (!alt) return bob(ctx, img, w, h, u, ph, mv);
+  if (!mv) return idle(ctx, img, w, h);
+  const b = -Math.abs(Math.cos(ph)) * 1.6 * u;
+  ctx.save();
+  ctx.translate(0, b);
+  ctx.rotate(0.03);
+  const pose = Math.floor(ph / Math.PI) % 2;
+  const draw = (mirror) => (alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (mirror) ctx.scale(-1, 1);
+    ctx.drawImage(alt.img, -alt.w / 2, -alt.h, alt.w, alt.h);
+    ctx.restore();
+  };
+  crossPose(ph, draw(pose === 1), draw(pose === 0));
+  ctx.restore();
+  return b;
+}
+
+// G. «Стойка↔шаг» по направлениям: стойка (базовый ассет) и кадр шага нужного
+// ракурса (профиль / фронт / спина) чередуются с кроссфейдом. Вертикальный ход
+// без своего ассета деградирует в B («пружинка»), а не в кривой профиль.
+function standstep(ctx, img, w, h, u, ph, mv, alts) {
+  const dir = alts?.dir || "right";
+  const alt =
+    dir === "up" ? alts?.back : dir === "down" ? alts?.front : alts?.side;
+  if (!alt) return bob(ctx, img, w, h, u, ph, mv);
+  if (!mv) return idle(ctx, img, w, h);
+  const b = -Math.abs(Math.cos(ph)) * 1.6 * u;
+  ctx.save();
+  ctx.translate(0, b);
+  ctx.rotate(0.03);
+  const pose = Math.floor(ph / Math.PI) % 2;
+  const stand = (alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, -w / 2, -h, w, h);
+    ctx.restore();
+  };
+  const stride = (alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(alt.img, -alt.w / 2, -alt.h, alt.w, alt.h);
+    ctx.restore();
+  };
+  crossPose(ph, pose === 1 ? stride : stand, pose === 1 ? stand : stride);
+  ctx.restore();
+  return b;
+}
+
 // Вариант C («маятник таза», shear) удалён 21.11.2026 по verdict пользователя
 // как самый слабый; буквы остальных сохранены для сквозной нумерации в плане
-export const GAITS = { doll, bob, hiprot, knee };
+export const GAITS = { doll, bob, hiprot, knee, frames, standstep };
 export const GAIT_LIST = [
   { key: "doll", name: "A · кукла", desc: "ноги скользят в противофазе" },
   { key: "bob", name: "B · пружинка", desc: "цельный спрайт, bob+squash" },
   { key: "hiprot", name: "D · от бедра", desc: "ноги вращаются вокруг таза" },
   { key: "knee", name: "E · колено", desc: "псевдо-сгиб колена на пике" },
+  {
+    key: "frames",
+    name: "F · шаг+зеркало",
+    desc: "GPT-кадр шага и его зеркало",
+  },
+  {
+    key: "standstep",
+    name: "G · стойка↔шаг",
+    desc: "шаг по направлениям, кроссфейд",
+  },
 ];

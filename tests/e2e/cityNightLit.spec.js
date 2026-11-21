@@ -45,11 +45,11 @@ test("ночь: без фриза запечки города, окна заго
   await page.waitForFunction(() => window.__city.litQueueSize() === 0, null, {
     timeout: 8000,
   });
-  // lit-подложка запекается лениво по запросу и доступна рендеру после дренажа
-  const bid = await page.evaluate(async () => {
+  // lit-подложка ближайшего (видимого) здания запечена лениво и доступна;
+  // проба через __city.hasLit: динамический import на живом dev-сервере
+  // даёт новый инстанс buildings.js с пустыми кэшами (?t= у цепочки main.js)
+  const bid = await page.evaluate(() => {
     const c = window.__city;
-    const { buildingLitCanvas, buildingSprite } =
-      await import("/src/iso/render/buildings.js");
     let best = null,
       bd = Infinity;
     for (const b of c.city.buildings) {
@@ -62,21 +62,11 @@ test("ночь: без фриза запечки города, окна заго
         best = b;
       }
     }
-    buildingSprite(best); // один фасад явно (здание может быть вне кадра)
-    buildingLitCanvas(best); // запрос ставит lit в очередь, если ещё не запечено
     return best.id;
   });
-  await page.waitForFunction(() => window.__city.litQueueSize() === 0, null, {
+  await page.waitForFunction((id) => window.__city.hasLit(id), bid, {
     timeout: 8000,
   });
-  expect(
-    await page.evaluate(async (bid) => {
-      const c = window.__city;
-      const { buildingLitCanvas } =
-        await import("/src/iso/render/buildings.js");
-      return !!buildingLitCanvas(c.city.buildings.find((b) => b.id === bid));
-    }, bid),
-  ).toBe(true);
   await page.waitForTimeout(200);
   await page.screenshot({ path: ".cache/night_lit.png" });
   expect(errors).toEqual([]);
