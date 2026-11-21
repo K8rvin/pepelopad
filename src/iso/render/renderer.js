@@ -87,6 +87,7 @@ export function renderWorld({
   search,
   camps,
   base,
+  levelFx,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -616,6 +617,28 @@ export function renderWorld({
       });
     }
   }
+
+  // золотые искры празднования уровня (поверх актёров, под ночью/пеплом)
+  if (levelFx)
+    for (const s of levelFx.sparks) {
+      push(s.x + s.y, 3, () => {
+        const p = w2s(s.x, s.y, s.z);
+        const dx = toX(p.x),
+          dy = toY(p.y);
+        if (dx < -20 || dx > W + 20 || dy < -20 || dy > H + 20) return;
+        const k = Math.max(0, 1 - s.t / s.life);
+        const r = (2 + 2 * k) * zoom;
+        // ореол + яркое ядро: искра читается на любом фоне без shadowBlur
+        ctx.globalAlpha = k * 0.35;
+        ctx.fillStyle = "#ffb45c";
+        ctx.fillRect(dx - r * 1.3, dy - r * 1.3, r * 2.6, r * 2.6);
+        ctx.globalAlpha = k;
+        ctx.fillStyle = s.gold ? "#ffd76a" : "#fff3c4";
+        ctx.fillRect(dx - r / 2, dy - r / 2, r, r);
+        ctx.globalAlpha = 1;
+        R.drawCalls += 2;
+      });
+    }
 
   items.sort(
     (a, b) => a.depth - b.depth || a.base - b.base || a.layer - b.layer,

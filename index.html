@@ -262,6 +262,129 @@
         margin-top: 8px;
         line-height: 1.5;
       }
+      #levelup {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 13vh;
+        z-index: 15;
+        opacity: 0;
+      }
+      #levelup.show {
+        animation: luShow 2.6s ease-out forwards;
+      }
+      #levelup.show::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 45%,
+          rgba(255, 190, 80, 0.22) 100%
+        );
+        animation: luFlash 2.6s ease-out forwards;
+      }
+      #levelup .lu-card {
+        position: relative;
+        overflow: hidden;
+        background: rgba(17, 20, 14, 0.92);
+        border: 1px solid #d9a441;
+        box-shadow:
+          0 0 24px rgba(255, 190, 80, 0.35),
+          inset 0 0 18px rgba(255, 190, 80, 0.12);
+        padding: 12px 28px;
+        text-align: center;
+        color: #ece5d0;
+      }
+      #levelup.show .lu-card {
+        animation: luPop 2.6s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+      }
+      #levelup.show .lu-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 60px;
+        left: -80px;
+        background: linear-gradient(
+          100deg,
+          transparent,
+          rgba(255, 235, 180, 0.25),
+          transparent
+        );
+        animation: luShine 1.1s 0.25s ease-out forwards;
+      }
+      #levelup .lu-kind {
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #d9a441;
+      }
+      #levelup .lu-name {
+        font-size: 15px;
+        letter-spacing: 1px;
+        margin: 2px 0;
+      }
+      #levelup .lu-level {
+        font-size: 26px;
+        color: #ffd76a;
+        text-shadow: 0 0 12px rgba(255, 190, 80, 0.8);
+      }
+      #levelup .lu-desc {
+        font-size: 10px;
+        color: #9a9478;
+        max-width: 340px;
+        margin-top: 4px;
+      }
+      @keyframes luShow {
+        0% {
+          opacity: 0;
+        }
+        8% {
+          opacity: 1;
+        }
+        78% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes luPop {
+        0% {
+          transform: scale(0.6);
+        }
+        12% {
+          transform: scale(1.08);
+        }
+        20% {
+          transform: scale(1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      @keyframes luFlash {
+        0% {
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        60% {
+          opacity: 0.4;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes luShine {
+        to {
+          left: 110%;
+        }
+      }
     </style>
   </head>
   <body>
@@ -269,6 +392,7 @@
     <div id="hud">…</div>
     <div id="ui"></div>
     <div id="dlg"></div>
+    <div id="levelup"></div>
     <div id="pause">
       <div class="panel">
         <h2>МЁРТВЫЙ РАЙОН — пауза</h2>
