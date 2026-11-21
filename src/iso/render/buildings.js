@@ -345,10 +345,8 @@ function bakeBuilding(b, seedKey) {
       g.fillRect(p.x - 5, p.y - 12, 10, 3);
     }
   }
-  // окна + ночная подложка
-  const lit = mkCanvas(cnv.width, cnv.height);
-  const gl = lit.getContext("2d");
-  gl.translate(-minX, -minY);
+  // окна; ночная подложка запекается ЛЕНИВО (bakeLit) только когда нужна
+  const litSpots = [];
   const faces = [
     { dx: 1, len: b.w },
     { dx: 0, len: b.h },
@@ -378,26 +376,8 @@ function bakeBuilding(b, seedKey) {
         } else {
           g.drawImage(winDay, base.x - 15, base.y - 46 + 4);
         }
-        if (h2(seedKey + fl, wi, 3) < 0.3) {
-          if (SPRTEX.win_lit) {
-            gl.save();
-            gl.setTransform(
-              f.dx === 1 ? 1 : -1,
-              0.5,
-              0,
-              1,
-              base.x - minX - (f.dx === 1 ? 22 : 0),
-              base.y - minY,
-            );
-            gl.drawImage(SPRTEX.win_lit, 0, -48, 45, 48);
-            gl.restore();
-          } else {
-            gl.drawImage(winLit, base.x - 15, base.y - 46 + 4);
-          }
-          gl.globalAlpha = 0.5;
-          gl.drawImage(glowWarmWin, base.x - 45, base.y - 46);
-          gl.globalAlpha = 1;
-        }
+        if (h2(seedKey + fl, wi, 3) < 0.3)
+          litSpots.push({ x: base.x, y: base.y, dx: f.dx });
         wi++;
       }
   // дверь на южной грани
@@ -421,8 +401,38 @@ function bakeBuilding(b, seedKey) {
     g.fillStyle = "#6f6650";
     g.fillRect(dp.x - 20, dp.y - 4, 40, 4);
   }
-  return { canvas: cnv, litCanvas: lit, minX, minY };
+  return { canvas: cnv, minX, minY, litSpots };
 }
+
+// ночная подложка: только светящиеся окна и их ореолы, без стен/крыш
+function bakeLit(s) {
+  ensureWindowSprites();
+  const lit = mkCanvas(s.canvas.width, s.canvas.height);
+  const gl = lit.getContext("2d");
+  gl.translate(-s.minX, -s.minY);
+  for (const p of s.litSpots) {
+    if (SPRTEX.win_lit) {
+      gl.save();
+      gl.setTransform(
+        p.dx === 1 ? 1 : -1,
+        0.5,
+        0,
+        1,
+        p.x - s.minX - (p.dx === 1 ? 22 : 0),
+        p.y - s.minY,
+      );
+      gl.drawImage(SPRTEX.win_lit, 0, -48, 45, 48);
+      gl.restore();
+    } else {
+      gl.drawImage(winLit, p.x - 15, p.y - 46 + 4);
+    }
+    gl.globalAlpha = 0.5;
+    gl.drawImage(glowWarmWin, p.x - 45, p.y - 46);
+    gl.globalAlpha = 1;
+  }
+  return lit;
+}
+
 const spriteCache = new Map();
 const spriteKey = (b) => `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}`;
 // фасад уже запечён? (рендер решает: рисовать спрайт или placeholder-коробку)
@@ -440,6 +450,29 @@ export function buildingSprite(b) {
     spriteCache.set(key, s);
   }
   return s;
+}
+
+// ленивая ночная подложка: первый ночной кадр не печёт весь город, а ставит
+// видимые здания в очередь; окна «загораются» по мере бюджетной запечки
+const litQueue = new Map();
+export function buildingLitCanvas(b) {
+  const s = spriteCache.get(spriteKey(b));
+  if (!s) return null; // фасад ещё не запечён — светить нечем
+  if (!s.litCanvas) {
+    litQueue.set(spriteKey(b), s);
+    return null;
+  }
+  return s.litCanvas;
+}
+export function litQueueSize() {
+  return litQueue.size;
+}
+export function drainLitQueue(over) {
+  for (const [key, s] of [...litQueue]) {
+    if (over()) break;
+    s.litCanvas = bakeLit(s);
+    litQueue.delete(key);
+  }
 }
 
 // экранная позиция спрайта здания-экземпляра

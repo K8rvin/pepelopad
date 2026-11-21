@@ -2,7 +2,11 @@
 // ночное освещение → пепел → виньетка. Рендер только читает состояние.
 import { w2s, mkCanvas, PAL } from "../core/geo.js";
 import { CH, getChunk, bakeChunk, evictIfNeeded } from "./chunks.js";
-import { buildingSprite, hasBuildingSprite } from "./buildings.js";
+import {
+  buildingSprite,
+  hasBuildingSprite,
+  drainLitQueue,
+} from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
 import { reconcileStreetDepths } from "./streetDepth.js";
@@ -209,6 +213,7 @@ export function renderWorld({
     buildingSprite(b);
     R.bldQueue.delete(id);
   }
+  drainLitQueue(bakeOver);
   for (const k of [...R.phQueue]) {
     if (bakeOver()) break;
     const [qx, qy] = k.split(",").map(Number);
