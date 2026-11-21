@@ -10,6 +10,7 @@ import {
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
 import { reconcileStreetDepths } from "./streetDepth.js";
+import { GAITS } from "./gait.js";
 import {
   getInterior,
   wallWithGaps,
@@ -32,6 +33,7 @@ export function createRenderer() {
     phQueue: new Set(), // ключи чанков, ждущих lite-запечки placeholder'а
     phCache: new Map(), // lite-placeholder'ы (дешёвая земля без текстур/теней)
     bldQueue: new Map(), // buildingId → здание, ждущее запечки фасада
+    gait: "doll", // выбранный вариант походки (лаборатория G)
   };
 }
 
@@ -535,7 +537,7 @@ export function renderWorld({
     push(
       actorDepth(city, z),
       2,
-      () => drawActor(ctx, z, SPR, toX, toY, zoom, false),
+      () => drawActor(ctx, z, SPR, toX, toY, zoom, false, null, null, R.gait),
       z.x + z.y,
     );
   }
@@ -543,7 +545,8 @@ export function renderWorld({
     push(
       actorDepth(city, player) + 0.01,
       2,
-      () => drawActor(ctx, player, SPR, toX, toY, zoom, true, combat, aim),
+      () =>
+        drawActor(ctx, player, SPR, toX, toY, zoom, true, combat, aim, R.gait),
       player.x + player.y,
     );
 
@@ -1603,6 +1606,7 @@ function drawActor(
   isPlayer,
   combat = null,
   aim = null,
+  gait = "doll",
 ) {
   const p = w2s(a.x, a.y);
   const zt = isPlayer ? null : ZTYPES[a.type || "walker"];
@@ -1620,48 +1624,20 @@ function drawActor(
     const aimPoint =
       base === SPRTEX.survivor_bow_draw && aim ? w2s(aim.x, aim.y) : null;
     const flip = aimPoint && aimPoint.x < p.x;
-    // ходьба — «бумажная кукла»: половины ног в противофазе (скольжение +
-    // подъём стопы), торс поверх с bob и лёгким наклоном; фаза от дистанции
-    // (walkPh), поэтому бег чаще ходьбы; стоя — спрайт ровно, без покачиваний
-    const mv = a.moving;
-    const ph = a.walkPh || 0;
-    const swing = mv ? Math.sin(ph) : 0;
-    const bob = mv ? -Math.abs(Math.cos(ph)) * 1.6 * zoom * scale : 0;
+    // походка — выбираемый вариант (лаборатория G); фаза от дистанции
+    // (walkPh), поэтому бег чаще ходьбы; стоя — спрайт ровно
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
     if (flip) ctx.scale(-1, 1);
-    if (mv) {
-      const legH = h * 0.42;
-      const stepX = 2.4 * zoom * scale;
-      const lift = 1.8 * zoom * scale;
-      // левая нога: на пике swing выносится вперёд и отрывается от земли
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(-w / 2 - 1, -legH, w / 2 + 1, legH + 2);
-      ctx.clip();
-      ctx.translate(swing * stepX, -Math.max(0, swing) * lift);
-      ctx.drawImage(img, -w / 2, -h, w, h);
-      ctx.restore();
-      // правая нога: противофаза
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, -legH, w / 2 + 1, legH + 2);
-      ctx.clip();
-      ctx.translate(-swing * stepX, -Math.max(0, -swing) * lift);
-      ctx.drawImage(img, -w / 2, -h, w, h);
-      ctx.restore();
-      // торс поверх ног (перекрытие 3 px прячет шов), наклон по ходу
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(-w / 2 - 1, -h - 4 * zoom, w + 2, h - legH + 3 * zoom);
-      ctx.clip();
-      ctx.translate(0, bob);
-      ctx.rotate(0.03 + swing * 0.012);
-      ctx.drawImage(img, -w / 2, -h, w, h);
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, -w / 2, -h, w, h);
-    }
+    const bob = (GAITS[gait] || GAITS.doll)(
+      ctx,
+      img,
+      w,
+      h,
+      zoom * scale,
+      a.walkPh || 0,
+      a.moving,
+    );
     // факел в руке игрока
     if (isPlayer && a.torch) {
       const fx = w * 0.32,
