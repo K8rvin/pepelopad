@@ -424,8 +424,13 @@ function bakeBuilding(b, seedKey) {
   return { canvas: cnv, litCanvas: lit, minX, minY };
 }
 const spriteCache = new Map();
+const spriteKey = (b) => `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}`;
+// фасад уже запечён? (рендер решает: рисовать спрайт или placeholder-коробку)
+export function hasBuildingSprite(b) {
+  return spriteCache.has(spriteKey(b));
+}
 export function buildingSprite(b) {
-  const key = `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}`;
+  const key = spriteKey(b);
   let s = spriteCache.get(key);
   if (!s) {
     const seedKey = key
