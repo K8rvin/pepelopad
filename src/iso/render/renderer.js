@@ -1489,15 +1489,48 @@ function drawActor(
     const aimPoint =
       base === SPRTEX.survivor_bow_draw && aim ? w2s(aim.x, aim.y) : null;
     const flip = aimPoint && aimPoint.x < p.x;
-    // ходьба: покачивание + наклон по кадру pose (2 кадра), стоя — ровно
+    // ходьба — «бумажная кукла»: половины ног в противофазе (скольжение +
+    // подъём стопы), торс поверх с bob и лёгким наклоном; фаза от дистанции
+    // (walkPh), поэтому бег чаще ходьбы; стоя — спрайт ровно, без покачиваний
     const mv = a.moving;
-    const bob = mv ? Math.sin(a.animT * 2.2) * 3 * zoom : 0;
-    const lean = mv ? (a.pose ? 0.06 : -0.06) : 0;
+    const ph = a.walkPh || 0;
+    const swing = mv ? Math.sin(ph) : 0;
+    const bob = mv ? -Math.abs(Math.cos(ph)) * 1.6 * zoom * scale : 0;
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
     if (flip) ctx.scale(-1, 1);
-    ctx.rotate(lean + (mv ? Math.sin(a.animT * 2.2) * 0.02 : 0));
-    ctx.drawImage(img, -w / 2, -h + bob, w, h);
+    if (mv) {
+      const legH = h * 0.42;
+      const stepX = 2.4 * zoom * scale;
+      const lift = 1.8 * zoom * scale;
+      // левая нога: на пике swing выносится вперёд и отрывается от земли
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-w / 2 - 1, -legH, w / 2 + 1, legH + 2);
+      ctx.clip();
+      ctx.translate(swing * stepX, -Math.max(0, swing) * lift);
+      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.restore();
+      // правая нога: противофаза
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, -legH, w / 2 + 1, legH + 2);
+      ctx.clip();
+      ctx.translate(-swing * stepX, -Math.max(0, -swing) * lift);
+      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.restore();
+      // торс поверх ног (перекрытие 3 px прячет шов), наклон по ходу
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-w / 2 - 1, -h - 4 * zoom, w + 2, h - legH + 3 * zoom);
+      ctx.clip();
+      ctx.translate(0, bob);
+      ctx.rotate(0.03 + swing * 0.012);
+      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, -w / 2, -h, w, h);
+    }
     // факел в руке игрока
     if (isPlayer && a.torch) {
       const fx = w * 0.32,

@@ -11,6 +11,10 @@ export function initActors(seed) {
   rng = mulberry32(seed);
 }
 
+// метров на полный цикл походки (два шага): фаза считается от дистанции,
+// поэтому бег мельтешит чаще ходьбы, а стояние на месте не анимируется
+export const STRIDE = 2.0;
+
 export function moveActor(city, a, dx, dy) {
   const lvl = a.level || 0;
   if (!solidRectAt(city, a.x + dx, a.y, a.r, null, lvl)) a.x += dx;
@@ -36,7 +40,13 @@ export function updatePlayer(
     const wx = ix + iy,
       wy = iy - ix;
     const n = Math.hypot(wx, wy);
+    const ox = player.x,
+      oy = player.y;
     moveActor(city, player, (wx / n) * sp, (wy / n) * sp);
+    // фаза шага от реальной дистанции: упёрся в стену — походка не мельтешит
+    const step = Math.hypot(player.x - ox, player.y - oy);
+    player.moving = step > 1e-4;
+    player.walkPh = (player.walkPh || 0) + (step / STRIDE) * Math.PI * 2;
     player.animT += dt * 7;
     player.pose = Math.floor(player.animT) % 2;
     onMove?.(sp, run);
@@ -60,6 +70,7 @@ export function spawnZombie(city, x, y, type = "walker") {
   z.dead = false;
   z.pose = 0;
   z.animT = rng() * 5;
+  z.walkPh = rng() * Math.PI * 2; // разнобой походки в стае
   z.tx = x;
   z.ty = y;
   z.retarget = 0;
@@ -168,14 +179,21 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
     const dx = tx - z.x,
       dy = ty - z.y,
       d = Math.hypot(dx, dy);
-    const moved = Math.hypot(z.x - (z.px ?? z.x), z.y - (z.py ?? z.y));
+    // moved — смещение ЗА ЭТОТ кадр (до/после moveActor): раньше сравнивалось
+    // с px/py конца прошлого кадра и всегда было 0 → зомби «скользили» без
+    // походки, а детектор застревания в зданиях срабатывал постоянно
+    let moved = 0;
     if (d > 0.3) {
+      const ox = z.x,
+        oy = z.y;
       moveActor(
         city,
         z,
         (dx / d) * t.speed * speedK * dt,
         (dy / d) * t.speed * speedK * dt,
       );
+      moved = Math.hypot(z.x - ox, z.y - oy);
+      z.walkPh = (z.walkPh || 0) + (moved / STRIDE) * Math.PI * 2;
       z.animT += dt * 4 * speedK;
       z.pose = Math.floor(z.animT) % 2;
       if (moved < 0.01 && zb) {
@@ -187,7 +205,5 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
       } else z.stuck = 0;
     }
     z.moving = d > 0.3 && moved > 0.001;
-    z.px = z.x;
-    z.py = z.y;
   }
 }
