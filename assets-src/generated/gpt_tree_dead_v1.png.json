@@ -1,0 +1,23 @@
+{
+  "id": "tree_dead",
+  "source": "GPT",
+  "prompt": "Isolated 2D isometric game sprite of a dead leafless tree with dark twisted branches, muted ash-grey palette, transparent RGBA background, no ground or shadow.",
+  "originalImport": "tmp/Грозное древо без листьев.png",
+  "createdAt": "2026-11-20T19:54:37.683902+00:00",
+  "sha256": "fce5d1a605591018082b0120fd4807f9185895e1b7697c75e58e90850199d126",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/tree_dead.png",
+  "runtimeSize": [
+    502,
+    768
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

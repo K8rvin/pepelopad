@@ -1,0 +1,24 @@
+{
+  "id": "win_broken",
+  "source": "GPT",
+  "prompt": "The same window broken for human passage: remove glass and inner mullions, leave a large genuinely transparent opening, edge shards, outer frame and sill.",
+  "originalImport": "tmp/Потрёпанная рама разбитого окна.png",
+  "createdAt": "2026-11-20T20:51:02.046450+00:00",
+  "sha256": "4cec0715f537c81e1d26f7aa4ad03f449c52ace9a439594bd8b213046aa144d8",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/win_broken.png",
+  "runtimeSize": [
+    186,
+    256
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "alignment": "aligned to win_intact outer frame"
+  }
+}

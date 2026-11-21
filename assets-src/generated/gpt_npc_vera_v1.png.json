@@ -1,0 +1,23 @@
+{
+  "id": "npc_vera",
+  "source": "GPT",
+  "prompt": "Full-body Vera, former teacher and shelter medic around 45, low bun, burgundy cardigan, medical satchel and plain armband, transparent RGBA.",
+  "originalImport": "tmp/Уставшая полевая медик с сумкой.png",
+  "createdAt": "2026-11-20T21:15:46.300524+00:00",
+  "sha256": "8e09bb7fd20f9c3177c2213b6be64d302574acd7ec6ccd0e07d66fff6fb1d86f",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/npc_vera.png",
+  "runtimeSize": [
+    165,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

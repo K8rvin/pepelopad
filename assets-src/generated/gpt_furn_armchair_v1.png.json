@@ -1,0 +1,23 @@
+{
+  "id": "furn_armchair",
+  "source": "GPT",
+  "prompt": "Single isometric worn olive-brown upholstered armchair with wooden feet, no person, blanket, pillow or room.",
+  "originalImport": "tmp/Потёртое оливковое кресло на прозрачном фоне.png",
+  "createdAt": "2026-11-20T21:58:27.682061+00:00",
+  "sha256": "22a192202002c55e252efd30a7ee7d942fc4ef856de138b24c916f140028a211",
+  "originalSize": [
+    1230,
+    1278
+  ],
+  "runtime": "public/assets/gen/furn_armchair.png",
+  "runtimeSize": [
+    467,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

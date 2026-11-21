@@ -83,7 +83,7 @@ describe("история «Маша»: биты, позиции, выборы", 
   });
 });
 
-describe("история в сейве v4", () => {
+describe("история в сейве v5", () => {
   beforeEach(() => mockStorage());
   const saveState = () => {
     const c = createCity(11, 3);

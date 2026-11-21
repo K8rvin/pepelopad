@@ -1,0 +1,23 @@
+{
+  "id": "furn_bathtub",
+  "source": "GPT",
+  "prompt": "Single isometric rectangular empty enamel bathtub with faucet, two handles and simple feet, no water, walls or floor.",
+  "originalImport": "tmp/Винтажная ванна с потёртой эмалью.png",
+  "createdAt": "2026-11-20T21:50:35.687623+00:00",
+  "sha256": "6a7629fd69d46b132e335e42daa7bc71e42b31d0dbba857cb57e9f295d919def",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/furn_bathtub.png",
+  "runtimeSize": [
+    512,
+    399
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

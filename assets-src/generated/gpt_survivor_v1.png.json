@@ -1,0 +1,23 @@
+{
+  "id": "survivor",
+  "source": "GPT",
+  "prompt": "Full-body neutral playable survivor in a grey-blue hooded jacket and dark jeans, empty hands, no weapons, quiver or backpack, transparent RGBA.",
+  "originalImport": "tmp/Постапокалиптический выживший в капюшоне.png",
+  "createdAt": "2026-11-20T21:11:41.651235+00:00",
+  "sha256": "7711bc5b21556a5c604dd056553456b84b1e27e97b56fadc8cb06fed21bcb10a",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/survivor.png",
+  "runtimeSize": [
+    178,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}
