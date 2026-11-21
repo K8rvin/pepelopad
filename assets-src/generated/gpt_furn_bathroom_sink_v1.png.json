@@ -1,0 +1,23 @@
+{
+  "id": "furn_bathroom_sink",
+  "source": "GPT",
+  "prompt": "Single isometric off-white porcelain bathroom pedestal sink with faucet and two handles, no mirror, walls or floor.",
+  "originalImport": "tmp/Старинная раковина с пьедесталом.png",
+  "createdAt": "2026-11-20T21:52:18.306337+00:00",
+  "sha256": "c3d96d1b29a01412faa74280d14dc3422b1f4cd15fa487a12ac8a7dd99a107ec",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/furn_bathroom_sink.png",
+  "runtimeSize": [
+    341,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

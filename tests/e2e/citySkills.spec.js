@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("навыки: панель P, XP от действий, рюкзак от Силы, сейв v4", async ({
+test("навыки: панель P, XP от действий, рюкзак от Силы, сейв v5", async ({
   page,
 }) => {
   const errors = [];
@@ -42,12 +42,12 @@ test("навыки: панель P, XP от действий, рюкзак от 
   expect(carry.str).toBeGreaterThan(2);
   expect(carry.slots).toBe(24 + Math.floor((carry.str - 2) / 2));
 
-  // сейв v4 переживает перезагрузку (без ?new=1)
+  // сейв v5 переживает перезагрузку (без ?new=1)
   await page.evaluate(() => window.__city.save());
   const v = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("pepelopad_city_v4")).v,
+    () => JSON.parse(localStorage.getItem("pepelopad_city_v5")).v,
   );
-  expect(v).toBe(4);
+  expect(v).toBe(5);
   await page.goto("/");
   await page.waitForFunction(() => window.__city?.skills);
   const after = await page.evaluate(() => ({

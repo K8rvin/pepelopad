@@ -1,0 +1,24 @@
+{
+  "id": "win_intact",
+  "source": "GPT",
+  "prompt": "A single intact frontal suburban window with weathered white wooden frame, six dark grey-blue panes in a 2 by 3 grid, a sill and no wall.",
+  "originalImport": "tmp/Старинное окно с шестью мутными стёклами.png",
+  "createdAt": "2026-11-20T20:24:23.850350+00:00",
+  "sha256": "c78a3a22593245210e016cce80ff9e81948d863e3d3a2a940a303912e9556b87",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/win_intact.png",
+  "runtimeSize": [
+    186,
+    256
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "alignment": "master"
+  }
+}

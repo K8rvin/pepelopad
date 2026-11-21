@@ -1,0 +1,23 @@
+{
+  "id": "furn_tv",
+  "source": "GPT",
+  "prompt": "Single isometric CRT television with blank dark screen and antenna on a low wooden stand, no logo, glow, cables or room.",
+  "originalImport": "tmp/Винтажный телевизор на деревянной тумбе.png",
+  "createdAt": "2026-11-20T22:00:45.618114+00:00",
+  "sha256": "b088063c1d19950e23c5a07f4fe465e0b8db41e73347accb09b1a4caa635dc06",
+  "originalSize": [
+    1232,
+    1277
+  ],
+  "runtime": "public/assets/gen/furn_tv.png",
+  "runtimeSize": [
+    359,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

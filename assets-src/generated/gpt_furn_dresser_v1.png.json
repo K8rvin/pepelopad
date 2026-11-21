@@ -1,0 +1,23 @@
+{
+  "id": "furn_dresser",
+  "source": "GPT",
+  "prompt": "Single isometric wide dark wooden four-drawer dresser with worn handles and empty top, no mirror, decorations or room.",
+  "originalImport": "tmp/Старинный деревянный комод с потертыми ручками.png",
+  "createdAt": "2026-11-20T21:56:30.142907+00:00",
+  "sha256": "f221112a0a1d121e523f0c23242a5188e0315341e3056898e66e38c768360327",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/furn_dresser.png",
+  "runtimeSize": [
+    512,
+    434
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "npc_masha",
+  "source": "GPT",
+  "prompt": "Full-body Masha, young exhausted but human survivor in ochre sweater with a bandaged bitten forearm, no zombie features, transparent RGBA.",
+  "originalImport": "tmp/Измождённая выжившая с перевязанной рукой.png",
+  "createdAt": "2026-11-20T21:33:38.420996+00:00",
+  "sha256": "65f19f8bd2980eb7bd9531cf3785d2c675e8cc894a6cd8217984b3db945a7909",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/npc_masha.png",
+  "runtimeSize": [
+    182,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

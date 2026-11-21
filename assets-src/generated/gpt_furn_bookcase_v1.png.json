@@ -1,0 +1,23 @@
+{
+  "id": "furn_bookcase",
+  "source": "GPT",
+  "prompt": "Single isometric tall dark wooden four-shelf bookcase with muted old books and empty space, no readable titles, ornaments or room.",
+  "originalImport": "tmp/Старинный книжный шкаф с потёртыми книгами.png",
+  "createdAt": "2026-11-20T22:03:00.928668+00:00",
+  "sha256": "c2fccfa5ef735c3113c0719fddc29617d062dac682949ac051ec99514558e870",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/furn_bookcase.png",
+  "runtimeSize": [
+    260,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 16
+  }
+}

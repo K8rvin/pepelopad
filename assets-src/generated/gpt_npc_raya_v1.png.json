@@ -1,0 +1,23 @@
+{
+  "id": "npc_raya",
+  "source": "GPT",
+  "prompt": "Full-body Raya, sturdy hospital orderly around 60, grey headscarf, teal scrubs and quilted vest, stern protective stance, transparent RGBA.",
+  "originalImport": "tmp/Бдительная медсестра-выжившая.png",
+  "createdAt": "2026-11-20T21:29:08.563561+00:00",
+  "sha256": "0248b3da820f71ff70859af90792ddf5c75db2f83fa084c41fb6e6e117aed8c7",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/npc_raya.png",
+  "runtimeSize": [
+    267,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

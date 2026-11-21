@@ -1,0 +1,23 @@
+{
+  "id": "survivor_bow_draw",
+  "source": "GPT",
+  "prompt": "The same survivor at full bow draw aiming right, left arm extended, right hand at cheek, full body and bow, no backpack or quiver, transparent RGBA.",
+  "originalImport": "tmp/Лучник в капюшоне с натянутым луком.png",
+  "createdAt": "2026-11-20T21:18:07.598048+00:00",
+  "sha256": "c488b712e962d0396a3ae1e375ad4b85395aed4cc8bb30f3f43164a5f8898547",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/survivor_bow_draw.png",
+  "runtimeSize": [
+    291,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24
+  }
+}

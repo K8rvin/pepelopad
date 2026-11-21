@@ -38,6 +38,20 @@ const LOOT_TABLES = {
     ["wood", 1, 2, 0.5],
     ["fuel", 1, 1, 0.2],
   ],
+  sink: [
+    ["can", 1, 2, 0.55],
+    ["cloth", 1, 2, 0.55],
+    ["meds", 1, 1, 0.2],
+  ],
+  nightstand: [
+    ["cloth", 1, 2, 0.55],
+    ["meds", 1, 1, 0.3],
+    ["part", 1, 1, 0.15],
+  ],
+  dresser: [
+    ["cloth", 1, 3, 0.8],
+    ["meds", 1, 1, 0.25],
+  ],
 };
 
 export const CONTAINER_NAMES = {
@@ -47,6 +61,9 @@ export const CONTAINER_NAMES = {
   wardrobe: "шкаф",
   shelf: "полка",
   crate: "ящик",
+  sink: "кухонная тумба",
+  nightstand: "прикроватная тумбочка",
+  dresser: "комод",
 };
 
 export function createLoot(city) {

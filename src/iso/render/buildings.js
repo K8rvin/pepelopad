@@ -363,7 +363,7 @@ function bakeBuilding(b, seedKey) {
             ? w2s(bx + u, by + b.h, fl * 3 + 0.9)
             : w2s(bx + b.w, by + u, fl * 3 + 0.9);
         if (SPRTEX.win_intact) {
-          // окно Gemini, наклонённое по стене; учитываем сдвиг канваса (-minX, -minY)
+          // Фронтальное окно наклоняется по стене; учитываем сдвиг канваса (-minX, -minY).
           g.save();
           g.setTransform(
             f.dx === 1 ? 1 : -1,
@@ -379,7 +379,21 @@ function bakeBuilding(b, seedKey) {
           g.drawImage(winDay, base.x - 15, base.y - 46 + 4);
         }
         if (h2(seedKey + fl, wi, 3) < 0.3) {
-          gl.drawImage(winLit, base.x - 15, base.y - 46 + 4);
+          if (SPRTEX.win_lit) {
+            gl.save();
+            gl.setTransform(
+              f.dx === 1 ? 1 : -1,
+              0.5,
+              0,
+              1,
+              base.x - minX - (f.dx === 1 ? 22 : 0),
+              base.y - minY,
+            );
+            gl.drawImage(SPRTEX.win_lit, 0, -48, 45, 48);
+            gl.restore();
+          } else {
+            gl.drawImage(winLit, base.x - 15, base.y - 46 + 4);
+          }
           gl.globalAlpha = 0.5;
           gl.drawImage(glowWarmWin, base.x - 45, base.y - 46);
           gl.globalAlpha = 1;
