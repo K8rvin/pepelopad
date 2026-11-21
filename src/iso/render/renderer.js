@@ -5,6 +5,7 @@ import { CH, getChunk, evictIfNeeded } from "./chunks.js";
 import { buildingSprite } from "./buildings.js";
 import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
+import { reconcileStreetDepths } from "./streetDepth.js";
 import {
   getInterior,
   wallWithGaps,
@@ -219,26 +220,43 @@ export function renderWorld({
       );
     }
   }
+  const streetEntries = [];
   for (const t of city.trees) {
     if (!vis(t.x, t.y, 70, 120)) continue;
-    push(t.x + t.y, 1, () => {
-      const p = w2s(t.x, t.y);
-      const key = t.dead ? "tree_dead" : t.v === 1 ? "tree_birch" : "tree";
-      const img = SPRTEX[key];
-      if (img) {
-        const h = (176 + t.v * 24) * zoom,
-          w = h * (img.width / img.height);
-        ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
-      } else {
-        ctx.drawImage(
-          t.dead ? SPR.deadTrees[t.v] : SPR.trees[t.v],
-          toX(p.x) - 64 * zoom,
-          toY(p.y) - 150 * zoom,
-          128 * zoom,
-          160 * zoom,
-        );
-      }
-      R.drawCalls++;
+    const p = w2s(t.x, t.y);
+    const key = t.dead ? "tree_dead" : t.v === 1 ? "tree_birch" : "tree";
+    const img = SPRTEX[key];
+    const h = img ? 176 + t.v * 24 : 160;
+    const w = img ? h * (img.width / img.height) : 128;
+    streetEntries.push({
+      base: t.x + t.y,
+      depth: actorDepth(city, t),
+      bounds: {
+        left: img ? p.x - w / 2 : p.x - 64,
+        top: img ? p.y - h : p.y - 150,
+        right: img ? p.x + w / 2 : p.x + 64,
+        bottom: img ? p.y : p.y + 10,
+      },
+      draw: () => {
+        if (img) {
+          ctx.drawImage(
+            img,
+            toX(p.x) - (w / 2) * zoom,
+            toY(p.y) - h * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        } else {
+          ctx.drawImage(
+            t.dead ? SPR.deadTrees[t.v] : SPR.trees[t.v],
+            toX(p.x) - 64 * zoom,
+            toY(p.y) - 150 * zoom,
+            128 * zoom,
+            160 * zoom,
+          );
+        }
+        R.drawCalls++;
+      },
     });
   }
   for (const l of city.lamps) {
@@ -257,24 +275,43 @@ export function renderWorld({
   }
   for (const bch of city.benches) {
     if (bch.dead || !vis(bch.x, bch.y, 45, 30)) continue;
-    push(actorDepth(city, bch), 1, () => {
-      const p = w2s(bch.x, bch.y);
-      const img = SPRTEX.bench;
-      if (img) {
-        const w = 66 * zoom,
-          h = w * (img.height / img.width);
-        ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
-      } else
-        ctx.drawImage(
-          SPR.bench,
-          toX(p.x) - 40 * zoom,
-          toY(p.y) - 40 * zoom,
-          80 * zoom,
-          48 * zoom,
-        );
-      R.drawCalls++;
+    const p = w2s(bch.x, bch.y);
+    const img = SPRTEX.bench;
+    const w = img ? 66 : 80;
+    const h = img ? w * (img.height / img.width) : 48;
+    streetEntries.push({
+      base: bch.x + bch.y,
+      depth: actorDepth(city, bch),
+      bounds: {
+        left: img ? p.x - w / 2 : p.x - 40,
+        top: img ? p.y - h : p.y - 40,
+        right: img ? p.x + w / 2 : p.x + 40,
+        bottom: img ? p.y : p.y + 8,
+      },
+      draw: () => {
+        if (img) {
+          ctx.drawImage(
+            img,
+            toX(p.x) - (w / 2) * zoom,
+            toY(p.y) - h * zoom,
+            w * zoom,
+            h * zoom,
+          );
+        } else {
+          ctx.drawImage(
+            SPR.bench,
+            toX(p.x) - 40 * zoom,
+            toY(p.y) - 40 * zoom,
+            80 * zoom,
+            48 * zoom,
+          );
+        }
+        R.drawCalls++;
+      },
     });
   }
+  for (const entry of reconcileStreetDepths(streetEntries))
+    push(entry.depth, 1, entry.draw, entry.base);
   for (const cn of city.containers) {
     if (cn.dead || !vis(cn.x, cn.y, 40, 35)) continue;
     // парный тест со зданиями: контейнер перед домом — на переднем плане
@@ -856,12 +893,11 @@ function drawBuilding(
       const bx = toX(base.x),
         by = toY(base.y);
       ctx.save();
-      ctx.translate(bx, by);
+      ctx.translate(bx - (face === "S" ? 22 * zoom : 0), by);
       ctx.transform(face === "S" ? 1 : -1, 0.5, 0, 1, 0, 0);
-      const wx = face === "S" ? -22 * zoom : 0;
       ctx.fillStyle = "#11181b";
-      ctx.fillRect(wx + 6 * zoom, -42 * zoom, 33 * zoom, 37 * zoom);
-      ctx.drawImage(SPRTEX.win_broken, wx, -48 * zoom, 45 * zoom, 48 * zoom);
+      ctx.fillRect(6 * zoom, -42 * zoom, 33 * zoom, 37 * zoom);
+      ctx.drawImage(SPRTEX.win_broken, 0, -48 * zoom, 45 * zoom, 48 * zoom);
       ctx.restore();
     }
   }
