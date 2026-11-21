@@ -8,9 +8,11 @@ test("лаборатория походки: G открывает вариант
   await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.peek);
 
+  // по умолчанию B («пружинка»), решение пользователя 21.11.2026
+  expect(await page.evaluate(() => window.__city.R.gait)).toBe("bob");
   await page.keyboard.press("KeyG");
   await expect(page.locator("#gaitlab")).toBeVisible();
-  expect(await page.locator("#gaitlab canvas").count()).toBe(5);
+  expect(await page.locator("#gaitlab canvas").count()).toBe(4);
   await page.waitForTimeout(400);
   await page.screenshot({ path: ".cache/gait_lab.png" });
 
