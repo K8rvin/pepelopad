@@ -27,6 +27,7 @@ export function createSkills() {
 export const NEUTRAL_MODS = {
   speedK: 1,
   bowDmgK: 1,
+  meleeDmgK: 1,
   spreadK: 1,
   chargeK: 1,
   hungerK: 1,
@@ -75,6 +76,7 @@ export function modifiers(S) {
       (1 + sk.athletics.speed * L("athletics")) *
       (1 + at.agility.speed * A("agility")),
     bowDmgK: 1 + sk.archery.dmg * L("archery"),
+    meleeDmgK: 1 + sk.melee.dmg * L("melee"),
     spreadK: Math.max(
       0.2,
       (1 - sk.archery.spread * L("archery")) *

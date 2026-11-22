@@ -19,6 +19,13 @@ export const SKILLS = {
     dmg: 0.04,
     spread: 0.05,
   },
+  melee: {
+    name: "Ближний бой",
+    icon: "🥊",
+    desc: "+5% урона в ближнем бою за уровень",
+    attrs: ["strength", "agility"],
+    dmg: 0.05,
+  },
   athletics: {
     name: "Атлетика",
     icon: "🏃",

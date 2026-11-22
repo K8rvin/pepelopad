@@ -1,6 +1,7 @@
 // DOM-интерфейс: рюкзак (действия по клику на ячейку), обыск, крафт, персонаж.
 // Отделён от игрового цикла.
 import { ITEMS } from "../data/items.js";
+import { MELEE_ITEMS } from "../data/weapons.js";
 import { RECIPES } from "../data/recipes.js";
 import { CONTAINER_NAMES } from "../systems/loot.js";
 import { iconHtml } from "../render/icons.js";
@@ -25,6 +26,7 @@ export function createUI({
   onTake,
   onTakeAll,
   onUse,
+  onEquip,
   onDrop,
   onCraft,
   canCraft,
@@ -83,6 +85,8 @@ export function createUI({
       );
     if (s.id === "torch")
       btns.push(`<button data-act="use">Зажечь / погасить</button>`);
+    if (MELEE_ITEMS.includes(s.id))
+      btns.push(`<button data-act="equip">Взять в руки</button>`);
     btns.push(`<button data-act="drop">Выбросить</button>`);
     return `<div class="ctxmenu" data-slot="${i}">${btns.join("")}</div>`;
   }
@@ -331,6 +335,7 @@ export function createUI({
           const s = inv.slots[i];
           if (s) {
             if (actBtn.dataset.act === "use") onUse?.(s.id);
+            if (actBtn.dataset.act === "equip") onEquip?.(s.id);
             if (actBtn.dataset.act === "drop") onDrop?.(i);
           }
           ctxSlot = -1;

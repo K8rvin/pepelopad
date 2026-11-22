@@ -26,6 +26,7 @@ const LOOT_TABLES = {
     ["cloth", 1, 3, 0.8],
     ["meds", 1, 1, 0.35],
     ["part", 1, 1, 0.2],
+    ["knife", 1, 1, 0.12],
   ],
   shelf: [
     ["wood", 1, 2, 0.6],
@@ -37,6 +38,7 @@ const LOOT_TABLES = {
     ["scrap", 1, 2, 0.6],
     ["wood", 1, 2, 0.5],
     ["fuel", 1, 1, 0.2],
+    ["bat", 1, 1, 0.1],
   ],
   sink: [
     ["can", 1, 2, 0.55],

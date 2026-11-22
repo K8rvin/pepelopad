@@ -896,6 +896,22 @@ export function renderWorld({
       ctx.stroke();
       R.drawCalls += 2;
     }
+    // замах ближнего боя: дуга перед игроком по курсу удара
+    if (combat.swingT > 0) {
+      const pp = w2s(player.x, player.y);
+      const px = toX(pp.x),
+        py = toY(pp.y) - 40 * zoom;
+      const k = combat.swingT / 0.22;
+      const ca = Math.cos(combat.swingAng),
+        sa = Math.sin(combat.swingAng);
+      const sang = Math.atan2((ca + sa) * 16, (ca - sa) * 32);
+      ctx.strokeStyle = `rgba(236,229,208,${0.75 * k})`;
+      ctx.lineWidth = 3 * zoom;
+      ctx.beginPath();
+      ctx.arc(px, py, 26 * zoom, sang - 0.9, sang + 0.9);
+      ctx.stroke();
+      R.drawCalls++;
+    }
   }
   // вспышка урона
   if (combat && combat.hurtFlash > 0) {

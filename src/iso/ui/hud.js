@@ -50,6 +50,7 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
       hb = `<span class="hb car">Авто · ${Math.abs(s.speed * 3.6).toFixed(0)} км/ч · ${s.fuel}</span>`;
     } else {
       hb =
+        `<span class="hb">${s.weapon ? `${s.weapon.icon} ${s.weapon.name}` : ""}</span>` +
         `<span class="hb"><b>Q</b>${iconHtml("can", 16)} ${s.cans}</span>` +
         `<span class="hb"><b>H</b>${iconHtml("meds", 16)} ${s.meds}</span>` +
         (s.torch

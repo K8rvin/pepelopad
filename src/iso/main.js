@@ -44,9 +44,11 @@ import {
   initCombat,
   updateCombat,
   releaseBow,
+  meleeAttack,
   respawn,
   screenToWorld,
 } from "./systems/combat.js";
+import { weaponDef, WEAPONS } from "./data/weapons.js";
 import {
   createInventory,
   addItem,
@@ -213,6 +215,7 @@ export async function boot() {
     pose: 0,
     animT: 0,
     level: 0,
+    weapon: "bow",
   };
   const spawn = { x: player.x, y: player.y };
   const cam = { x: player.x, y: player.y };
@@ -350,6 +353,7 @@ export async function boot() {
   combat.onKill = (source, z) => {
     questEvent("kill");
     if (source === "ram") skillXp("driving", 10);
+    else if (source === "melee") skillXp("melee", 15);
     else skillXp("archery", 15);
     audio.play("kill");
     if (z?.type === "boss") {
@@ -406,6 +410,17 @@ export async function boot() {
     ui.render();
   };
 
+  const equipWeapon = (id) => {
+    if (id !== "bow" && countItem(inv, id) < 1) {
+      toast(`Нет предмета: ${WEAPONS[id]?.name || id}`);
+      return;
+    }
+    player.weapon = id;
+    toast(`В руках: ${weaponDef(id).name}`);
+    audio.play("uiClick");
+    ui.render();
+  };
+
   const ui = createUI({
     getInventory: () => inv,
     getLootState: (c) => loot.opened.get(c.id),
@@ -435,6 +450,7 @@ export async function boot() {
       if ((loot.opened.get(c.id) || []).every((s) => !s)) ui.close();
     },
     onUse: (id) => useItem(id),
+    onEquip: (id) => equipWeapon(id),
     onDrop: (slotIndex) => {
       const s = inv.slots[slotIndex];
       if (s) {
@@ -586,6 +602,15 @@ export async function boot() {
   cv.addEventListener("mousedown", (e) => {
     audio.unlock();
     if (e.button === 0 && !combat.dead && !ui.isOpen() && !map.isOpen()) {
+      const w = weaponDef(player.weapon);
+      if (w.kind === "melee") {
+        const camS = w2s(cam.x, cam.y);
+        const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
+        const hits = meleeAttack(combat, player, aim, city, w, mods);
+        audio.play(hits > 0 ? "meleeHit" : "swing");
+        if (hits > 0) skillXp("melee", 6 * hits);
+        return;
+      }
       if (countItem(inv, "arrow") < 1) {
         // без стрел не натягиваем лук — комикс-облачко вместо анимации
         say(comic, player.x, player.y, "Нет стрел!", "alert", 1.4);
@@ -644,6 +669,9 @@ export async function boot() {
     if (e.code === "KeyR" && combat.dead) doRespawn();
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
+    if (e.code === "Digit1") equipWeapon("bow");
+    if (e.code === "Digit2") equipWeapon("bat");
+    if (e.code === "Digit3") equipWeapon("knife");
     if (e.code === "KeyM") {
       if (ui.isOpen()) ui.close();
       map.open();
@@ -1057,6 +1085,7 @@ export async function boot() {
       meds: countItem(inv, "meds"),
       camp: nc ? campDef(nc).name : null,
       noArrows: combat.noArrowsT > 0,
+      weapon: weaponDef(player.weapon),
     };
   }
   function renderPayload(aim, night, t) {

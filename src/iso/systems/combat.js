@@ -25,6 +25,9 @@ export function createCombat() {
     bowDrawing: false,
     releaseT: 0, // кадр отпускания тетивы после выстрела
     stuck: [], // {x, y, dx, dy, t, ttl} — воткнутые в мир стрелы
+    meleeCd: 0, // кулдаун ближнего удара
+    swingT: 0, // анимация замаха
+    swingAng: 0, // курсор удара (мировой угол)
     hurtFlash: 0,
     shake: 0,
     dead: false,
@@ -174,6 +177,8 @@ export function updateCombat(
   C.shake = Math.max(0, C.shake - dt * 18);
   C.noArrowsT = Math.max(0, (C.noArrowsT || 0) - dt);
   C.releaseT = Math.max(0, (C.releaseT || 0) - dt);
+  C.meleeCd = Math.max(0, (C.meleeCd || 0) - dt);
+  C.swingT = Math.max(0, (C.swingT || 0) - dt);
   for (const s of C.stuck) s.t += dt;
   C.stuck = C.stuck.filter((s) => s.t < s.ttl);
   for (const z of city.zombies)
@@ -284,6 +289,58 @@ export function releaseBow(C, player, aim, inv, city, mods = null) {
     }
   }
   return true;
+}
+
+// ближний удар дугой перед игроком (кулаки/бита/нож). Возвращает число задетых.
+// Шум привлекает зомби в радиусе weapon.noise; отброс зависит от типа зомби.
+export function meleeAttack(C, player, aim, city, weapon, mods = null) {
+  if (C.dead || C.meleeCd > 0) return 0;
+  C.meleeCd = weapon.cd;
+  C.swingT = 0.22;
+  const ang = Math.atan2(aim.y - player.y, aim.x - player.x);
+  C.swingAng = ang;
+  const lvl = player.level || 0;
+  let hits = 0;
+  for (const z of city.zombies) {
+    if (z.dead || (z.level || 0) !== lvl) continue;
+    const dx = z.x - player.x,
+      dy = z.y - player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > weapon.range + 0.35) continue;
+    let da = Math.abs(Math.atan2(dy, dx) - ang);
+    if (da > Math.PI) da = 2 * Math.PI - da;
+    if (da > 0.9) continue; // дуга ~±50°
+    const dmg = Math.round(weapon.dmg * (mods?.meleeDmgK ?? 1));
+    z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
+    const knock = weapon.knock * ZTYPES[z.type || "walker"].knock;
+    z.x += (dx / Math.max(d, 0.01)) * knock;
+    z.y += (dy / Math.max(d, 0.01)) * knock;
+    z.tx = player.x;
+    z.ty = player.y;
+    z.retarget = 0;
+    z.alertT = 6;
+    z.propagated = false;
+    C.blood.push({ x: z.x, y: z.y, r: 0.5 + rng() * 0.5, t: 0 });
+    hits++;
+    if (z.hp <= 0) {
+      z.dead = true;
+      C.kills++;
+      C.corpses.push({ x: z.x, y: z.y, t: 0, pose: rng() < 0.5 ? 0 : 1 });
+      C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
+      C.onKill?.("melee", z);
+    }
+  }
+  for (const z of city.zombies) {
+    if (z.dead) continue;
+    if (Math.hypot(z.x - player.x, z.y - player.y) < weapon.noise) {
+      z.tx = player.x;
+      z.ty = player.y;
+      z.retarget = 0;
+      z.alertT = 6;
+      z.propagated = false;
+    }
+  }
+  return hits;
 }
 
 export function respawn(C, player, spawnX, spawnY) {

@@ -83,7 +83,7 @@ function mockStorage() {
 }
 
 describe("прогрессия: XP и уровни", () => {
-  it("новая игра: 7 навыков ур. 0, 4 характеристики ур. 2", () => {
+  it("новая игра: 8 навыков ур. 0, 4 характеристики ур. 2", () => {
     const S = createSkills();
     expect(Object.keys(S.skills)).toEqual(Object.keys(SKILLS));
     expect(Object.keys(S.attrs)).toEqual(Object.keys(ATTRS));

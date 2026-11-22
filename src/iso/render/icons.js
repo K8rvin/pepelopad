@@ -157,6 +157,28 @@ const DRAW = {
     px(7, 4, 1, 2, C.flame);
     px(12, 3, 1, 2, C.flame);
   },
+  bat({ px }) {
+    // бита по диагонали: толстая колба сверху, тонкая рукоять снизу
+    px(9, 1, 5, 5, C.outline);
+    px(10, 2, 3, 3, C.wood);
+    px(10, 2, 3, 1, C.woodLight);
+    px(11, 4, 2, 1, C.woodDark);
+    for (let i = 0; i < 7; i++) px(8 - i, 6 + i, 2, 2, C.outline);
+    for (let i = 0; i < 7; i++) px(8 - i, 6 + i, 1, 1, C.wood);
+    px(2, 12, 2, 2, C.clothDark); // обмотка рукояти
+  },
+  knife({ px }) {
+    // клинок сверху-справа, рукоять снизу-слева
+    px(10, 1, 4, 4, C.outline);
+    px(11, 2, 2, 2, C.steel);
+    px(12, 2, 1, 1, C.metalLight);
+    for (let i = 0; i < 5; i++) px(9 - i, 5 + i, 2, 2, C.outline);
+    for (let i = 0; i < 5; i++) px(9 - i, 5 + i, 1, 1, C.steel);
+    px(8, 6, 2, 1, C.metalDark); // гарда
+    for (let i = 0; i < 4; i++) px(5 - i, 9 + i, 2, 2, C.outline);
+    for (let i = 0; i < 4; i++) px(5 - i, 9 + i, 1, 1, C.woodDark);
+    px(2, 12, 2, 2, C.wood);
+  },
 };
 
 let cache = null;

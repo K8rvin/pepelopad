@@ -18,4 +18,16 @@ export const RECIPES = [
     out: { id: "torch", n: 1 },
     inputs: { wood: 1, cloth: 1 },
   },
+  {
+    id: "bat",
+    name: "Бита",
+    out: { id: "bat", n: 1 },
+    inputs: { wood: 2, cloth: 1 },
+  },
+  {
+    id: "knife",
+    name: "Нож",
+    out: { id: "knife", n: 1 },
+    inputs: { scrap: 2, cloth: 1 },
+  },
 ];

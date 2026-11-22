@@ -101,6 +101,12 @@ export function createAudio() {
       tone({ f: 780, dur: 0.1, g: 0.14, at: 0.12 });
     },
     empty: () => tone({ f: 220, f2: 160, dur: 0.12, g: 0.12 }),
+    swing: () =>
+      noise({ dur: 0.12, g: 0.16, type: "bandpass", f: 700, f2: 1800, q: 1.5 }),
+    meleeHit: () => {
+      noise({ dur: 0.09, g: 0.4, f: 250 });
+      tone({ f: 140, f2: 70, type: "square", dur: 0.07, g: 0.25 });
+    },
     bowDraw: () =>
       noise({ dur: 0.5, g: 0.08, type: "bandpass", f: 300, f2: 900, q: 3 }),
     bowRelease: () => {

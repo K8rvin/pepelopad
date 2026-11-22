@@ -9,4 +9,6 @@ export const ITEMS = {
   fuel: { name: "Бензин (л)", stack: 20, icon: "⛽" },
   part: { name: "Деталь", stack: 10, icon: "🔩" },
   torch: { name: "Факел", stack: 5, icon: "🔥" },
+  bat: { name: "Бита", stack: 1, icon: "🏏" },
+  knife: { name: "Нож", stack: 1, icon: "🔪" },
 };

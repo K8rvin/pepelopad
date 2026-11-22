@@ -53,6 +53,7 @@ export function saveGame({
       level: player.level,
       torch: !!player.torch,
       torchT: player.torchT || 0,
+      weapon: player.weapon || "bow",
     },
     inv: inv.slots,
     opened: [...loot.opened.entries()],
@@ -193,6 +194,7 @@ export function applySave(
   player.level = data.player.level || 0;
   player.torch = !!data.player.torch;
   player.torchT = data.player.torchT || 0;
+  player.weapon = data.player.weapon || "bow";
   inv.slots = data.inv;
   inv.size = data.inv.length;
   loot.opened = new Map(data.opened);

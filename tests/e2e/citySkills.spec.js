@@ -8,12 +8,12 @@ test("навыки: панель P, XP от действий, рюкзак от 
   await page.goto("/?new=1");
   await page.waitForFunction(() => window.__city?.skills);
 
-  // панель персонажа: 4 характеристики + 7 навыков
+  // панель персонажа: 4 характеристики + 8 навыков
   await page.keyboard.press("KeyP");
   await expect(page.locator("#ui .panel.wide h3").first()).toHaveText(
     "Характеристики",
   );
-  await expect(page.locator("#ui .skill-row")).toHaveCount(11);
+  await expect(page.locator("#ui .skill-row")).toHaveCount(12);
   await page.keyboard.press("Escape");
   await expect(page.locator("#ui")).toBeHidden();
 
