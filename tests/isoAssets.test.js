@@ -10,6 +10,7 @@ const GPT_KEYS = [
   "win_lit",
   "survivor",
   "survivor_bow_draw",
+  "survivor_bow_release",
   "npc_oleg",
   "npc_vera",
   "npc_sanych",

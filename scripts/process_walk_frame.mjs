@@ -130,7 +130,7 @@ const meta = {
   createdAt: new Date(fs.statSync(SRC).mtime).toISOString(),
   sha256: crypto.createHash("sha256").update(fs.readFileSync(SRC_COPY)).digest("hex"),
   originalSize: result.walkStats.size,
-  runtime: "public/assets/gen/survivor_walk.png",
+  runtime: `public/assets/gen/${ID}.png`,
   runtimeSize: result.runtimeSize,
   processing: {
     alphaBelow4Removed: true,

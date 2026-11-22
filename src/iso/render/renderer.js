@@ -1181,7 +1181,13 @@ function drawComic(ctx, comic, toX, toY, zoom) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = alert ? "#a83a2a" : "#1a1712";
+    ctx.fillStyle = alert
+      ? "#a83a2a"
+      : b.kind === "heal"
+        ? "#3a8a3a"
+        : b.kind === "think"
+          ? "#5a5e50"
+          : "#1a1712";
     ctx.textAlign = "center";
     ctx.fillText(b.text, x, by + h / 2 + 4 * zoom);
     ctx.textAlign = "left";

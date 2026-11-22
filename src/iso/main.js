@@ -397,7 +397,10 @@ export async function boot() {
     if (msg) {
       toast(msg);
       audio.play(id === "meds" ? "bandage" : "eat");
-      if (id === "meds" && combat.playerHp > hpBefore) skillXp("medicine", 10);
+      if (id === "meds" && combat.playerHp > hpBefore) {
+        skillXp("medicine", 10);
+        say(comic, player.x, player.y, "+HP", "heal", 1.2);
+      }
       if (id === "can" && hungry) skillXp("survival", 5);
     }
     ui.render();
@@ -510,6 +513,7 @@ export async function boot() {
       if (campTarget && campService(campTarget, combat, survival.day)) {
         toast("Лазарет: перевязка +30 HP.");
         audio.play("bandage");
+        say(comic, player.x, player.y, "+HP", "heal", 1.2);
       }
     },
     getBase: () => base,
@@ -839,6 +843,7 @@ export async function boot() {
                     1.5 - 0.06 * skills.skills.scavenging.level,
                   ),
                 };
+                say(comic, c.x, c.y, "…", "think", search.dur + 0.4);
               }
             }
           }
@@ -1017,6 +1022,10 @@ export async function boot() {
     msE = 16,
     msLast = 0;
   let prevNight = null;
+  let prevNightSay = null;
+  let hungerSayT = 0;
+  let alertSayT = 0;
+  let wasChased = false;
 
   function mapState() {
     const poi = questTargetPoi(quests, QUESTS);
@@ -1105,6 +1114,11 @@ export async function boot() {
     if (audio.ready && night !== prevNight) {
       prevNight = night;
       audio.ambience(night ? "night" : "day");
+    }
+    if (night !== prevNightSay) {
+      prevNightSay = night;
+      if (night && !combat.dead)
+        say(comic, player.x, player.y, "Тихо…", "think", 2.2);
     }
     if (paused || menu.isOpen()) {
       const camS0 = w2s(cam.x, cam.y);
@@ -1215,6 +1229,26 @@ export async function boot() {
       audio.play("levelup");
     }
     updateComic(comic, dt);
+    // комикс-подсказки состояний: голод и тревога погони (с кулдауном)
+    hungerSayT -= dt;
+    alertSayT -= dt;
+    if (survival.hunger < 25 && !combat.dead && hungerSayT <= 0) {
+      say(comic, player.x, player.y, "Хочу есть…", "think", 2);
+      hungerSayT = 8;
+    }
+    const chased = city.zombies.some(
+      (z) =>
+        !z.dead &&
+        z.alertT > 0 &&
+        (z.level || 0) === (player.level || 0) &&
+        Math.hypot(z.x - player.x, z.y - player.y) < 12,
+    );
+    if (chased && !wasChased && alertSayT <= 0 && !combat.dead) {
+      say(comic, player.x, player.y, "Они идут!", "alert", 1.6);
+      audio.play("growl");
+      alertSayT = 8;
+    }
+    wasChased = chased;
     visitT -= dt;
     if (visitT <= 0) {
       visitT = 0.5;
