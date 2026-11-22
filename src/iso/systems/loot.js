@@ -145,6 +145,13 @@ export function containerItems(c, bonusChance = 0) {
   return items;
 }
 
+// есть ли в контейнере остаток лута (для бейджа): обысканный — по остатку,
+// нет — по детерминированной генерации. Пустые (в т.ч. исходно пустые) бейдж не носят.
+export function containerHasLoot(L, c, bonusChance = 0) {
+  if (L.opened.has(c.id)) return (L.opened.get(c.id) || []).some((s) => s);
+  return containerItems(c, bonusChance).some((s) => s);
+}
+
 // содержимое фиксируется при первом обыске и сохраняется
 export function openContainer(L, c, bonusChance = 0) {
   if (!L.opened.has(c.id)) L.opened.set(c.id, containerItems(c, bonusChance));

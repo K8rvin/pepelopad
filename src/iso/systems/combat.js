@@ -6,6 +6,7 @@ import { mulberry32 } from "../core/rng.js";
 import { countItem, removeItem } from "./inventory.js";
 import { ZTYPES } from "../data/zombies.js";
 import { solidInteriorAt } from "../world/interiors.js";
+import { moveActor } from "./actors.js";
 
 let rng = mulberry32(7);
 export function initCombat(seed) {
@@ -22,6 +23,8 @@ export function createCombat() {
     debris: [], // {x, y, vx, vy, t, col} — обломки снесённых объектов
     bowCharge: 0, // 0..1
     bowDrawing: false,
+    releaseT: 0, // кадр отпускания тетивы после выстрела
+    stuck: [], // {x, y, dx, dy, t, ttl} — воткнутые в мир стрелы
     hurtFlash: 0,
     shake: 0,
     dead: false,
@@ -30,6 +33,7 @@ export function createCombat() {
   };
 }
 
+export const FLIGHT_H = 0.9; // высота полёта стрелы, м (и прицеливания)
 const BOW_CHARGE_TIME = 0.8;
 const ARROW_SPEED = 35; // м/с
 const ARROW_RANGE = 26; // м
@@ -37,10 +41,11 @@ const ZOMBIE_HP = 70;
 const ZOMBIE_DMG = 9;
 const ZOMBIE_ATTACK_CD = 1.2;
 
-// цель в мировых координатах от мыши (inverse iso, земля z=0)
+// цель в мировых координатах от мыши: инверсия на высоте полёта стрелы,
+// а не на земле — иначе прицел в тело зомби систематически уводит стрелу вверх.
 export function screenToWorld(mx, my, camS, W, H, zoom) {
   const sx = (mx - W / 2) / zoom + camS.x;
-  const sy = (my - H / 2) / zoom + camS.y;
+  const sy = (my - H / 2) / zoom + camS.y + FLIGHT_H * 32;
   return { x: sx / 64 + sy / 32, y: sy / 32 - sx / 64 };
 }
 
@@ -80,6 +85,9 @@ export function updateCombat(
       // стрела летит свободно, пока не упёрлась в стену или мебель
       if (a.dist > ARROW_RANGE || solidInteriorAt(city, nx, ny, 0.05, level)) {
         a.alive = false;
+        // воткнулась в стену/предмет — остаётся торчать (не на излёте дистанции)
+        if (a.dist <= ARROW_RANGE)
+          C.stuck.push({ x: nx, y: ny, dx: a.dx, dy: a.dy, t: 0, ttl: 30 });
         break;
       }
       // попадание: отрезок стрелы (на высоте 0,9 м) против экранного силуэта
@@ -91,9 +99,9 @@ export function updateCombat(
         const zx = (z.x - z.y) * 32,
           zy = (z.x + z.y) * 16;
         const ax = (a.x - a.y) * 32,
-          ay = (a.x + a.y) * 16 - 28.8;
+          ay = (a.x + a.y) * 16 - FLIGHT_H * 32;
         const bx = (nx - ny) * 32,
-          by = (nx + ny) * 16 - 28.8;
+          by = (nx + ny) * 16 - FLIGHT_H * 32;
         if (
           segHitsRect(
             ax,
@@ -108,6 +116,15 @@ export function updateCombat(
         ) {
           a.alive = false;
           C.onHit?.();
+          // стрела остаётся в теле зомби (движется вместе с ним), временно
+          (z.arrows ||= []).push({
+            dx: a.dx,
+            dy: a.dy,
+            ox: nx - z.x,
+            oy: ny - z.y,
+            t: 0,
+            ttl: 8,
+          });
           hurtZombie(
             C,
             z,
@@ -142,16 +159,28 @@ export function updateCombat(
             C.deadT = 0;
           }
         }
-        // толкаем игрока слегка
+        // толкаем игрока слегка — только через коллизии, иначе вминает в перегородки
         const push = 0.4 * dt;
-        player.x += ((player.x - z.x) / Math.max(d, 0.01)) * push;
-        player.y += ((player.y - z.y) / Math.max(d, 0.01)) * push;
+        moveActor(
+          city,
+          player,
+          ((player.x - z.x) / Math.max(d, 0.01)) * push,
+          ((player.y - z.y) / Math.max(d, 0.01)) * push,
+        );
       }
     }
   // затухание эффектов
   C.hurtFlash = Math.max(0, C.hurtFlash - dt * 2.2);
   C.shake = Math.max(0, C.shake - dt * 18);
   C.noArrowsT = Math.max(0, (C.noArrowsT || 0) - dt);
+  C.releaseT = Math.max(0, (C.releaseT || 0) - dt);
+  for (const s of C.stuck) s.t += dt;
+  C.stuck = C.stuck.filter((s) => s.t < s.ttl);
+  for (const z of city.zombies)
+    if (z.arrows) {
+      for (const s of z.arrows) s.t += dt;
+      z.arrows = z.arrows.filter((s) => s.t < s.ttl);
+    }
   // кровь и трупы
   for (const b of C.blood) b.t += dt;
   C.blood = C.blood.filter((b) => b.t < 60);
@@ -232,15 +261,17 @@ export function releaseBow(C, player, aim, inv, city, mods = null) {
   const d = Math.hypot(dx, dy) || 1;
   const spread = (1 - C.bowCharge) * 0.12 * (mods?.spreadK ?? 1);
   const ang = Math.atan2(dy, dx) + (rng() - 0.5) * spread;
+  // вылет из лука: смещение от центра игрока к цели (а не из-под ног)
   C.arrows.push({
-    x: player.x,
-    y: player.y,
+    x: player.x + (dx / d) * 0.45,
+    y: player.y + (dy / d) * 0.45,
     dx: Math.cos(ang),
     dy: Math.sin(ang),
     dist: 0,
     alive: true,
   });
   C.bowCharge = 0;
+  C.releaseT = 0.2; // кадр отпускания тетивы
   // шум: зомби в 8 м слышат и идут
   for (const z of city.zombies) {
     if (z.dead) continue;

@@ -22,6 +22,8 @@ import { CAR_SHAPES } from "../data/carShapes.js";
 import { FURNITURE } from "../data/furniture.js";
 import { ZTYPES } from "../data/zombies.js";
 import { campDef } from "../systems/camps.js";
+import { containerHasLoot } from "../systems/loot.js";
+import { FLIGHT_H } from "../systems/combat.js";
 
 export function createRenderer() {
   return {
@@ -130,6 +132,8 @@ export function renderWorld({
   camps,
   base,
   levelFx,
+  comic,
+  questLootId,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -750,6 +754,29 @@ export function renderWorld({
         R.drawCalls += 3;
       });
     }
+    // воткнутые стрелы: в мире (стены/предметы) и в телах зомби
+    for (const s of combat.stuck) {
+      push(s.x + s.y + 0.01, 2, () =>
+        drawStuckArrow(ctx, s.x, s.y, s.dx, s.dy, FLIGHT_H, toX, toY, zoom),
+      );
+    }
+    for (const z of city.zombies) {
+      if (z.dead || !z.arrows) continue;
+      for (const s of z.arrows)
+        push(z.x + z.y + 0.03, 2, () =>
+          drawStuckArrow(
+            ctx,
+            z.x + s.ox,
+            z.y + s.oy,
+            s.dx,
+            s.dy,
+            0.8,
+            toX,
+            toY,
+            zoom,
+          ),
+        );
+    }
   }
 
   // золотые искры празднования уровня (поверх актёров, под ночью/пеплом)
@@ -780,7 +807,20 @@ export function renderWorld({
   for (const it of items) it.f();
 
   if (night) {
-    renderNight({ ctx, L, city, player, inside, toX, toY, zoom, W, H, camps });
+    renderNight({
+      ctx,
+      L,
+      city,
+      player,
+      inside,
+      toX,
+      toY,
+      zoom,
+      W,
+      H,
+      camps,
+      aim,
+    });
     R.drawCalls += 2;
   }
 
@@ -828,8 +868,8 @@ export function renderWorld({
   }
   // боевые оверлеи: прицел, дуга натяжения, вспышка урона, смерть
   if (combat && !combat.dead) {
-    // прицел в точке aim
-    const ap = w2s(aim.x, aim.y);
+    // прицел в точке aim (на высоте полёта стрелы — совпадает с курсором)
+    const ap = w2s(aim.x, aim.y, FLIGHT_H);
     const ax = toX(ap.x),
       ay = toY(ap.y);
     ctx.strokeStyle = "rgba(194,190,178,0.8)";
@@ -953,41 +993,90 @@ export function renderWorld({
   }
   // маркер цели квеста: пульс над зданием или стрелка у края
   if (questTarget) {
-    const p = w2s(
-      questTarget.x + questTarget.w / 2,
-      questTarget.y + questTarget.h / 2,
-      questTarget.floors * 3,
-    );
+    const bcx = questTarget.x + questTarget.w / 2,
+      bcy = questTarget.y + questTarget.h / 2;
+    const dist = Math.hypot(player.x - bcx, player.y - bcy);
+    const label = `${questTarget.poi || "Цель"} · ${Math.round(dist)} м`;
+    // подсветка здания, в которое нужно войти: пульс по контуру footprint
+    const pulse = 1 + Math.sin(now * 4) * 0.15;
+    const c1 = w2s(questTarget.x, questTarget.y),
+      c2 = w2s(questTarget.x + questTarget.w, questTarget.y),
+      c3 = w2s(questTarget.x + questTarget.w, questTarget.y + questTarget.h),
+      c4 = w2s(questTarget.x, questTarget.y + questTarget.h);
+    ctx.strokeStyle = `rgba(255,178,62,${0.5 + 0.3 * Math.sin(now * 4)})`;
+    ctx.lineWidth = 2.5 * zoom;
+    ctx.beginPath();
+    ctx.moveTo(toX(c1.x), toY(c1.y));
+    ctx.lineTo(toX(c2.x), toY(c2.y));
+    ctx.lineTo(toX(c3.x), toY(c3.y));
+    ctx.lineTo(toX(c4.x), toY(c4.y));
+    ctx.closePath();
+    ctx.stroke();
+    const p = w2s(bcx, bcy, questTarget.floors * 3);
     let dx = toX(p.x),
       dy = toY(p.y);
     const off = dx < 20 || dx > W - 20 || dy < 20 || dy > H - 20;
     if (off) {
-      // стрелка к цели от центра экрана
+      // стрелка к цели от центра экрана + подпись куда и сколько метров
       const cx = W / 2,
         cy = H / 2;
       const ang = Math.atan2(dy - cy, dx - cx);
-      dx = cx + Math.cos(ang) * (Math.min(W, H) / 2 - 50);
-      dy = cy + Math.sin(ang) * (Math.min(W, H) / 2 - 50);
+      dx = cx + Math.cos(ang) * (Math.min(W, H) / 2 - 60);
+      dy = cy + Math.sin(ang) * (Math.min(W, H) / 2 - 60);
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(ang);
       ctx.fillStyle = "#ffb23e";
       ctx.beginPath();
-      ctx.moveTo(14, 0);
-      ctx.lineTo(-6, -8);
-      ctx.lineTo(-6, 8);
+      ctx.moveTo(16, 0);
+      ctx.lineTo(-7, -9);
+      ctx.lineTo(-7, 9);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
+      ctx.font = `bold ${12 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(10,12,9,0.8)";
+      ctx.fillRect(dx - tw / 2 - 5, dy + 14, tw + 10, 18 * zoom);
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(label, dx, dy + 27 * zoom);
+      ctx.textAlign = "left";
     } else {
-      const pulse = 1 + Math.sin(now * 4) * 0.2;
       ctx.strokeStyle = "#ffb23e";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.ellipse(dx, dy, 14 * pulse * zoom, 7 * pulse * zoom, 0, 0, 7);
       ctx.stroke();
+      ctx.font = `bold ${12 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(label, dx, dy - 16 * zoom);
+      ctx.textAlign = "left";
     }
-    R.drawCalls++;
+    R.drawCalls += 3;
+  }
+  // вводный квест: внутри здания подсвечиваем контейнеры с лутом под текущую цель
+  if (questLootId && inside && loot) {
+    const arr = loot.interior.get(inside.id);
+    if (arr)
+      for (const c of arr) {
+        if (!containerHasLoot(loot, c)) continue;
+        const p = w2s(c.x, c.y);
+        const dx = toX(p.x),
+          dy = toY(p.y);
+        const pr = 1 + Math.sin(now * 5) * 0.25;
+        ctx.strokeStyle = "rgba(255,178,62,0.85)";
+        ctx.lineWidth = 2 * zoom;
+        ctx.beginPath();
+        ctx.ellipse(dx, dy - 20 * zoom, 12 * pr * zoom, 6 * pr * zoom, 0, 0, 7);
+        ctx.stroke();
+        R.drawCalls++;
+      }
+  }
+  // комикс-облачка и всплывающая добыча (поверх ночи — читаемы в темноте)
+  if (comic) {
+    drawComic(ctx, comic, toX, toY, zoom);
   }
   // экран смерти — DOM-оверлей (#death, ui/hud.js); канвас только затемняет
   if (combat && combat.dead) {
@@ -997,6 +1086,107 @@ export function renderWorld({
     R.drawCalls++;
   }
   return inside;
+}
+
+// воткнутая стрела: остриё в точке попадания, древко торчит назад по курсу
+function drawStuckArrow(ctx, wx, wy, dx, dy, h, toX, toY, zoom) {
+  const p = w2s(wx, wy, h);
+  const x = toX(p.x),
+    y = toY(p.y);
+  const vx = (dx - dy) * 32,
+    vy = (dx + dy) * 16;
+  const vl = Math.hypot(vx, vy) || 1;
+  const ux = vx / vl,
+    uy = vy / vl;
+  const px = -uy,
+    py = ux;
+  const L = 12 * zoom;
+  ctx.strokeStyle = "#c9b98f";
+  ctx.lineWidth = 1.5 * zoom;
+  ctx.beginPath();
+  ctx.moveTo(x - ux * L, y - uy * L);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.strokeStyle = "#e0d8c0";
+  ctx.lineWidth = 1.1 * zoom;
+  ctx.beginPath();
+  ctx.moveTo(x - ux * L, y - uy * L);
+  ctx.lineTo(
+    x - ux * L + ux * 3 * zoom + px * 2.2 * zoom,
+    y - uy * L + uy * 3 * zoom + py * 2.2 * zoom,
+  );
+  ctx.moveTo(x - ux * L, y - uy * L);
+  ctx.lineTo(
+    x - ux * L + ux * 3 * zoom - px * 2.2 * zoom,
+    y - uy * L + uy * 3 * zoom - py * 2.2 * zoom,
+  );
+  ctx.stroke();
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// комикс-слой: всплывающая добыча «+N» и облачка-реплики над миром
+function drawComic(ctx, comic, toX, toY, zoom) {
+  for (const f of comic.floats) {
+    if (f.t < 0) continue;
+    const p = w2s(f.x, f.y, 1.2);
+    const k = f.t / f.ttl;
+    const x = toX(p.x),
+      y = toY(p.y) - k * 46 * zoom;
+    const a = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.font = `bold ${13 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText(f.text, x + 1, y + 1);
+    ctx.fillStyle = "#a6e83c";
+    ctx.fillText(f.text, x, y);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+  }
+  for (const b of comic.bubbles) {
+    const p = w2s(b.x, b.y, 2.3);
+    const x = toX(p.x),
+      y = toY(p.y);
+    const k = b.t / b.ttl;
+    const a = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
+    const pop = Math.min(1, b.t / 0.12);
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.font = `bold ${13 * zoom}px monospace`;
+    const tw = ctx.measureText(b.text).width;
+    const w = (tw + 18 * zoom) * pop,
+      h = 24 * zoom * pop;
+    const bx = x - w / 2,
+      by = y - h;
+    const alert = b.kind === "alert";
+    const fill = alert ? "#ffe9e0" : "#f4f0e6";
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = "#1a1712";
+    ctx.lineWidth = 2 * zoom;
+    roundRectPath(ctx, bx, by, w, h, 6 * zoom);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 4 * zoom, by + h - 1);
+    ctx.lineTo(x, by + h + 7 * zoom);
+    ctx.lineTo(x + 4 * zoom, by + h - 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = alert ? "#a83a2a" : "#1a1712";
+    ctx.textAlign = "center";
+    ctx.fillText(b.text, x, by + h / 2 + 4 * zoom);
+    ctx.textAlign = "left";
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawBuilding(
@@ -1350,7 +1540,7 @@ function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
     const cont = it.containers.find(
       (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
     );
-    if (cont && loot && !loot.opened.has(cont.id)) {
+    if (cont && loot && containerHasLoot(loot, cont)) {
       ctx.fillStyle = "#ffb23e";
       ctx.beginPath();
       ctx.arc(dx, dy - hgt - 8 * zoom, 3.5 * zoom, 0, 7);
@@ -1444,15 +1634,10 @@ function drawFurniture(ctx, b, toX, toY, zoom, player, loot) {
     const isContainer = it.containers.some(
       (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
     );
-    if (
-      isContainer &&
-      loot &&
-      !loot.opened.has(
-        it.containers.find(
-          (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
-        )?.id,
-      )
-    ) {
+    const badgeCont = it.containers.find(
+      (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
+    );
+    if (isContainer && loot && badgeCont && containerHasLoot(loot, badgeCont)) {
       ctx.fillStyle = "#ffb23e";
       ctx.beginPath();
       ctx.arc(dx, dy - hgt - 8 * zoom, 3.5 * zoom, 0, 7);
@@ -1607,14 +1792,19 @@ function drawActor(
   ctx.beginPath();
   ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom * scale, 6 * zoom * scale, 0, 0, 7);
   ctx.fill();
-  const bowSprite = isPlayer && combat?.bowDrawing && SPRTEX.survivor_bow_draw;
+  // кадр отпускания тетивы briefly после выстрела, затем натяжение/стойка
+  const bowSprite =
+    isPlayer &&
+    ((combat?.releaseT > 0 && SPRTEX.survivor_bow_release) ||
+      (combat?.bowDrawing && SPRTEX.survivor_bow_draw));
   const base = bowSprite || SPRTEX[isPlayer ? "survivor" : "zombie"];
   const img = base && zt?.tint ? tintedZombie(base, zt.tint) : base;
   if (img) {
-    const h = (base === SPRTEX.survivor_bow_draw ? 96 : 78) * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
+    const isBow =
+      base === SPRTEX.survivor_bow_draw || base === SPRTEX.survivor_bow_release;
+    const h = (isBow ? 96 : 78) * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
     const w = h * (img.width / img.height);
-    const aimPoint =
-      base === SPRTEX.survivor_bow_draw && aim ? w2s(aim.x, aim.y) : null;
+    const aimPoint = isBow && aim ? w2s(aim.x, aim.y) : null;
     // профильные покадровые варианты смотрят по курсу движения, а не по прицелу
     const profile = gait === "frames" || gait === "standstep";
     const flip = aimPoint

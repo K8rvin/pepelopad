@@ -1,0 +1,26 @@
+{
+  "id": "survivor_bow_release",
+  "source": "GPT",
+  "prompt": "Тот же персонаж, что на референсе survivor.png и survivor_bow_draw.png, тот же ракурс/масштаб/освещение; момент отпускания тетивы: струна прямая, кисть правой руки раскрыта у лица, лук в вытянутой левой руке; полный рост, прозрачный RGBA, ступни на базовой линии референса.",
+  "originalImport": "tmp/Постапокалиптический лучник с луком.png",
+  "createdAt": "2026-11-22T09:04:00.582Z",
+  "sha256": "53cdd1057c50370f99ecf32ba83cf178ebf22090e44fdb93266145d4c2ec4cd7",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/survivor_walk.png",
+  "runtimeSize": [
+    287,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 512,
+    "pipeline": "scripts/process_walk_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Кадр отпускания тетивы после выстрела (струна прямая, кисть раскрыта); показывается кратко по combat.releaseT, якорь ступней и масштаб как у survivor_bow_draw."
+}

@@ -38,6 +38,7 @@ export function renderNight({
   W,
   H,
   camps,
+  aim,
 }) {
   const s = 0.5; // half-res
   const g = L.lightCtx;
@@ -68,6 +69,29 @@ export function renderNight({
     440 * zoom * s,
     220 * zoom * s,
   );
+  // конус взгляда: ночью свет тянется в сторону прицела/взгляда персонажа
+  if (aim) {
+    const ap = w2s(aim.x, aim.y);
+    const ox = toX(pp.x) * s,
+      oy = (toY(pp.y) - 40 * zoom) * s;
+    const ang = Math.atan2(toY(ap.y) - toY(pp.y), toX(ap.x) - toX(pp.x));
+    const len = 240 * zoom * s,
+      wid = 62 * zoom * s;
+    g.save();
+    g.translate(ox, oy);
+    g.rotate(ang);
+    const grad = g.createLinearGradient(0, 0, len, 0);
+    grad.addColorStop(0, "rgba(255,255,255,0.5)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(len, -wid);
+    g.lineTo(len, wid);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
   // факел в руке игрока освещает округу тёплым
   if (player.torch)
     g.drawImage(

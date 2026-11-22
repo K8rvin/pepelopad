@@ -2,6 +2,7 @@
 // баннеров и мировые искры. Рендер только читает sparks; DOM обновляется здесь
 // один раз при старте баннера. Звук и баннер запускает main по событию старта.
 import { SKILLS, ATTRS } from "../data/skills.js";
+import { ITEMS } from "../data/items.js";
 import { mulberry32 } from "../core/rng.js";
 
 export const LEVELUP_DUR = 2.6;
@@ -75,5 +76,23 @@ export function showLevelUpBanner(ev) {
     `</div>`;
   el.classList.remove("show");
   void el.offsetWidth; // перезапуск CSS-анимации
+  el.classList.add("show");
+}
+
+// завершение квеста — тот же праздничный баннер, что и повышение уровня
+export function showQuestBanner(q) {
+  const el = document.getElementById("levelup");
+  if (!el) return;
+  const reward = (q.reward || [])
+    .map(([id, n]) => `${ITEMS[id]?.name || id} ×${n}`)
+    .join(", ");
+  el.innerHTML =
+    `<div class="lu-card quest">` +
+    `<div class="lu-kind">ЗАДАНИЕ ВЫПОЛНЕНО</div>` +
+    `<div class="lu-name">${q.name}</div>` +
+    `<div class="lu-desc">Награда: ${reward}</div>` +
+    `</div>`;
+  el.classList.remove("show");
+  void el.offsetWidth;
   el.classList.add("show");
 }

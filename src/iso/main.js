@@ -69,7 +69,9 @@ import {
   pushLevelUp,
   updateLevelUp,
   showLevelUpBanner,
+  showQuestBanner,
 } from "./ui/levelup.js";
+import { createComic, say, lootFloat, updateComic } from "./ui/comic.js";
 import { createGaitLab, toggleGaitLab, renderGaitLab } from "./ui/gaitlab.js";
 import { createHud } from "./ui/hud.js";
 import { createMap } from "./ui/map.js";
@@ -90,6 +92,7 @@ import {
   createQuests,
   mainQuest,
   goalText,
+  goalDone,
   qEvent,
   questTargetPoi,
   poiBuilding,
@@ -256,6 +259,8 @@ export async function boot() {
   const stats = createStats();
   const levelFx = createLevelUp();
   const gaitLab = createGaitLab();
+  const comic = createComic();
+  let lootOpen = null; // {c, taken:{id:n}} — сессия обыска для фидбека при закрытии
 
   // слой презентации: настройки, звук, HUD, карта, меню
   const settings = loadSettings(localStorage);
@@ -338,7 +343,7 @@ export async function boot() {
     const done = qEvent(quests, QUESTS, type, data);
     if (done) {
       for (const [id, n] of done.reward) addItem(inv, id, n);
-      toast(`Квест выполнен: «${done.name}»! Награда получена.`);
+      showQuestBanner(done);
       audio.play("quest");
     }
   };
@@ -358,7 +363,10 @@ export async function boot() {
     skillXp("archery", 6);
     audio.play("hit");
   };
-  combat.onHurt = () => audio.play("hurt");
+  combat.onHurt = () => {
+    audio.play("hurt");
+    say(comic, player.x, player.y, "Ай!", "alert", 0.9);
+  };
   combat.onKnock = () => audio.play("knock");
   combat.onCarHit = () => audio.play("carHit");
 
@@ -407,6 +415,7 @@ export async function boot() {
         skillXp("scavenging", took);
         stats.itemsLooted += took;
         audio.play("pickup");
+        if (lootOpen) lootOpen.taken[id] = (lootOpen.taken[id] || 0) + took;
       }
       if ((loot.opened.get(c.id) || []).every((s) => !s)) ui.close();
     },
@@ -417,6 +426,7 @@ export async function boot() {
         questEvent("loot", { id, n: took });
         skillXp("scavenging", took);
         stats.itemsLooted += took;
+        if (lootOpen) lootOpen.taken[id] = (lootOpen.taken[id] || 0) + took;
       }
       audio.play("pickup");
       if ((loot.opened.get(c.id) || []).every((s) => !s)) ui.close();
@@ -439,7 +449,21 @@ export async function boot() {
       }
     },
     canCraft: (r) => canCraft(inv, r),
-    onClose: () => {},
+    onClose: () => {
+      // закрыл обыск — всплывающие «+N предмет» над контейнером и звук лутания
+      if (lootOpen) {
+        const items = Object.entries(lootOpen.taken).map(([id, n]) => ({
+          id,
+          n,
+          name: ITEMS[id]?.name || id,
+        }));
+        if (items.length) {
+          lootFloat(comic, lootOpen.c.x, lootOpen.c.y, items);
+          audio.play("loot");
+        }
+        lootOpen = null;
+      }
+    },
     getSkills: () => skills,
     getMods: () => mods,
     onTrunkTake: (i) => {
@@ -548,7 +572,7 @@ export async function boot() {
     doSave();
   }
 
-  let zoom = 1;
+  let zoom = 2; // старт в приближенном виде (по playtest пользователя)
   const mouse = { x: 0, y: 0 };
   cv.addEventListener("mousemove", (e) => {
     const r = cv.getBoundingClientRect();
@@ -558,6 +582,12 @@ export async function boot() {
   cv.addEventListener("mousedown", (e) => {
     audio.unlock();
     if (e.button === 0 && !combat.dead && !ui.isOpen() && !map.isOpen()) {
+      if (countItem(inv, "arrow") < 1) {
+        // без стрел не натягиваем лук — комикс-облачко вместо анимации
+        say(comic, player.x, player.y, "Нет стрел!", "alert", 1.4);
+        audio.play("empty");
+        return;
+      }
       combat.bowDrawing = true;
       audio.play("bowDraw");
     }
@@ -859,6 +889,7 @@ export async function boot() {
     menu.showTitle(true);
   });
   const pZoom = document.getElementById("pZoom");
+  pZoom.textContent = "Зум: ×" + zoom;
   pZoom.addEventListener("click", () => {
     zoom = zoom === 1 ? 2 : 1;
     pZoom.textContent = "Зум: ×" + zoom;
@@ -923,6 +954,8 @@ export async function boot() {
     map,
     menu,
     settings,
+    comic,
+    say: (text, kind) => say(comic, player.x, player.y, text, kind),
     die: () => {
       combat.playerHp = 0;
       combat.dead = true;
@@ -1051,6 +1084,15 @@ export async function boot() {
       camps,
       base,
       levelFx,
+      comic,
+      questLootId: (() => {
+        const q = mainQuest(quests, QUESTS);
+        if (!q) return null;
+        const g = q.goals.find(
+          (g) => g.type === "loot" && !goalDone(g, quests.prog),
+        );
+        return g ? g.id : null;
+      })(),
     };
   }
 
@@ -1098,6 +1140,7 @@ export async function boot() {
           search = null;
           openContainer(loot, c, mods.lootBonus);
           skillXp("scavenging", 6);
+          lootOpen = { c, taken: {} };
           ui.openLoot(c);
           audio.play("uiOpen");
         }
@@ -1128,7 +1171,7 @@ export async function boot() {
     if (survival.tod >= 21 && survival.tod < 21.1) {
       const n = baseRaid(base, city, survival.day);
       if (n > 0) {
-        toast(`Рейд на базу: ${n} зомби!`);
+        toast(`Рейд на базу: ${n} зомби!`, true);
         audio.play("raid");
       }
     }
@@ -1136,7 +1179,7 @@ export async function boot() {
       const p = survival.pendingBoss;
       survival.pendingBoss = null;
       spawnZombie(city, p.x, p.y, "boss");
-      toast("Матка пришла к больнице. Она зовёт подкрепление...");
+      toast("Матка пришла к больнице. Она зовёт подкрепление...", true);
       audio.play("boss");
     }
     updateZombies(
@@ -1171,6 +1214,7 @@ export async function boot() {
       showLevelUpBanner(luStarted);
       audio.play("levelup");
     }
+    updateComic(comic, dt);
     visitT -= dt;
     if (visitT <= 0) {
       visitT = 0.5;

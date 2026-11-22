@@ -42,6 +42,7 @@ export const SPRITE_FILES = {
   win_lit: "assets/gen/win_lit.png",
   door_entry: "assets/gen/door_entry.png",
   survivor_bow_draw: "assets/gen/survivor_bow_draw.png",
+  survivor_bow_release: "assets/gen/survivor_bow_release.png",
   survivor_walk: "assets/gen/survivor_walk.png",
   survivor_walk_front: "assets/gen/survivor_walk_front.png",
   survivor_walk_back: "assets/gen/survivor_walk_back.png",

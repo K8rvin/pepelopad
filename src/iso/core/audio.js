@@ -94,6 +94,13 @@ export function createAudio() {
       tone({ f: 420, dur: 0.07, g: 0.1, at: 0.04 });
     },
     pickup: () => tone({ f: 880, f2: 1240, dur: 0.07, g: 0.16 }),
+    loot: () => {
+      // закрытие контейнера с добычей: мягкий стук + короткий подъём
+      noise({ dur: 0.08, g: 0.2, f: 300 });
+      tone({ f: 520, dur: 0.07, g: 0.14, at: 0.05 });
+      tone({ f: 780, dur: 0.1, g: 0.14, at: 0.12 });
+    },
+    empty: () => tone({ f: 220, f2: 160, dur: 0.12, g: 0.12 }),
     bowDraw: () =>
       noise({ dur: 0.5, g: 0.08, type: "bandpass", f: 300, f2: 900, q: 3 }),
     bowRelease: () => {

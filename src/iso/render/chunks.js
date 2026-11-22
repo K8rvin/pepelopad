@@ -42,10 +42,11 @@ export function bakeChunk(city, groundSet, cx, cy, lite = false) {
     const o = local(0, 0);
     g.setTransform(32, 16, -32, 16, o.x, o.y);
     // рисуем ТОЛЬКО нужный срез 32×32 px композита
-    const period = 32; // композит 1024px на 32 м = 32 px/м
+    const ppm = 64; // px/м: зерно текстуры мельче (композит 1024px на 16 м)
+    const period = 1024 / ppm;
     const u0 = ((tx % period) + period) % period,
       v0 = ((ty % period) + period) % period;
-    g.drawImage(img, u0 * 32, v0 * 32, 32, 32, tx, ty, 1, 1);
+    g.drawImage(img, u0 * ppm, v0 * ppm, ppm, ppm, tx, ty, 1, 1);
     g.restore();
     return true;
   };

@@ -64,9 +64,9 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     }
   }
 
-  function toast(msg) {
+  function toast(msg, big = false) {
     const el = document.createElement("div");
-    el.className = "toast";
+    el.className = "toast" + (big ? " big" : "");
     el.textContent = msg;
     toastsRoot.appendChild(el);
     while (toastsRoot.children.length > 4) toastsRoot.firstChild.remove();
