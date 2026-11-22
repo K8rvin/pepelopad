@@ -1788,7 +1788,8 @@ function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
   const alpha = c.t > 3 ? Math.max(0, 1 - (c.t - 3) / 3) : 1;
   ctx.save();
   ctx.globalAlpha = alpha;
-  const fall = SPRTEX.zombie_fall;
+  const fall =
+    (c.type === "runner" ? SPRTEX.runner_fall : null) || SPRTEX.zombie_fall;
   if (fall) {
     // в рост живого кадра (78) и зеркало по курсу зомби на момент смерти
     const h = 78 * zoom * (c.scale || 1),
@@ -1845,7 +1846,9 @@ function drawActor(
     isPlayer &&
     ((combat?.releaseT > 0 && SPRTEX.survivor_bow_release) ||
       (combat?.bowDrawing && SPRTEX.survivor_bow_draw));
-  // покадровая анимация ходока: урон > атака > шаг > стойка
+  // покадровая анимация: у бегуна собственный набор, остальные используют ходока
+  const zKind =
+    !isPlayer && a.type === "runner" && SPRTEX.runner ? "runner" : "zombie";
   const zState = !isPlayer
     ? a.hurtT > 0
       ? "hurt"
@@ -1855,9 +1858,16 @@ function drawActor(
           ? "walk"
           : null
     : null;
-  const zSprite = zState ? SPRTEX["zombie_" + zState] : null;
-  const base = bowSprite || zSprite || SPRTEX[isPlayer ? "survivor" : "zombie"];
-  const img = base && zt?.tint ? tintedZombie(base, zt.tint) : base;
+  const zSprite = zState
+    ? SPRTEX[zKind + "_" + zState] || SPRTEX["zombie_" + zState]
+    : null;
+  const base =
+    bowSprite ||
+    zSprite ||
+    SPRTEX[isPlayer ? "survivor" : zKind] ||
+    SPRTEX.zombie;
+  const img =
+    base && zt?.tint && zKind === "zombie" ? tintedZombie(base, zt.tint) : base;
   if (img) {
     const isBow =
       base === SPRTEX.survivor_bow_draw || base === SPRTEX.survivor_bow_release;

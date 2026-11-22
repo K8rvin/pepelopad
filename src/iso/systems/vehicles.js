@@ -214,6 +214,7 @@ export function updateVehicle(
           y: z.y,
           t: 0,
           pose: 1,
+          type: z.type || "walker",
           face: z.face || 1,
           scale: ZTYPES[z.type || "walker"].scale,
         });

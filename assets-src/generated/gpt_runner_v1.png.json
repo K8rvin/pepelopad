@@ -1,0 +1,24 @@
+{
+  "id": "runner",
+  "source": "GPT",
+  "prompt": "Бегун №13: худощавый зомби в спортивной куртке с номером 13, стойка с наклоном вперёд, мрачный европейский комикс, RGBA.",
+  "originalImport": "tmp/Мрачный зомби-бегун в форме 13.png",
+  "createdAt": "2026-11-22T19:56:45.237Z",
+  "sha256": "bd747c591a969b74e7a67bc3125bdfe95328e749ee51a7ea12b0daabed3d604a",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/runner.png",
+  "runtimeSize": [
+    1237,
+    1547
+  ],
+  "processing": {
+    "pipeline": "scripts/process_runner_frames.mjs",
+    "commonScale": 1,
+    "anchor": "feet baseline + horizontal center of runner.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
+}

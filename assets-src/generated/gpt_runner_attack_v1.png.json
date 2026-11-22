@@ -1,0 +1,24 @@
+{
+  "id": "runner_attack",
+  "source": "GPT",
+  "prompt": "Тот же Бегун №13, короткий рывок вперёд с вытянутой рукой, мрачный европейский комикс, RGBA.",
+  "originalImport": "tmp/Агрессивный зомби-спринтер с номером 13.png",
+  "createdAt": "2026-11-22T20:00:23.073Z",
+  "sha256": "0039fbd51ef6c243d65cf121632c3d283dc4ddd56c85acc766f7e6f464140265",
+  "originalSize": [
+    1230,
+    1278
+  ],
+  "runtime": "public/assets/gen/runner_attack.png",
+  "runtimeSize": [
+    1237,
+    1547
+  ],
+  "processing": {
+    "pipeline": "scripts/process_runner_frames.mjs",
+    "commonScale": 1.0128,
+    "anchor": "feet baseline + horizontal center of runner.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
+}

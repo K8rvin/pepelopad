@@ -1,0 +1,24 @@
+{
+  "id": "runner_walk",
+  "source": "GPT",
+  "prompt": "Тот же Бегун №13, быстрый бег в профиль вправо, руки и ноги в противофазе, мрачный европейский комикс, RGBA.",
+  "originalImport": "tmp/Зомби-бегун в форме номер 13.png",
+  "createdAt": "2026-11-22T19:58:25.675Z",
+  "sha256": "d41c7a0f47601a4dfd2c0d6f188ba607b22f52faeef673c7dc3f88525ccedafd",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/runner_walk.png",
+  "runtimeSize": [
+    1237,
+    1547
+  ],
+  "processing": {
+    "pipeline": "scripts/process_runner_frames.mjs",
+    "commonScale": 1.0128,
+    "anchor": "feet baseline + horizontal center of runner.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
+}

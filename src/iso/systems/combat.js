@@ -19,7 +19,7 @@ export function createCombat() {
     playerMaxHp: 100,
     arrows: [], // {x, y, dx, dy, dist, alive}
     blood: [], // {x, y, r, t}
-    corpses: [], // {x, y, t, pose}
+    corpses: [], // {x, y, t, pose, type, face, scale}
     debris: [], // {x, y, vx, vy, t, col} — обломки снесённых объектов
     bowCharge: 0, // 0..1
     bowDrawing: false,
@@ -234,7 +234,15 @@ function hurtZombie(C, z, dmg, arrow) {
   if (z.hp <= 0) {
     z.dead = true;
     C.kills++;
-    C.corpses.push({ x: z.x, y: z.y, t: 0, pose: rng() < 0.5 ? 0 : 1 });
+    C.corpses.push({
+      x: z.x,
+      y: z.y,
+      t: 0,
+      pose: rng() < 0.5 ? 0 : 1,
+      type: z.type || "walker",
+      face: z.face || 1,
+      scale: ZTYPES[z.type || "walker"].scale,
+    });
     C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
     C.onKill?.("arrow", z);
   }
@@ -350,6 +358,7 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
         y: z.y,
         t: 0,
         pose: rng() < 0.5 ? 0 : 1,
+        type: z.type || "walker",
         face: z.face || 1,
         scale: ZTYPES[z.type || "walker"].scale,
       });

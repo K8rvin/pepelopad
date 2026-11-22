@@ -1,0 +1,24 @@
+{
+  "id": "runner_fall",
+  "source": "GPT",
+  "prompt": "Тот же Бегун №13, потеря равновесия и падение набок, мрачный европейский комикс, RGBA.",
+  "originalImport": "tmp/Падающий зомби-бегун с номером 13.png",
+  "createdAt": "2026-11-22T20:02:33.755Z",
+  "sha256": "99b926820e3d64d872ae295327bc29bafdba5f0e23d1eec48731701588e86067",
+  "originalSize": [
+    1234,
+    1274
+  ],
+  "runtime": "public/assets/gen/runner_fall.png",
+  "runtimeSize": [
+    1237,
+    1547
+  ],
+  "processing": {
+    "pipeline": "scripts/process_runner_frames.mjs",
+    "commonScale": 1.0128,
+    "anchor": "feet baseline + horizontal center of runner.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
+}

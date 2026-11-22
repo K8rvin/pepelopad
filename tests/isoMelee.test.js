@@ -53,11 +53,16 @@ describe("ближний удар", () => {
     const C = createCombat();
     let src = null;
     C.onKill = (s) => (src = s);
-    const c = city([z(1.2, 0, 10)]);
+    const c = city([{ ...z(1.2, 0, 10), type: "runner", face: -1 }]);
     meleeAttack(C, { x: 0, y: 0, level: 0 }, { x: 2, y: 0 }, c, WEAPONS.bat);
     expect(c.zombies[0].dead).toBe(true);
     expect(C.kills).toBe(1);
     expect(src).toBe("melee");
+    expect(C.corpses[0]).toMatchObject({
+      type: "runner",
+      face: -1,
+      scale: 0.92,
+    });
   });
   it("не бьёт позади (дуга)", () => {
     const C = createCombat();

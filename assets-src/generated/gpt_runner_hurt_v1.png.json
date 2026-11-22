@@ -1,0 +1,24 @@
+{
+  "id": "runner_hurt",
+  "source": "GPT",
+  "prompt": "Тот же Бегун №13, отклонение корпуса назад от бокового импульса, мрачный европейский комикс, RGBA.",
+  "originalImport": "tmp/Зомби в куртке с номером 13.png",
+  "createdAt": "2026-11-22T20:01:32.729Z",
+  "sha256": "3843db617e65afc56685ea3c587f365087ced2dbccac17173871f3f2ef91bf82",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/runner_hurt.png",
+  "runtimeSize": [
+    1237,
+    1547
+  ],
+  "processing": {
+    "pipeline": "scripts/process_runner_frames.mjs",
+    "commonScale": 1.0128,
+    "anchor": "feet baseline + horizontal center of runner.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
+}
