@@ -150,23 +150,11 @@ export function updateCombat(
       const d = Math.hypot(z.x - player.x, z.y - player.y);
       if (d < 0.7) {
         z.attackCd = (z.attackCd || 0) - dt;
-        if (z.attackCd <= 0) {
-          z.attackCd = ZOMBIE_ATTACK_CD;
-          z.attackT = 0.3; // кадр атаки/укуса
-          C.playerHp -= ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
-          C.hurtFlash = 1;
-          C.shake = 6;
-          C.onHurt?.();
-          // укус может заразить: лихорадка точит HP, пока не снимешь бинтом
-          if (!player.infected && rng() < 0.3) {
-            player.infected = true;
-            C.onInfect?.();
-          }
-          if (C.playerHp <= 0) {
-            C.playerHp = 0;
-            C.dead = true;
-            C.deadT = 0;
-          }
+        // телеграф: замах (анимация удара) начинается раньше урона — игрок успевает отойти
+        if (z.attackCd <= 0 && !z.winding) {
+          z.winding = true;
+          z.hitDelay = 0.45;
+          z.attackT = 0.45;
         }
         // толкаем игрока слегка — только через коллизии, иначе вминает в перегородки
         const push = 0.4 * dt;
@@ -176,6 +164,30 @@ export function updateCombat(
           ((player.x - z.x) / Math.max(d, 0.01)) * push,
           ((player.y - z.y) / Math.max(d, 0.01)) * push,
         );
+      }
+      // замах завершился: урон, только если игрок не увернулся (остался в радиусе)
+      if (z.winding) {
+        z.hitDelay -= dt;
+        if (z.hitDelay <= 0) {
+          z.winding = false;
+          z.attackCd = ZOMBIE_ATTACK_CD;
+          if (d < 0.9) {
+            C.playerHp -=
+              ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
+            C.hurtFlash = 1;
+            C.shake = 6;
+            C.onHurt?.();
+            if (!player.infected && rng() < 0.3) {
+              player.infected = true;
+              C.onInfect?.();
+            }
+            if (C.playerHp <= 0) {
+              C.playerHp = 0;
+              C.dead = true;
+              C.deadT = 0;
+            }
+          }
+        }
       }
     }
   // затухание эффектов
@@ -333,7 +345,14 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
     if (z.hp <= 0) {
       z.dead = true;
       C.kills++;
-      C.corpses.push({ x: z.x, y: z.y, t: 0, pose: rng() < 0.5 ? 0 : 1 });
+      C.corpses.push({
+        x: z.x,
+        y: z.y,
+        t: 0,
+        pose: rng() < 0.5 ? 0 : 1,
+        face: z.face || 1,
+        scale: ZTYPES[z.type || "walker"].scale,
+      });
       C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
       C.onKill?.("melee", z);
     }

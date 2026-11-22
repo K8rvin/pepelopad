@@ -46,9 +46,11 @@ export function createUI({
   onBaseTake,
   onBasePut,
   getJournal,
+  onOpenMap,
 }) {
   const root = document.getElementById("ui");
-  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk' | 'camp' | 'base' | 'journal'
+  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk' | 'camp' | 'base' | 'journal' | 'help'
+  let lastTab = "inv"; // TAB помнит последнюю вкладку
   let lootTarget = null;
   let trunkCar = null;
   let campTarget = null;
@@ -262,9 +264,45 @@ export function createUI({
     return `<div class="panel wide journal">${journalHtml(getJournal())}</div>`;
   }
 
+  const TABS = [
+    ["inv", "Рюкзак"],
+    ["map", "Карта"],
+    ["journal", "Журнал"],
+    ["help", "Справка"],
+  ];
+  function tabBar(active) {
+    return `<div class="tabbar">${TABS.map(
+      ([k, n]) =>
+        `<button data-tab="${k}" class="${k === active ? "sel" : ""}">${n}</button>`,
+    ).join("")}</div>`;
+  }
+  function helpPanel() {
+    return `<div class="panel wide"><h3>Справка</h3>
+      <div class="menu-controls" style="display:block">
+        WASD — движение / руль · Shift — бег (стамина) · ЛКМ — лук / ближний удар<br>
+        E — обыск / сесть / лестница / диалог · в окне лута E — взять верхнюю вещь<br>
+        Space — взять всё (в окне лута) · I — рюкзак · C — крафт · P — персонаж<br>
+        TAB — панель с вкладками · M — карта · J — журнал · Q — еда · H — бинт (снимает инфекцию)<br>
+        T — багажник · F — заправить · Y — ремонт машины деталью · V — база<br>
+        B — разбить окно · X — спуск с этажа · 1/2/3 — лук/бита/нож · R — возрождение · Esc — пауза
+      </div>
+      <div class="hint">Ставки: голод на нуле и инфекция точат HP; спринт тратит стамину; укус может заразить.</div>
+    </div>`;
+  }
+  function openTab(t) {
+    if (t === "map") {
+      onOpenMap?.();
+      return;
+    }
+    lastTab = t;
+    mode = t;
+    ctxSlot = -1;
+    render();
+  }
+
   function render() {
     if (!mode) return;
-    root.innerHTML =
+    let html =
       mode === "inv"
         ? invPanel()
         : mode === "craft"
@@ -279,8 +317,18 @@ export function createUI({
                   ? basePanel()
                   : mode === "journal"
                     ? journalPanel()
-                    : lootPanel();
+                    : mode === "help"
+                      ? helpPanel()
+                      : lootPanel();
+    if (mode === "inv" || mode === "journal" || mode === "help")
+      html = `<div class="tabwrap">${tabBar(mode)}${html}</div>`;
+    root.innerHTML = html;
     root.style.display = "flex";
+    root
+      .querySelectorAll("button[data-tab]")
+      .forEach((b) =>
+        b.addEventListener("click", () => openTab(b.dataset.tab)),
+      );
     if (mode === "base") {
       root.querySelectorAll("button[data-base]").forEach((btn) =>
         btn.addEventListener("click", () => {
@@ -373,7 +421,26 @@ export function createUI({
     render,
     openInventory() {
       mode = "inv";
+      lastTab = "inv";
       ctxSlot = -1;
+      render();
+    },
+    openTabLast() {
+      openTab(lastTab);
+    },
+    isLoot() {
+      return mode === "loot";
+    },
+    quickTake() {
+      if (mode !== "loot" || !lootTarget) return;
+      const items = getLootState(lootTarget) || [];
+      const i = items.findIndex((s) => s);
+      if (i >= 0) onTake(lootTarget, i);
+      render();
+    },
+    quickAll() {
+      if (mode !== "loot" || !lootTarget) return;
+      onTakeAll(lootTarget);
       render();
     },
     openLoot(c) {
@@ -411,6 +478,7 @@ export function createUI({
     },
     openJournal() {
       mode = "journal";
+      lastTab = "journal";
       ctxSlot = -1;
       render();
     },

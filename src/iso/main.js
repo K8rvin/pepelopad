@@ -75,7 +75,6 @@ import {
   showQuestBanner,
 } from "./ui/levelup.js";
 import { createComic, say, lootFloat, updateComic } from "./ui/comic.js";
-import { createGaitLab, toggleGaitLab, renderGaitLab } from "./ui/gaitlab.js";
 import { createHud } from "./ui/hud.js";
 import { createMap } from "./ui/map.js";
 import { createMenu } from "./ui/menu.js";
@@ -265,7 +264,6 @@ export async function boot() {
   const story = createStory();
   const stats = createStats();
   const levelFx = createLevelUp();
-  const gaitLab = createGaitLab();
   const comic = createComic();
   let lootOpen = null; // {c, taken:{id:n}} — сессия обыска для фидбека при закрытии
 
@@ -571,6 +569,7 @@ export async function boot() {
       audio.play("pickup");
     },
     getJournal: () => ({ quests, story, stats, survival, combat }),
+    onOpenMap: () => map.open(),
   });
 
   const doSave = () =>
@@ -675,7 +674,6 @@ export async function boot() {
     if (e.code === "KeyN")
       survival.tod = darknessFor(survival.tod) > 0.4 ? 7 : 20.9;
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
-    if (e.code === "KeyG") toggleGaitLab(gaitLab, R);
     if (e.code === "KeyR" && combat.dead) doRespawn();
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
@@ -796,7 +794,7 @@ export async function boot() {
         audio.play("uiOpen");
       }
     }
-    if (e.code === "KeyI" || e.code === "Tab") {
+    if (e.code === "KeyI") {
       e.preventDefault();
       if (ui.isOpen()) ui.close();
       else {
@@ -804,8 +802,28 @@ export async function boot() {
         audio.play("uiOpen");
       }
     }
+    // TAB — единая панель с вкладками (помнит последнюю)
+    if (e.code === "Tab") {
+      e.preventDefault();
+      if (ui.isOpen()) ui.close();
+      else {
+        ui.openTabLast();
+        audio.play("uiOpen");
+      }
+    }
+    // быстрый лут в открытом окне: Space — взять всё
+    if (e.code === "Space" && ui.isLoot()) {
+      e.preventDefault();
+      ui.quickAll();
+      return;
+    }
     if (e.code === "KeyE") {
       if (search) return;
+      // быстрый лут: E — взять верхнюю вещь
+      if (ui.isLoot()) {
+        ui.quickTake();
+        return;
+      }
       if (ui.isOpen()) {
         ui.close();
         audio.play("uiClose");
@@ -1372,7 +1390,6 @@ export async function boot() {
     cam.x += (player.x - cam.x) * Math.min(1, dt * 6);
     cam.y += (player.y - cam.y) * Math.min(1, dt * 6);
     renderWorld(renderPayload(aim, night, t));
-    if (gaitLab.open) renderGaitLab(gaitLab, R, SPR, t / 1000);
     for (const a of ashP) {
       a.x -= (3 + a.layer * 5) * dt * (1 + 0.3 * Math.sin(t / 900 + a.p));
       a.y += (9 + a.layer * 7) * dt;

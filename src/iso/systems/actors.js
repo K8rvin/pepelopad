@@ -69,7 +69,9 @@ export function updatePlayer(
             ? "down"
             : "up";
     }
-    player.walkPh = (player.walkPh || 0) + (step / STRIDE) * Math.PI * 2;
+    // кламп приращения фазы: скачок dt (запечка чанка) не должен мельтешить кадры
+    player.walkPh =
+      (player.walkPh || 0) + (Math.min(step, 0.1) / STRIDE) * Math.PI * 2;
     player.animT += dt * 7;
     player.pose = Math.floor(player.animT) % 2;
     onMove?.(sp, run);
@@ -234,7 +236,8 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
               ? "down"
               : "up";
       }
-      z.walkPh = (z.walkPh || 0) + (moved / STRIDE) * Math.PI * 2;
+      z.walkPh =
+        (z.walkPh || 0) + (Math.min(moved, 0.1) / STRIDE) * Math.PI * 2;
       z.animT += dt * 4 * speedK;
       z.pose = Math.floor(z.animT) % 2;
       if (moved < 0.01 && zb) {

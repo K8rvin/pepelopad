@@ -139,7 +139,9 @@ describe("Матка: призыв и живучесть", () => {
     const C = createCombat();
     const player = { x: 10.3, y: 10, r: 0.35 };
     brute.attackCd = 0;
-    updateCombat(C, city, player, { x: 0, y: 0 }, 0.05, 0, false);
+    // телеграф: замах ~0.45 с, урон после него (игрок остаётся в радиусе)
+    for (let i = 0; i < 12; i++)
+      updateCombat(C, city, player, { x: 0, y: 0 }, 0.05, 0, false);
     expect(C.playerHp).toBeLessThanOrEqual(100 - ZTYPES.brute.dmg);
     // отброс громилы мал
     initCombat(9);

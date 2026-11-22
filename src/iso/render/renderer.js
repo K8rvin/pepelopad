@@ -1125,6 +1125,20 @@ function drawStuckArrow(ctx, wx, wy, dx, dy, h, toX, toY, zoom) {
   ctx.moveTo(x - ux * L, y - uy * L);
   ctx.lineTo(x, y);
   ctx.stroke();
+  // наконечник в точке воткнутия, смотрит по курсу полёта (в тело/стену)
+  ctx.fillStyle = "#8f8a7c";
+  ctx.beginPath();
+  ctx.moveTo(x + ux * 3 * zoom, y + uy * 3 * zoom);
+  ctx.lineTo(
+    x - ux * 2 * zoom + px * 2 * zoom,
+    y - uy * 2 * zoom + py * 2 * zoom,
+  );
+  ctx.lineTo(
+    x - ux * 2 * zoom - px * 2 * zoom,
+    y - uy * 2 * zoom - py * 2 * zoom,
+  );
+  ctx.closePath();
+  ctx.fill();
   ctx.strokeStyle = "#e0d8c0";
   ctx.lineWidth = 1.1 * zoom;
   ctx.beginPath();
@@ -1776,9 +1790,12 @@ function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
   ctx.globalAlpha = alpha;
   const fall = SPRTEX.zombie_fall;
   if (fall) {
-    const h = 62 * zoom,
+    // в рост живого кадра (78) и зеркало по курсу зомби на момент смерти
+    const h = 78 * zoom * (c.scale || 1),
       w = h * (fall.width / fall.height);
-    ctx.drawImage(fall, toX(p.x) - w / 2, toY(p.y) - h * 0.55, w, h);
+    ctx.translate(toX(p.x), toY(p.y));
+    if ((c.face || 1) < 0) ctx.scale(-1, 1);
+    ctx.drawImage(fall, -w / 2, -h * 0.62, w, h);
   } else {
     ctx.translate(toX(p.x), toY(p.y));
     ctx.rotate(c.pose ? 1.45 : -1.45); // на бок

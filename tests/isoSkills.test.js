@@ -381,10 +381,26 @@ describe("выживание: модификаторы прогрессии", ()
     addItem(inv, "can", 1);
     addItem(inv, "meds", 1);
     const rm = (id, n) => removeItem(inv, id, n);
-    const msgCan = useConsumable(S, combat, inv, "can", rm, {}, { foodBonus: 10 });
+    const msgCan = useConsumable(
+      S,
+      combat,
+      inv,
+      "can",
+      rm,
+      {},
+      { foodBonus: 10 },
+    );
     expect(S.hunger).toBe(100); // 50 + 40 + 10
     expect(msgCan).toContain("+50");
-    const msgMeds = useConsumable(S, combat, inv, "meds", rm, {}, { healBonus: 9 });
+    const msgMeds = useConsumable(
+      S,
+      combat,
+      inv,
+      "meds",
+      rm,
+      {},
+      { healBonus: 9 },
+    );
     expect(combat.playerHp).toBe(89); // 50 + 30 + 9
     expect(msgMeds).toContain("+39");
   });

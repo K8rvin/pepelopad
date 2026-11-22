@@ -9,6 +9,7 @@ import {
   carCenter,
   CAR_LEN,
 } from "../world/cityGen.js";
+import { ZTYPES } from "../data/zombies.js";
 
 const ACCEL = 9; // м/с²
 const MAX_SPEED = 22; // ~80 км/ч
@@ -208,7 +209,14 @@ export function updateVehicle(
       if (z.hp <= 0) {
         z.dead = true;
         combat.kills++;
-        combat.corpses.push({ x: z.x, y: z.y, t: 0, pose: 1 });
+        combat.corpses.push({
+          x: z.x,
+          y: z.y,
+          t: 0,
+          pose: 1,
+          face: z.face || 1,
+          scale: ZTYPES[z.type || "walker"].scale,
+        });
         combat.onKill?.("ram", z);
       }
       car.hp = Math.max(0, car.hp - 1.5);

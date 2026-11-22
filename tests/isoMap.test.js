@@ -19,11 +19,11 @@ describe("проекция карты", () => {
     );
     expect(v.cx).toBe(0);
     expect(v.cy).toBe(1458);
-    expect(v.scale).toBe(4);
+    expect(v.scale).toBe(0.3);
     const v2 = clampView(
-      { cx: 10, cy: 10, scale: 0.001, w: 400, h: 300 },
+      { cx: 10, cy: 10, scale: 0.0001, w: 400, h: 300 },
       1458,
     );
-    expect(v2.scale).toBe(0.04);
+    expect(v2.scale).toBe(0.002);
   });
 });
