@@ -28,8 +28,7 @@ export const TEX_FILES = {
 // Gemini не дали равномерной сетки курсов (этап 18), атласы больше не грузятся.
 
 export const SPRITE_FILES = {
-  // tree (тополь): Gemini-версия удалена (белые карманы внутри кроны),
-  // процедурный fallback до GPT-замены; ключ вернётся с новым ассетом
+  tree: "assets/gen/tree_poplar.png", // GPT-замена Gemini-тополя (без белых карманов)
   tree_dead: "assets/gen/tree_dead.png",
   tree_birch: "assets/gen/tree_birch.png",
   zombie: "assets/gen/zombie.png",

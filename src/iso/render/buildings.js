@@ -383,14 +383,11 @@ function bakeBuilding(b, seedKey) {
   // дверь на южной грани
   const dp = w2s(bx + b.doorU, by + b.h, 0);
   if (SPRTEX.door_entry) {
+    // дверь крупнее; рама и ступень уже в ассете — экранные полоски не рисуем
     g.save();
-    g.setTransform(1, 0.5, 0, 1, dp.x - minX - 17, dp.y - minY + 4);
-    g.drawImage(SPRTEX.door_entry, 0, -72, 34, 72);
+    g.setTransform(1, 0.5, 0, 1, dp.x - minX - 22, dp.y - minY + 4);
+    g.drawImage(SPRTEX.door_entry, 0, -92, 44, 92);
     g.restore();
-    g.fillStyle = "#ffb45c";
-    g.fillRect(dp.x - 13, dp.y - 74, 26, 3); // козырёк-лампа
-    g.fillStyle = "#6f6650";
-    g.fillRect(dp.x - 20, dp.y + 2, 40, 4); // ступень
   } else {
     g.fillStyle = "#241d14";
     g.fillRect(dp.x - 16, dp.y - 68, 32, 68);

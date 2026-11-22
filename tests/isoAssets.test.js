@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SPRITE_FILES } from "../src/iso/render/assets.js";
 
 const GPT_KEYS = [
+  "tree",
   "tree_dead",
   "tree_birch",
   "win_intact",

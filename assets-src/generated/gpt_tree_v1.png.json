@@ -1,0 +1,26 @@
+{
+  "id": "tree",
+  "source": "GPT",
+  "prompt": "Isolated 2D isometric game sprite of a tall poplar in a dead suburb, dark cracked bark, sparse dusty-olive foliage, whole tree from trunk base to crown, transparent RGBA, alpha=0 background and between leaves, no white fringe or pockets, no ground/shadow/text.",
+  "originalImport": "tmp/Одинокий раскидистый тополь на прозрачном фоне.png",
+  "createdAt": "2026-11-22T10:38:51.839Z",
+  "sha256": "f00f9e7b55403bc781868e39849a32bc80566d2a8d8067b9bc3169f4d12d9537",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/tree_poplar.png",
+  "runtimeSize": [
+    290,
+    768
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 768,
+    "pipeline": "scripts/process_tree_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Замена Gemini-тополя с белыми карманами внутри кроны; якорь низ-центр ствола, высота 768 как у tree_dead/tree_birch."
+}
