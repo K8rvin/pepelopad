@@ -158,6 +158,7 @@ export function updateVehicle(
     car.hp = Math.max(0, car.hp - 2);
     car.v *= 0.8;
     combat.shake = Math.max(combat.shake, 4);
+    combat.onKnock?.();
     const ox = hit.x + hit.w / 2,
       oy = hit.y + hit.h / 2;
     combat.debris = combat.debris || [];
@@ -184,6 +185,7 @@ export function updateVehicle(
     if (Math.abs(car.v) > 6) {
       car.hp = Math.max(0, car.hp - Math.abs(car.v));
       combat.shake = 8;
+      combat.onCarHit?.();
     }
     // отскок только на скорости; на касании — просто стоп, чтобы не дёргаться
     car.v = Math.abs(car.v) > 1 ? -car.v * 0.25 : 0;

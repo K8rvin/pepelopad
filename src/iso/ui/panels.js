@@ -3,6 +3,8 @@
 import { ITEMS } from "../data/items.js";
 import { RECIPES } from "../data/recipes.js";
 import { CONTAINER_NAMES } from "../systems/loot.js";
+import { iconHtml } from "../render/icons.js";
+import { journalHtml } from "./journal.js";
 import {
   SKILLS,
   ATTRS,
@@ -41,9 +43,10 @@ export function createUI({
   onBaseBuild,
   onBaseTake,
   onBasePut,
+  getJournal,
 }) {
   const root = document.getElementById("ui");
-  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk' | 'camp' | 'base'
+  let mode = null; // null | 'inv' | 'loot' | 'craft' | 'char' | 'trunk' | 'camp' | 'base' | 'journal'
   let lootTarget = null;
   let trunkCar = null;
   let campTarget = null;
@@ -88,7 +91,7 @@ export function createUI({
     const sel = ctxSlot === i ? " sel" : "";
     if (!s) return `<div class="slot"></div>`;
     const def = ITEMS[s.id];
-    return `<div class="slot${sel}" data-slot="${i}" title="${def.name}"><span class="ic">${def.icon}</span><span class="n">${s.n}</span>${slotActions(s, i)}</div>`;
+    return `<div class="slot${sel}" data-slot="${i}" title="${def.name}">${iconHtml(s.id, 24)}<span class="n">${s.n}</span>${slotActions(s, i)}</div>`;
   }
 
   function invPanel() {
@@ -103,7 +106,7 @@ export function createUI({
     const rows = items
       .map((s, i) =>
         s
-          ? `<div class="loot-row" data-i="${i}"><span class="ic">${ITEMS[s.id].icon}</span> ${ITEMS[s.id].name} ×${s.n} <button data-i="${i}">взять</button></div>`
+          ? `<div class="loot-row" data-i="${i}">${iconHtml(s.id, 18)} ${ITEMS[s.id].name} ×${s.n} <button data-i="${i}">взять</button></div>`
           : "",
       )
       .join("");
@@ -118,9 +121,9 @@ export function createUI({
     const rows = RECIPES.map((r) => {
       const ok = canCraft(r);
       const ins = Object.entries(r.inputs)
-        .map(([id, n]) => `${ITEMS[id].icon} ${n}`)
+        .map(([id, n]) => `${iconHtml(id, 14)} ${n}`)
         .join(" + ");
-      return `<div class="loot-row ${ok ? "" : "dim"}"><span class="ic">${ITEMS[r.out.id].icon}</span> ${r.name} <span class="dim">(${ins})</span>
+      return `<div class="loot-row ${ok ? "" : "dim"}">${iconHtml(r.out.id, 18)} ${r.name} <span class="dim">(${ins})</span>
         <button class="craft" data-id="${r.id}" ${ok ? "" : "disabled"}>создать</button></div>`;
     }).join("");
     return `<div class="panel"><h3>Крафт</h3><div class="loot-list">${rows}</div>
@@ -156,7 +159,7 @@ export function createUI({
           if (!s)
             return `<div class="slot" data-side="${side}" data-slot="${i}"></div>`;
           const def = ITEMS[s.id];
-          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${def.name}"><span class="ic">${def.icon}</span><span class="n">${s.n}</span></div>`;
+          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${def.name}">${iconHtml(s.id, 24)}<span class="n">${s.n}</span></div>`;
         })
         .join("");
     return `<div class="panel wide"><h3>Багажник (${tr.size} слотов)</h3>
@@ -172,26 +175,26 @@ export function createUI({
     const lv = trustLevel(c);
     const cost = (ct) =>
       Object.entries(ct || {})
-        .map(([id, n]) => `${ITEMS[id].icon}${n}`)
+        .map(([id, n]) => `${iconHtml(id, 14)}${n}`)
         .join(" ") || "бесплатно";
     const rows = c.stock
       .map((s, i) => {
         if (s.n <= 0) return "";
         const gate = lv < (s.minTrust || 0);
         const ok = !gate && canAfford(inv, s.cost || {});
-        return `<div class="loot-row ${ok ? "" : "dim"}"><span class="ic">${ITEMS[s.id].icon}</span> ${ITEMS[s.id].name} ×${s.n} <span class="dim">(${cost(s.cost)})</span>
+        return `<div class="loot-row ${ok ? "" : "dim"}">${iconHtml(s.id, 18)} ${ITEMS[s.id].name} ×${s.n} <span class="dim">(${cost(s.cost)})</span>
         <button data-camp="buy" data-i="${i}" ${ok ? "" : "disabled"}>${gate ? `доверие ${s.minTrust}` : "купить"}</button></div>`;
       })
       .join("");
     const req = c.request;
     const reqHtml = req
-      ? `<div class="loot-row"><span class="ic">${ITEMS[req.id].icon}</span> ${ITEMS[req.id].name} ×${req.n} <span class="dim">→ +${req.trust} доверия, ${req.reward.map(([id, n]) => `${ITEMS[id].icon}${n}`).join(" ")}</span>
+      ? `<div class="loot-row">${iconHtml(req.id, 18)} ${ITEMS[req.id].name} ×${req.n} <span class="dim">→ +${req.trust} доверия, ${req.reward.map(([id, n]) => `${iconHtml(id, 14)}${n}`).join(" ")}</span>
         <button data-camp="deliver" ${canAfford(inv, { [req.id]: req.n }) ? "" : "disabled"}>отдать</button></div>`
       : '<div class="dim">Поручений нет — загляни завтра.</div>';
     const don = Object.keys(DON_VALUES)
       .map((id) => {
         const have = countItem(inv, id);
-        return `<button data-camp="donate" data-id="${id}" ${have ? "" : "disabled"} title="${ITEMS[id].name}">${ITEMS[id].icon}+${DON_VALUES[id]}</button>`;
+        return `<button data-camp="donate" data-id="${id}" ${have ? "" : "disabled"} title="${ITEMS[id].name}">${iconHtml(id, 16)}+${DON_VALUES[id]}</button>`;
       })
       .join(" ");
     const ups = def.upgrades
@@ -227,7 +230,7 @@ export function createUI({
         <div class="hint">V / Esc — закрыть</div></div>`;
     const cost = (ct) =>
       Object.entries(ct)
-        .map(([id, n]) => `${ITEMS[id].icon}${n}`)
+        .map(([id, n]) => `${iconHtml(id, 14)}${n}`)
         .join(" ") || "бесплатно";
     const ups = BASE_STRUCTURES.map((s, i) => {
       const n = b.structures.filter((k) => k === s.id).length;
@@ -241,7 +244,7 @@ export function createUI({
           if (!s)
             return `<div class="slot" data-side="${side}" data-slot="${i}"></div>`;
           const d = ITEMS[s.id];
-          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${d.name}"><span class="ic">${d.icon}</span><span class="n">${s.n}</span></div>`;
+          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${d.name}">${iconHtml(s.id, 24)}<span class="n">${s.n}</span></div>`;
         })
         .join("");
     return `<div class="panel wide"><h3>База · жителей ${b.residents}/${baseCapacity(b)} · защита ${baseDefense(b)}</h3>
@@ -249,6 +252,10 @@ export function createUI({
       <h3>Склад базы (${b.storage.size})</h3><div class="grid">${grid(b.storage.slots, "base")}</div>
       <h3>Рюкзак</h3><div class="grid">${grid(inv.slots, "inv")}</div>
       <div class="hint">клик по предмету — переложить · жители приходят при месте и еде · ночью рейд · V / Esc — закрыть</div></div>`;
+  }
+
+  function journalPanel() {
+    return `<div class="panel wide journal">${journalHtml(getJournal())}</div>`;
   }
 
   function render() {
@@ -266,7 +273,9 @@ export function createUI({
                 ? campPanel()
                 : mode === "base"
                   ? basePanel()
-                  : lootPanel();
+                  : mode === "journal"
+                    ? journalPanel()
+                    : lootPanel();
     root.style.display = "flex";
     if (mode === "base") {
       root.querySelectorAll("button[data-base]").forEach((btn) =>
@@ -392,6 +401,11 @@ export function createUI({
     },
     openBase() {
       mode = "base";
+      ctxSlot = -1;
+      render();
+    },
+    openJournal() {
+      mode = "journal";
       ctxSlot = -1;
       render();
     },

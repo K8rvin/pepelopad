@@ -17,17 +17,181 @@
         display: block;
         image-rendering: pixelated;
       }
+      img.ic {
+        image-rendering: pixelated;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      /* ── HUD ── */
       #hud {
         position: fixed;
         left: 8px;
         top: 8px;
-        color: #c2beb2;
-        background: rgba(16, 20, 26, 0.8);
-        padding: 6px 10px;
+        width: 250px;
+        pointer-events: none;
+        z-index: 40;
+      }
+      #hudStatus {
+        background: rgba(16, 20, 26, 0.82);
         border: 1px solid #3b4148;
-        white-space: pre;
+        padding: 7px 9px;
+      }
+      .hudbar {
+        position: relative;
+        height: 16px;
+        background: #1b2016;
+        border: 1px solid #39402e;
+        margin-bottom: 4px;
+        overflow: hidden;
+      }
+      .hudbar i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        transition: width 0.15s linear;
+      }
+      .hudbar span {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #ece5d0;
+        text-shadow: 0 1px 2px #000;
+      }
+      .hudbar.hp i {
+        background: linear-gradient(#c05a4a, #8a3a2e);
+      }
+      .hudbar.food i {
+        background: linear-gradient(#d0a03c, #a07828);
+      }
+      .hudbar.low i {
+        animation: barPulse 0.9s ease-in-out infinite;
+      }
+      @keyframes barPulse {
+        50% {
+          opacity: 0.45;
+        }
+      }
+      #hudMeta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 11px;
+        color: #c2beb2;
+        margin-top: 2px;
+      }
+      #hudArrows {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      }
+      #hudFloor {
+        color: #9a9478;
+      }
+      #hudQuest {
+        margin-top: 5px;
+        font-size: 11px;
+        color: #ffb23e;
+        text-shadow: 0 1px 2px #000;
+        max-width: 340px;
+      }
+      #hudStory {
+        margin-top: 2px;
+        font-size: 11px;
+        color: #c9a06a;
+        text-shadow: 0 1px 2px #000;
+        max-width: 340px;
+      }
+      #hudHotbar {
+        position: fixed;
+        left: 8px;
+        bottom: 8px;
+        display: flex;
+        gap: 6px;
+        z-index: 40;
         pointer-events: none;
       }
+      .hb {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(17, 20, 14, 0.9);
+        border: 1px solid #39402e;
+        padding: 3px 7px;
+        font-size: 11px;
+        color: #ece5d0;
+      }
+      .hb b {
+        color: #ffb23e;
+      }
+      .hb.lit {
+        border-color: #c96a35;
+      }
+      .hb.car {
+        color: #c2beb2;
+      }
+      /* ── миникарта ── */
+      #minimap {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        width: 168px;
+        height: 168px;
+        border: 1px solid #596248;
+        background: #14170f;
+        cursor: pointer;
+        z-index: 40;
+      }
+      /* ── тосты ── */
+      #toasts {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        z-index: 60;
+        pointer-events: none;
+      }
+      .toast {
+        background: rgba(17, 20, 14, 0.95);
+        border: 1px solid #596248;
+        color: #ece5d0;
+        padding: 6px 14px;
+        font-size: 12px;
+        animation: toastIn 0.25s ease;
+        transition: opacity 0.4s;
+      }
+      .toast.out {
+        opacity: 0;
+      }
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+      }
+      /* ── отладка ── */
+      #debug {
+        position: fixed;
+        right: 8px;
+        bottom: 8px;
+        font-size: 10px;
+        color: #7a8a6a;
+        background: rgba(10, 12, 9, 0.7);
+        padding: 4px 8px;
+        white-space: pre;
+        display: none;
+        z-index: 50;
+        pointer-events: none;
+      }
+      /* ── панели (рюкзак/крафт/лагерь/база/журнал) ── */
       #ui {
         display: none;
         position: fixed;
@@ -35,12 +199,15 @@
         align-items: center;
         justify-content: center;
         background: rgba(10, 12, 9, 0.55);
+        z-index: 30;
       }
       #ui .panel {
         background: rgba(17, 20, 14, 0.97);
         border: 1px solid #596248;
         padding: 14px 18px;
         min-width: 420px;
+        max-height: 88vh;
+        overflow-y: auto;
         color: #ece5d0;
       }
       #ui h3 {
@@ -177,6 +344,72 @@
         opacity: 0.4;
         cursor: default;
       }
+      /* ── журнал ── */
+      .journal .j-name {
+        color: #ffb23e;
+        font-size: 13px;
+      }
+      .journal .j-desc {
+        color: #9a9478;
+        font-size: 11px;
+        margin: 4px 0;
+      }
+      .journal .j-goal {
+        font-size: 11px;
+        padding: 2px 0;
+        color: #c2beb2;
+      }
+      .journal .j-goal.done {
+        color: #7ac06a;
+      }
+      .journal .j-reward {
+        font-size: 10px;
+        color: #6a6458;
+        margin-top: 4px;
+      }
+      .journal .j-chain {
+        font-size: 11px;
+        padding: 3px 0;
+        border-bottom: 1px solid #262c1e;
+        color: #c2beb2;
+      }
+      .journal .j-chain span {
+        color: #ffb23e;
+      }
+      .journal .j-chain em {
+        color: #6a6458;
+        font-style: normal;
+        font-size: 10px;
+        margin-left: 6px;
+      }
+      .journal .j-chain.done {
+        color: #7a8a6a;
+      }
+      .journal .j-chain.locked {
+        color: #5a5e50;
+      }
+      .journal .j-chain.active {
+        color: #ece5d0;
+      }
+      .journal .j-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 18px;
+      }
+      .journal .j-stat {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        border-bottom: 1px solid #262c1e;
+        padding: 2px 0;
+      }
+      .journal .j-stat span {
+        color: #9a9478;
+      }
+      .journal .j-stat b {
+        color: #ffb23e;
+      }
+      /* ── диалог ── */
       #dlg {
         display: none;
         position: fixed;
@@ -188,6 +421,7 @@
         border: 1px solid #596248;
         padding: 12px 16px;
         color: #ece5d0;
+        z-index: 35;
       }
       #dlg .who {
         color: #c96a35;
@@ -219,6 +453,144 @@
       #dlg .dlg-choices button:hover {
         background: #4a5438;
       }
+      /* ── большая карта ── */
+      #bigmap {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0a0c09;
+        z-index: 70;
+      }
+      #bigmapCv {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+        image-rendering: auto;
+      }
+      #bigmapTitle {
+        position: absolute;
+        top: 12px;
+        left: 16px;
+        color: #c96a35;
+        font-size: 14px;
+        letter-spacing: 2px;
+        pointer-events: none;
+      }
+      #bigmapClose {
+        position: absolute;
+        top: 10px;
+        right: 14px;
+        background: #39402e;
+        border: 1px solid #596248;
+        color: #ece5d0;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+      }
+      #bigmapClose:hover {
+        background: #4a5438;
+      }
+      #bigmapLegend {
+        position: absolute;
+        bottom: 12px;
+        left: 16px;
+        display: flex;
+        gap: 14px;
+        font-size: 11px;
+        color: #c2beb2;
+        pointer-events: none;
+      }
+      #bigmapLegend span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      #bigmapLegend i {
+        width: 9px;
+        height: 9px;
+        display: inline-block;
+        border-radius: 2px;
+      }
+      #bigmapHint {
+        position: absolute;
+        bottom: 12px;
+        right: 16px;
+        font-size: 10px;
+        color: #6a6458;
+        pointer-events: none;
+      }
+      /* ── экран смерти ── */
+      #death {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: rgba(6, 8, 6, 0.82);
+        z-index: 80;
+      }
+      .death-panel {
+        background: rgba(17, 20, 14, 0.97);
+        border: 1px solid #6d2b25;
+        padding: 22px 28px;
+        min-width: 360px;
+        text-align: center;
+        color: #ece5d0;
+      }
+      .death-panel h2 {
+        color: #c05a4a;
+        letter-spacing: 3px;
+        font-size: 24px;
+        margin: 0 0 14px;
+      }
+      .death-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 18px;
+        margin-bottom: 12px;
+      }
+      .death-stats div {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #262c1e;
+        padding: 3px 0;
+      }
+      .death-stats span {
+        color: #9a9478;
+        font-size: 11px;
+      }
+      .death-stats b {
+        color: #ffb23e;
+      }
+      .death-lost {
+        font-size: 11px;
+        color: #c2beb2;
+        margin-bottom: 14px;
+      }
+      .death-lost b {
+        color: #c05a4a;
+      }
+      #respawnBtn {
+        background: #39402e;
+        border: 1px solid #596248;
+        color: #ece5d0;
+        padding: 8px 18px;
+        cursor: pointer;
+        font: inherit;
+      }
+      #respawnBtn:hover {
+        background: #4a5438;
+      }
+      .death-panel .hint {
+        color: #9a9478;
+        font-size: 10px;
+        margin-top: 10px;
+      }
+      /* ── пауза ── */
       #pause {
         display: none;
         position: fixed;
@@ -226,7 +598,7 @@
         align-items: center;
         justify-content: center;
         background: rgba(10, 12, 9, 0.6);
-        z-index: 20;
+        z-index: 65;
       }
       #pause .panel {
         background: rgba(17, 20, 14, 0.97);
@@ -262,6 +634,184 @@
         margin-top: 8px;
         line-height: 1.5;
       }
+      /* ── меню / настройки / подтверждение ── */
+      #menu,
+      #settings,
+      #confirm {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(
+          circle at 50% 40%,
+          rgba(10, 12, 9, 0.7),
+          rgba(6, 8, 6, 0.93)
+        );
+      }
+      #menu {
+        z-index: 90;
+      }
+      #settings {
+        z-index: 95;
+      }
+      #confirm {
+        z-index: 96;
+      }
+      .menu-panel {
+        background: rgba(17, 20, 14, 0.97);
+        border: 1px solid #596248;
+        padding: 28px 36px;
+        min-width: 380px;
+        text-align: center;
+        color: #ece5d0;
+      }
+      .menu-panel.small {
+        min-width: 300px;
+      }
+      .menu-panel h1 {
+        color: #c96a35;
+        font-size: 30px;
+        letter-spacing: 4px;
+        margin: 0 0 4px;
+      }
+      .menu-panel h2 {
+        color: #c96a35;
+        font-size: 16px;
+        letter-spacing: 2px;
+        margin: 0 0 16px;
+      }
+      .menu-sub {
+        color: #9a9478;
+        font-size: 11px;
+        margin-bottom: 20px;
+      }
+      .menu-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .menu-btns.row {
+        flex-direction: row;
+        justify-content: center;
+      }
+      .menu-btns button {
+        background: #39402e;
+        border: 1px solid #596248;
+        color: #ece5d0;
+        padding: 9px 16px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+      }
+      .menu-btns button:hover {
+        background: #4a5438;
+        border-color: #c96a35;
+      }
+      .menu-controls {
+        font-size: 10px;
+        color: #9a9478;
+        line-height: 1.7;
+        margin-top: 14px;
+        text-align: left;
+      }
+      .menu-foot {
+        font-size: 10px;
+        color: #6a6458;
+        margin-top: 18px;
+      }
+      .confirm-msg {
+        font-size: 12px;
+        margin-bottom: 14px;
+        line-height: 1.5;
+      }
+      .set-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      .set-row span {
+        min-width: 150px;
+        text-align: left;
+        color: #c2beb2;
+      }
+      .set-row input[type="range"] {
+        flex: 1;
+        accent-color: #c96a35;
+      }
+      .set-row b {
+        min-width: 40px;
+        color: #ffb23e;
+        font-size: 11px;
+      }
+      .set-row.check {
+        justify-content: space-between;
+      }
+      .set-row input[type="checkbox"] {
+        accent-color: #c96a35;
+      }
+      /* ── загрузка / фатальная ошибка ── */
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #0a0c09;
+        z-index: 100;
+        color: #c96a35;
+      }
+      .load-title {
+        font-size: 26px;
+        letter-spacing: 5px;
+        animation: barPulse 1.6s ease-in-out infinite;
+      }
+      .load-sub {
+        color: #9a9478;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      #fatal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        background: rgba(6, 8, 6, 0.95);
+        z-index: 200;
+      }
+      .fatal-panel {
+        background: rgba(17, 20, 14, 0.97);
+        border: 1px solid #6d2b25;
+        padding: 22px 28px;
+        max-width: 640px;
+        color: #ece5d0;
+      }
+      .fatal-panel h2 {
+        color: #c05a4a;
+        margin: 0 0 10px;
+      }
+      .fatal-panel pre {
+        font-size: 10px;
+        color: #c05a4a;
+        max-height: 220px;
+        overflow: auto;
+        white-space: pre-wrap;
+        text-align: left;
+      }
+      .fatal-panel button {
+        background: #39402e;
+        border: 1px solid #596248;
+        color: #ece5d0;
+        padding: 8px 18px;
+        cursor: pointer;
+        font: inherit;
+        margin-top: 12px;
+      }
+      /* ── баннер повышения уровня ── */
       #levelup {
         position: fixed;
         inset: 0;
@@ -385,6 +935,7 @@
           left: 110%;
         }
       }
+      /* ── лаборатория походки ── */
       #gaitlab {
         display: none;
         position: fixed;
@@ -456,27 +1007,49 @@
   </head>
   <body>
     <canvas id="cv"></canvas>
-    <div id="hud">…</div>
+    <div id="hud"></div>
+    <canvas
+      id="minimap"
+      width="168"
+      height="168"
+      title="Открыть карту (M)"
+    ></canvas>
+    <div id="toasts"></div>
+    <div id="debug"></div>
     <div id="ui"></div>
     <div id="dlg"></div>
     <div id="levelup"></div>
+    <div id="bigmap"></div>
+    <div id="death"></div>
     <div id="pause">
       <div class="panel">
         <h2>МЁРТВЫЙ РАЙОН — пауза</h2>
         <button id="pContinue">Продолжить (Esc)</button>
         <button id="pSave">Сохранить</button>
+        <button id="pJournal">Журнал (J)</button>
+        <button id="pMap">Карта (M)</button>
+        <button id="pSettings">Настройки</button>
         <button id="pZoom">Зум: ×1</button>
         <button id="pNew">Новая игра (сброс)</button>
+        <button id="pMenu">Главное меню</button>
         <div class="hint">
           WASD — движение/руль · ЛКМ — лук · E — обыск/сесть/лестница · I —
-          рюкзак · C — крафт · P — персонаж<br />
+          рюкзак · C — крафт · P — персонаж · J — журнал · M — карта<br />
           Q — еда · H — бинт · B — разбить окно · X — спуск с этажа · F —
-          заправить · T — багажник · R — возрождение · G — лаборатория
-          походки<br />
-          Автосохранение каждые 15 с. Новая игра также через ?new=1 в адресе.
+          заправить · T — багажник · V — база · R — возрождение · G —
+          лаборатория походки · F3 — отладка<br />
+          Автосохранение каждые 15 с.
         </div>
       </div>
     </div>
+    <div id="menu"></div>
+    <div id="settings"></div>
+    <div id="confirm"></div>
+    <div id="loading">
+      <div class="load-title">МЁРТВЫЙ РАЙОН</div>
+      <div class="load-sub">Загрузка…</div>
+    </div>
+    <div id="fatal"></div>
     <script type="module" src="/src/iso/main.js"></script>
   </body>
 </html>

@@ -989,20 +989,12 @@ export function renderWorld({
     }
     R.drawCalls++;
   }
-  // смерть
+  // экран смерти — DOM-оверлей (#death, ui/hud.js); канвас только затемняет
   if (combat && combat.dead) {
-    const a = Math.min(0.85, combat.deadT * 0.5);
+    const a = Math.min(0.6, combat.deadT * 0.4);
     ctx.fillStyle = `rgba(10,10,10,${a})`;
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#c2beb2";
-    ctx.font = `${28 * zoom}px monospace`;
-    ctx.textAlign = "center";
-    ctx.fillText("ТЫ ПОГИБ", W / 2, H / 2 - 20);
-    ctx.font = `${13 * zoom}px monospace`;
-    ctx.fillStyle = "#9a9478";
-    ctx.fillText("R — возродиться у парка", W / 2, H / 2 + 14);
-    ctx.textAlign = "left";
-    R.drawCalls += 3;
+    R.drawCalls++;
   }
   return inside;
 }

@@ -135,6 +135,7 @@ export function updateCombat(
           C.playerHp -= ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
           C.hurtFlash = 1;
           C.shake = 6;
+          C.onHurt?.();
           if (C.playerHp <= 0) {
             C.playerHp = 0;
             C.dead = true;

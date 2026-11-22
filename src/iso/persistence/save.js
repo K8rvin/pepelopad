@@ -6,6 +6,7 @@
 // v5: новые пригородные интерьеры; старые индексные ID внутренних контейнеров
 // отделены от семантических ID комнат, мировой лут и остальной прогресс сохраняются.
 import { restoreSkills } from "../systems/skills.js";
+import { createStats } from "../systems/stats.js";
 import { PITCH } from "../world/cityGen.js";
 
 const SKEY = "pepelopad_city_v5";
@@ -28,6 +29,7 @@ export function saveGame({
   camps,
   base,
   story,
+  stats,
 }) {
   const data = {
     v: 5,
@@ -82,6 +84,7 @@ export function saveGame({
         }
       : null,
     story: story ? { i: story.i, flags: story.flags } : null,
+    stats: stats ? { ...stats } : null,
     wrecked: {
       lamps: city.lamps.map((l, i) => (l.dead ? i : -1)).filter((i) => i >= 0),
       fences: city.fences
@@ -174,6 +177,7 @@ export function applySave(
     camps,
     base,
     story,
+    stats,
   },
 ) {
   survival.day = data.survival.day;
@@ -209,6 +213,7 @@ export function applySave(
     story.i = data.story.i || 0;
     story.flags = data.story.flags || {};
   }
+  if (stats) Object.assign(stats, createStats(data.stats));
   if (camps && data.camps)
     for (const cs of data.camps) {
       const c = camps.find((k) => k.id === cs.id);
