@@ -34,9 +34,13 @@ test("лаборатория походки: G открывает вариант
   expect(await page.evaluate(() => window.__city.R.gait)).toBe("frames");
   // через __city: динамический import на живом dev-сервере даёт новый
   // инстанс модуля (?t= у цепочки main.js) с пустым SPRTEX
-  expect(await page.evaluate(() => !!window.__city.SPRTEX.survivor_walk)).toBe(
-    true,
-  );
+  expect(
+    await page.evaluate(() => ({
+      side: !!window.__city.SPRTEX.survivor_walk,
+      front: !!window.__city.SPRTEX.survivor_walk_front,
+      back: !!window.__city.SPRTEX.survivor_walk_back,
+    })),
+  ).toEqual({ side: true, front: true, back: true });
   await page.keyboard.down("KeyA");
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => window.__city.player.face)).toBe(-1);

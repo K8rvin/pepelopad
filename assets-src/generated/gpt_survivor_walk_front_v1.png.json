@@ -1,0 +1,26 @@
+{
+  "id": "survivor_walk_front",
+  "source": "GPT",
+  "prompt": "Тот же персонаж, что на референсе survivor.png (капюшон, серая куртка, тёмные джинсы, ботинки), тот же фронтальный ракурс/масштаб/освещение; середина шага К камере, руки в противофазе; полный рост, прозрачный RGBA, ступни на базовой линии референса.",
+  "originalImport": "tmp/Суровый странник в потёртой куртке.png",
+  "createdAt": "2026-11-22T06:57:58.942Z",
+  "sha256": "6da21fdd6c68aced999b761aa2f0a61444f07ad2a726f4d21dfcf501b30e70eb",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/survivor_walk.png",
+  "runtimeSize": [
+    179,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 512,
+    "pipeline": "scripts/process_walk_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Кадр шага для вертикального хода варианта G: front — к камере (S), back — от камеры (W); кроссфейд со стойкой survivor.png."
+}

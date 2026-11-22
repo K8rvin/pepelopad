@@ -130,12 +130,9 @@ function crossPose(ph, drawCur, drawPrev) {
   drawCur(wCur);
 }
 
-// F. «Шаг+зеркало»: ассетный кадр шага и его зеркало (противоположная нога)
-// чередуются по полупериодам с кроссфейдом; профильный цикл без нарезки
-function frames(ctx, img, w, h, u, ph, mv, alts) {
-  const alt = alts?.side;
-  if (!alt) return bob(ctx, img, w, h, u, ph, mv);
-  if (!mv) return idle(ctx, img, w, h);
+// цикл «шаг+зеркало»: кадр шага и его зеркало (противоположная нога) по
+// полупериодам с кроссфейдом; ракурс не меняется внутри цикла
+function strideCycle(ctx, alt, ph, u) {
   const b = -Math.abs(Math.cos(ph)) * 1.6 * u;
   ctx.save();
   ctx.translate(0, b);
@@ -153,15 +150,25 @@ function frames(ctx, img, w, h, u, ph, mv, alts) {
   return b;
 }
 
-// G. «Стойка↔шаг» по направлениям: стойка (базовый ассет) и кадр шага нужного
-// ракурса (профиль / фронт / спина) чередуются с кроссфейдом. Вертикальный ход
-// без своего ассета деградирует в B («пружинка»), а не в кривой профиль.
-function standstep(ctx, img, w, h, u, ph, mv, alts) {
-  const dir = alts?.dir || "right";
-  const alt =
-    dir === "up" ? alts?.back : dir === "down" ? alts?.front : alts?.side;
+// F. «Шаг+зеркало»: профильный цикл без нарезки
+function frames(ctx, img, w, h, u, ph, mv, alts) {
+  const alt = alts?.side;
   if (!alt) return bob(ctx, img, w, h, u, ph, mv);
   if (!mv) return idle(ctx, img, w, h);
+  return strideCycle(ctx, alt, ph, u);
+}
+
+// G. «Стойка↔шаг» по направлениям: горизонталь — стойка (базовый ассет) ↔
+// профильный шаг с кроссфейдом; вертикаль — цикл «шаг+зеркало» фронт/спина
+// кадра (стойка там ломала бы ракурс: лицо при ходе от камеры). Вертикальный
+// ход без своего ассета деградирует в B («пружинка»), а не в кривой профиль.
+function standstep(ctx, img, w, h, u, ph, mv, alts) {
+  const dir = alts?.dir || "right";
+  const vertical = dir === "up" || dir === "down";
+  const alt = vertical ? (dir === "up" ? alts?.back : alts?.front) : alts?.side;
+  if (!alt) return bob(ctx, img, w, h, u, ph, mv);
+  if (!mv) return idle(ctx, img, w, h);
+  if (vertical) return strideCycle(ctx, alt, ph, u);
   const b = -Math.abs(Math.cos(ph)) * 1.6 * u;
   ctx.save();
   ctx.translate(0, b);

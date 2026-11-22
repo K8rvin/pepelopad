@@ -2,24 +2,30 @@
 // headless Chrome + canvas, семантика как в process_gpt_assets.py для character
 // (clean alpha <4→0 / 254→255, bbox threshold 16, padding 24, высота 512).
 // Высота 512 и padding 24 совпадают с survivor.png → общий якорь ступней.
-// Запуск: node scripts/process_walk_frame.mjs [путь к исходнику в tmp/]
+// Запуск: node scripts/process_walk_frame.mjs <путь к исходнику> [asset id]
+// id: survivor_walk (профиль) | survivor_walk_front (к камере) |
+//     survivor_walk_back (от камеры); по умолчанию survivor_walk
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
+const ID = process.argv[3] || "survivor_walk";
 const SRC =
   process.argv[2] ||
   path.join(ROOT, "tmp", "Странствующий мужчина в потёртой одежде.png");
 const REF = path.join(ROOT, "public", "assets", "gen", "survivor.png");
-const OUT = path.join(ROOT, "public", "assets", "gen", "survivor_walk.png");
-const SRC_COPY = path.join(
-  ROOT,
-  "assets-src",
-  "generated",
-  "gpt_survivor_walk_v1.png",
-);
+const OUT = path.join(ROOT, "public", "assets", "gen", ID + ".png");
+const SRC_COPY = path.join(ROOT, "assets-src", "generated", `gpt_${ID}_v1.png`);
+const PROMPTS = {
+  survivor_walk:
+    "Тот же персонаж, что на референсе survivor.png, середина шага в профиль: левая нога впереди с пятки, правая сзади на носке, руки в противофазе; полный рост, прозрачный RGBA.",
+  survivor_walk_front:
+    "Тот же персонаж, что на референсе survivor.png (капюшон, серая куртка, тёмные джинсы, ботинки), тот же фронтальный ракурс/масштаб/освещение; середина шага К камере, руки в противофазе; полный рост, прозрачный RGBA, ступни на базовой линии референса.",
+  survivor_walk_back:
+    "Тот же персонаж, что на референсе survivor.png, вид со спины (капюшон сзади, плечи, спина куртки); середина шага ОТ камеры, руки в противофазе; полный рост, прозрачный RGBA, ступни на базовой линии референса.",
+};
 
 const b64 = (p) => fs.readFileSync(p).toString("base64");
 const browser = await chromium.launch();
@@ -115,10 +121,9 @@ await browser.close();
 fs.writeFileSync(OUT, Buffer.from(result.dataUrl.split(",")[1], "base64"));
 fs.copyFileSync(SRC, SRC_COPY);
 const meta = {
-  id: "survivor_walk",
+  id: ID,
   source: "GPT",
-  prompt:
-    "Тот же персонаж, что на референсе survivor.png (капюшон, серая куртка, тёмные джинсы, ботинки), середина шага: левая нога впереди с пятки, правая сзади на носке, руки в противофазе; полный рост, прозрачный RGBA. (Генерация пользователя 21.11.2026; фактический ракурс — профиль вправо, см. notes.)",
+  prompt: PROMPTS[ID] || PROMPTS.survivor_walk,
   originalImport: "tmp/" + path.basename(SRC),
   createdAt: new Date(fs.statSync(SRC).mtime).toISOString(),
   sha256: crypto.createHash("sha256").update(fs.readFileSync(SRC_COPY)).digest("hex"),
@@ -134,7 +139,9 @@ const meta = {
     pipeline: "scripts/process_walk_frame.mjs (headless Chrome canvas, no Python on host)",
   },
   notes:
-    "Ракурс профиля вправо отличается от фронтального survivor.png; используется как покадровый вариант F/G в лаборатории походки, зеркаление в рантайме даёт противоположный шаг.",
+    ID === "survivor_walk"
+      ? "Ракурс профиля вправо отличается от фронтального survivor.png; используется как покадровый вариант F/G в лаборатории походки, зеркаление в рантайме даёт противоположный шаг."
+      : "Кадр шага для вертикального хода варианта G: front — к камере (S), back — от камеры (W); кроссфейд со стойкой survivor.png.",
 };
 fs.writeFileSync(SRC_COPY + ".json", JSON.stringify(meta, null, 2) + "\n");
 console.log("walk:", JSON.stringify(result.walkStats));

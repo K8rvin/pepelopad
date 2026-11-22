@@ -43,8 +43,8 @@ export const SPRITE_FILES = {
   door_entry: "assets/gen/door_entry.png",
   survivor_bow_draw: "assets/gen/survivor_bow_draw.png",
   survivor_walk: "assets/gen/survivor_walk.png",
-  // survivor_walk_front / survivor_walk_back (шаг для хода S/W) добавляются
-  // сюда вместе с файлами генерации пользователя; до этого вертикаль → B
+  survivor_walk_front: "assets/gen/survivor_walk_front.png",
+  survivor_walk_back: "assets/gen/survivor_walk_back.png",
   npc_oleg: "assets/gen/npc_oleg.png",
   npc_vera: "assets/gen/npc_vera.png",
   npc_sanych: "assets/gen/npc_sanych.png",
