@@ -157,6 +157,11 @@ export function updateCombat(
           C.hurtFlash = 1;
           C.shake = 6;
           C.onHurt?.();
+          // укус может заразить: лихорадка точит HP, пока не снимешь бинтом
+          if (!player.infected && rng() < 0.3) {
+            player.infected = true;
+            C.onInfect?.();
+          }
           if (C.playerHp <= 0) {
             C.playerHp = 0;
             C.dead = true;

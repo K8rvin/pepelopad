@@ -9,6 +9,7 @@ import {
   exitCar,
   updateVehicle,
   refuelCar,
+  repairCar,
   fuelText,
   openTrunk,
 } from "./systems/vehicles.js";
@@ -216,6 +217,9 @@ export async function boot() {
     animT: 0,
     level: 0,
     weapon: "bow",
+    stamina: 100,
+    exhausted: false,
+    infected: false,
   };
   const spawn = { x: player.x, y: player.y };
   const cam = { x: player.x, y: player.y };
@@ -371,6 +375,11 @@ export async function boot() {
     audio.play("hurt");
     say(comic, player.x, player.y, "Ай!", "alert", 0.9);
   };
+  combat.onInfect = () => {
+    audio.play("hurt");
+    say(comic, player.x, player.y, "Заражён!", "alert", 2);
+    toast("Заражение! Сними инфекцию бинтом (H).");
+  };
   combat.onKnock = () => audio.play("knock");
   combat.onCarHit = () => audio.play("carHit");
 
@@ -396,6 +405,7 @@ export async function boot() {
       inv,
       id,
       (i, n) => removeItem(inv, i, n),
+      player,
       mods,
     );
     if (msg) {
@@ -731,6 +741,21 @@ export async function boot() {
         );
         if (lit > 0) audio.play("refuel");
       }
+    }
+    // ремонт машины деталью (Y): чинит остов и повреждённые
+    if (e.code === "KeyY") {
+      const car = veh.inCar || nearestCar(city, player.x, player.y, 3);
+      if (!car) toast("Рядом нет машины");
+      else if (
+        repairCar(
+          car,
+          (id) => countItem(inv, id),
+          (id, n) => removeItem(inv, id, n),
+        )
+      ) {
+        toast("Машина починена: +40 ресурса.");
+        audio.play("craft");
+      } else toast("Нужна деталь, или машина исправна");
     }
     if (e.code === "KeyT" && !combat.dead) {
       if (ui.isOpen()) ui.close();
@@ -1086,6 +1111,9 @@ export async function boot() {
       camp: nc ? campDef(nc).name : null,
       noArrows: combat.noArrowsT > 0,
       weapon: weaponDef(player.weapon),
+      stamina: player.stamina ?? 100,
+      exhausted: player.exhausted,
+      infected: player.infected,
     };
   }
   function renderPayload(aim, night, t) {
@@ -1123,6 +1151,7 @@ export async function boot() {
       base,
       levelFx,
       comic,
+      car: veh.inCar,
       questLootId: (() => {
         const q = mainQuest(quests, QUESTS);
         if (!q) return null;

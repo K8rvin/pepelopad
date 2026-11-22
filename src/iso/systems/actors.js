@@ -35,7 +35,15 @@ export function updatePlayer(
   const iy = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0);
   player.moving = !!(ix || iy);
   if (ix || iy) {
-    const run = !!keys.ShiftLeft;
+    // спринт тратит стамину; на нуле — истощение, пока не восстановится >30
+    const run =
+      !!keys.ShiftLeft && !player.exhausted && (player.stamina ?? 100) > 0;
+    player.stamina = Math.max(
+      0,
+      Math.min(100, (player.stamina ?? 100) + (run ? -22 : 9) * dt),
+    );
+    if (player.stamina <= 0) player.exhausted = true;
+    if (player.exhausted && player.stamina > 30) player.exhausted = false;
     const sp = (run ? 5.4 : 3.2) * (mods?.speedK ?? 1) * dt;
     const wx = ix + iy,
       wy = iy - ix;
@@ -65,6 +73,9 @@ export function updatePlayer(
     player.animT += dt * 7;
     player.pose = Math.floor(player.animT) % 2;
     onMove?.(sp, run);
+  } else {
+    player.stamina = Math.min(100, (player.stamina ?? 100) + 14 * dt);
+    if (player.exhausted && player.stamina > 30) player.exhausted = false;
   }
 }
 

@@ -54,6 +54,9 @@ export function saveGame({
       torch: !!player.torch,
       torchT: player.torchT || 0,
       weapon: player.weapon || "bow",
+      stamina: player.stamina ?? 100,
+      exhausted: !!player.exhausted,
+      infected: !!player.infected,
     },
     inv: inv.slots,
     opened: [...loot.opened.entries()],
@@ -195,6 +198,9 @@ export function applySave(
   player.torch = !!data.player.torch;
   player.torchT = data.player.torchT || 0;
   player.weapon = data.player.weapon || "bow";
+  player.stamina = data.player.stamina ?? 100;
+  player.exhausted = !!data.player.exhausted;
+  player.infected = !!data.player.infected;
   inv.slots = data.inv;
   inv.size = data.inv.length;
   loot.opened = new Map(data.opened);

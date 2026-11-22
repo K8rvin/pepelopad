@@ -2,6 +2,7 @@
 // лунный холодный подъём силуэтов, светящиеся окна поверх затемнения.
 import { mkCanvas } from "../core/geo.js";
 import { w2s } from "../core/geo.js";
+import { carCenter } from "../world/cityGen.js";
 import { makeGlowSprite } from "./buildings.js";
 import { buildingSprite, buildingLitCanvas } from "./buildings.js";
 
@@ -39,6 +40,7 @@ export function renderNight({
   H,
   camps,
   aim,
+  car,
 }) {
   const s = 0.5; // half-res
   const g = L.lightCtx;
@@ -83,6 +85,34 @@ export function renderNight({
     const grad = g.createLinearGradient(0, 0, len, 0);
     grad.addColorStop(0, "rgba(255,255,255,0.5)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(len, -wid);
+    g.lineTo(len, wid);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+  // фары машины: тёплый конус света по курсу ночью
+  if (car && !car.wreck) {
+    const cc = carCenter(car);
+    const cp = w2s(cc.x, cc.y);
+    const ox = toX(cp.x) * s,
+      oy = (toY(cp.y) - 20 * zoom) * s;
+    const h = car.heading || 0;
+    const ang = Math.atan2(
+      (Math.cos(h) + Math.sin(h)) * 16,
+      (Math.cos(h) - Math.sin(h)) * 32,
+    );
+    const len = 320 * zoom * s,
+      wid = 80 * zoom * s;
+    g.save();
+    g.translate(ox, oy);
+    g.rotate(ang);
+    const grad = g.createLinearGradient(0, 0, len, 0);
+    grad.addColorStop(0, "rgba(255,244,214,0.6)");
+    grad.addColorStop(1, "rgba(255,244,214,0)");
     g.fillStyle = grad;
     g.beginPath();
     g.moveTo(0, 0);

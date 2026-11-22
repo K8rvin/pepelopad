@@ -45,6 +45,16 @@ export function updateSurvival(S, combat, player, city, inv, dt, mods = null) {
       combat.playerMaxHp,
       combat.playerHp + 0.15 * (mods?.regenK ?? 1) * dt,
     );
+  // ставки: голод на нуле — истощение; инфекция — лихорадка (лечится бинтом)
+  if (!combat.dead) {
+    if (S.hunger <= 0) combat.playerHp -= 1.5 * dt;
+    if (player.infected) combat.playerHp -= 0.8 * dt;
+    if (combat.playerHp <= 0) {
+      combat.playerHp = 0;
+      combat.dead = true;
+      combat.deadT = 0;
+    }
+  }
   // ночной приток: в 21:00 вокруг игрока спавнится группа (тип по дню),
   // мёртвые переиспользуются — популяция не растёт бесконечно
   if (S.tod >= 21 && S.tod < 21.1 && S.lastSiegeDay < S.day) {
@@ -72,7 +82,15 @@ export function updateSurvival(S, combat, player, city, inv, dt, mods = null) {
 }
 
 // съесть тушёнку / перевязаться. Возвращает текст результата или null.
-export function useConsumable(S, combat, inv, id, removeFn, mods = null) {
+export function useConsumable(
+  S,
+  combat,
+  inv,
+  id,
+  removeFn,
+  player,
+  mods = null,
+) {
   if (id === "can") {
     if (!removeFn("can", 1)) return null;
     const v = 40 + (mods?.foodBonus ?? 0);
@@ -84,7 +102,11 @@ export function useConsumable(S, combat, inv, id, removeFn, mods = null) {
     if (!removeFn("meds", 1)) return null;
     const v = 30 + (mods?.healBonus ?? 0);
     combat.playerHp = Math.min(combat.playerMaxHp, combat.playerHp + v);
-    return `Перевязка. +${v} HP`;
+    const cured = player?.infected;
+    if (player) player.infected = false;
+    return cured
+      ? `Перевязка. +${v} HP, инфекция снята`
+      : `Перевязка. +${v} HP`;
   }
   return null;
 }

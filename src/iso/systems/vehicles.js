@@ -216,9 +216,24 @@ export function updateVehicle(
       combat.shake = Math.max(combat.shake, 4);
     }
   }
+  // ресурс кончился — машина глохнет и становится остовом (чинится деталью)
+  if (car.hp <= 0 && !car.wreck) {
+    car.wreck = true;
+    car.v = 0;
+  }
   // игрок едет с машиной (в её центре)
   player.x = car.x + hw;
   player.y = car.y + hh;
+}
+
+// ремонт деталью: +40 ресурса, остов снова на ходу. Возвращает 1 если чинил.
+export function repairCar(car, countItem, removeItem) {
+  if (countItem("part") < 1) return 0;
+  if (car.hp >= 100 && !car.wreck) return 0;
+  removeItem("part", 1);
+  car.hp = Math.min(100, car.hp + 40);
+  car.wreck = false;
+  return 1;
 }
 
 // заправка из инвентаря: перелить fuel-предметы в бак. Возвращает литры или 0.

@@ -134,6 +134,7 @@ export function renderWorld({
   levelFx,
   comic,
   questLootId,
+  car,
 }) {
   R.drawCalls = 0;
   const shake = combat ? combat.shake : 0;
@@ -820,6 +821,7 @@ export function renderWorld({
       H,
       camps,
       aim,
+      car,
     });
     R.drawCalls += 2;
   }

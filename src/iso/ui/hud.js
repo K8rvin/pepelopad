@@ -8,7 +8,8 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     <div id="hudStatus">
       <div class="hudbar hp"><i></i><span></span></div>
       <div class="hudbar food"><i></i><span></span></div>
-      <div id="hudMeta"><span id="hudClock"></span><span id="hudArrows"></span><span id="hudFloor"></span></div>
+      <div class="hudbar stam"><i></i><span></span></div>
+      <div id="hudMeta"><span id="hudClock"></span><span id="hudArrows"></span><span id="hudFloor"></span><span id="hudInf"></span></div>
     </div>
     <div id="hudQuest"></div>
     <div id="hudStory"></div>
@@ -19,6 +20,10 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
   const hpText = hpBar.querySelector("span");
   const foodFill = foodBar.querySelector("i");
   const foodText = foodBar.querySelector("span");
+  const stamBar = hudRoot.querySelector(".hudbar.stam");
+  const stamFill = stamBar.querySelector("i");
+  const stamText = stamBar.querySelector("span");
+  const infEl = hudRoot.querySelector("#hudInf");
   const clockEl = hudRoot.querySelector("#hudClock");
   const arrowsEl = hudRoot.querySelector("#hudArrows");
   const floorEl = hudRoot.querySelector("#hudFloor");
@@ -39,6 +44,14 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     foodFill.style.width = foodPct + "%";
     foodText.textContent = `Сытость ${Math.ceil(s.hunger)}`;
     foodBar.classList.toggle("low", foodPct < 25);
+    const stamPct = Math.max(0, Math.min(100, s.stamina ?? 100));
+    stamFill.style.width = stamPct + "%";
+    stamText.textContent = s.exhausted
+      ? "Истощение"
+      : `Стамина ${Math.ceil(stamPct)}`;
+    stamBar.classList.toggle("low", s.exhausted || stamPct < 25);
+    infEl.textContent = s.infected ? "☣ инфекция" : "";
+    infEl.classList.toggle("inf", !!s.infected);
     clockEl.textContent = s.clock;
     arrowsEl.innerHTML = `${iconHtml("arrow", 14)} ${s.arrows}`;
     floorEl.textContent = s.level > 0 ? `этаж ${s.level + 1}` : "";
