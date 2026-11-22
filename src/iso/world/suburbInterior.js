@@ -198,20 +198,22 @@ export function suburbInterior(b) {
     return false;
   }
 
-  function outerX(room, width) {
-    return room.side === "left" ? room.x1 + 0.25 : room.x2 - width - 0.25;
-  }
+  // Ассеты мебели лицевые (смотрят на юго-восток, в камеру). Ставим их спиной
+  // к ВЕРХНИМ стенам: северной (y1, справа-вверху) и западной (x1, слева-вверху).
+  // Южная (y2) и восточная (x2) стены — с окнами; держим их свободными для входа.
+  // у правых комнат западная стена — перегородка с дверью: мебель вдоль севера
+  // начинаем с отступом от двери; у левых западная стена свободна (окон нет)
+  const startX = (room) =>
+    room.side === "left" ? room.x1 + 0.25 : room.x1 + 0.95;
+  const westX = (room) => room.x1 + 0.25; // доп. spots только у левых комнат
+  const northY = (room) => room.y1 + 0.22;
 
-  function innerX(room, width) {
-    return room.side === "left" ? room.x2 - width - 0.25 : room.x1 + 0.25;
-  }
-
-  let cursor = kitchen.side === "left" ? kitchen.x1 + 0.25 : kitchen.x2 - 0.25;
+  // кухонный гарнитур вдоль северной стены от запада к востоку
+  let cursor = startX(kitchen);
   for (const kind of ["fridge", "sink", "stove"]) {
     const def = FURNITURE[kind];
-    const x = kitchen.side === "left" ? cursor : cursor - def.w;
-    put(kitchen, kind, x, kitchen.y1 + 0.22, def.w, def.d, kind !== "stove");
-    cursor = kitchen.side === "left" ? x + def.w + 0.12 : x - 0.12;
+    put(kitchen, kind, cursor, northY(kitchen), def.w, def.d, kind !== "stove");
+    cursor += def.w + 0.12;
   }
   const table = FURNITURE.table;
   const tableX = Math.max(
@@ -221,7 +223,7 @@ export function suburbInterior(b) {
       (kitchen.x1 + kitchen.x2 - table.w) / 2,
     ),
   );
-  const tableY = kitchen.y2 - table.d - 0.25;
+  const tableY = kitchen.y1 + 1.35; // центр кухни, не у южного окна
   if (put(kitchen, "table", tableX, tableY)) {
     putAny(kitchen, "chair", [
       [tableX - 0.72, tableY + 0.15],
@@ -229,54 +231,37 @@ export function suburbInterior(b) {
     ]);
   }
 
-  put(living, "sofa", outerX(living, FURNITURE.sofa.w), living.y1 + 0.22);
+  // гостиная: диван у северной стены, ТВ/шкаф/кресло — север/запад, не в углу
+  put(living, "sofa", startX(living), northY(living));
   putAny(living, "tv", [
-    [outerX(living, FURNITURE.tv.w), living.y2 - FURNITURE.tv.d - 0.25],
-    [innerX(living, FURNITURE.tv.w), living.y2 - FURNITURE.tv.d - 0.25],
+    [living.x1 + FURNITURE.sofa.w + 0.4, northY(living)],
+    [westX(living), living.y1 + 1.3],
   ]);
   putAny(living, "bookcase", [
-    [innerX(living, FURNITURE.bookcase.w), living.y1 + 0.22],
-    [
-      innerX(living, FURNITURE.bookcase.w),
-      living.y2 - FURNITURE.bookcase.d - 0.25,
-    ],
-    [
-      outerX(living, FURNITURE.bookcase.w),
-      living.y2 - FURNITURE.bookcase.d - 0.25,
-    ],
+    [westX(living), living.y1 + 1.3],
+    [living.x1 + FURNITURE.sofa.w + 0.4, northY(living)],
   ]);
   putAny(living, "armchair", [
-    [innerX(living, FURNITURE.armchair.w), living.y1 + 1.16],
-    [outerX(living, FURNITURE.armchair.w), living.y1 + 1.16],
-    [
-      outerX(living, FURNITURE.armchair.w),
-      living.y2 - FURNITURE.armchair.d - 0.25,
-    ],
-    [innerX(living, FURNITURE.armchair.w), living.y1 + 0.25],
+    [living.x1 + 1.7, living.y1 + 1.2],
+    [westX(living), living.y1 + 2.2],
   ]);
   putAny(living, "floor_lamp", [
-    [innerX(living, FURNITURE.floor_lamp.w), living.y1 + 0.25],
-    [
-      outerX(living, FURNITURE.floor_lamp.w),
-      living.y2 - FURNITURE.floor_lamp.d - 0.25,
-    ],
+    [living.x2 - FURNITURE.floor_lamp.w - 0.25, northY(living)],
+    [westX(living), living.y1 + 3.0],
   ]);
 
   function furnishBedroom(room, master) {
     const bedW = 1.55;
     const bedD = Math.min(1.7, room.y2 - room.y1 - 0.42);
-    const bedX = outerX(room, bedW);
+    const bedX = startX(room); // изголовье к северу, спинка к западу
     const bedY = room.y1 + 0.21;
     if (put(room, "bed", bedX, bedY, bedW, bedD)) {
-      const nightW = FURNITURE.nightstand.w;
-      const nightX =
-        room.side === "left" ? bedX + bedW + 0.08 : bedX - nightW - 0.08;
       put(
         room,
         "nightstand",
-        nightX,
+        bedX + bedW + 0.08,
         bedY,
-        nightW,
+        FURNITURE.nightstand.w,
         FURNITURE.nightstand.d,
         true,
       );
@@ -285,14 +270,8 @@ export function suburbInterior(b) {
       room,
       "dresser",
       [
-        [
-          outerX(room, FURNITURE.dresser.w),
-          room.y2 - FURNITURE.dresser.d - 0.22,
-        ],
-        [
-          innerX(room, FURNITURE.dresser.w),
-          room.y2 - FURNITURE.dresser.d - 0.22,
-        ],
+        [bedX + bedW + 0.7, northY(room)],
+        [westX(room), room.y1 + 2.2],
       ],
       true,
     );
@@ -301,54 +280,42 @@ export function suburbInterior(b) {
         room,
         "wardrobe",
         [
-          [
-            innerX(room, FURNITURE.wardrobe.w),
-            room.y2 - FURNITURE.wardrobe.d - 0.22,
-          ],
-          [
-            outerX(room, FURNITURE.wardrobe.w),
-            room.y2 - FURNITURE.wardrobe.d - 0.22,
-          ],
+          [westX(room), room.y1 + 2.2],
+          [bedX + bedW + 0.7, northY(room)],
         ],
         true,
       );
     else
       putAny(room, "bookcase", [
-        [
-          innerX(room, FURNITURE.bookcase.w),
-          room.y2 - FURNITURE.bookcase.d - 0.22,
-        ],
-        [
-          outerX(room, FURNITURE.bookcase.w),
-          room.y2 - FURNITURE.bookcase.d - 0.22,
-        ],
+        [westX(room), room.y1 + 2.2],
+        [bedX + bedW + 0.7, northY(room)],
       ]);
   }
 
   function furnishBathroom(room) {
-    put(room, "bathtub", outerX(room, FURNITURE.bathtub.w), room.y1 + 0.21);
-    const toiletX = outerX(room, FURNITURE.toilet.w);
-    put(room, "toilet", toiletX, room.y2 - FURNITURE.toilet.d - 0.22);
+    // всё вдоль северной стены с запада на восток: ванна → туалет → раковина,
+    // фронтом на юг; подход к каждому свободен, дверь и окна не задеты
+    const bx = startX(room);
+    put(room, "bathtub", bx, northY(room));
+    putAny(room, "toilet", [
+      [bx + FURNITURE.bathtub.w + 0.25, northY(room)],
+      [westX(room), room.y1 + 1.15],
+    ]);
     putAny(room, "bathroom_sink", [
-      [
-        toiletX + (room.side === "left" ? 0.85 : -0.85),
-        room.y2 - FURNITURE.bathroom_sink.d - 0.22,
-      ],
-      [innerX(room, FURNITURE.bathroom_sink.w), room.y1 + 0.22],
+      [bx + FURNITURE.bathtub.w + 0.25 + FURNITURE.toilet.w + 0.2, northY(room)],
+      [bx + FURNITURE.bathtub.w + 0.25, room.y1 + 0.95],
     ]);
   }
 
   function furnishUtility(room) {
-    const x = outerX(room, FURNITURE.washer.w);
-    put(room, "washer", x, room.y1 + 0.22);
-    const dryerX = room.side === "left" ? x + 0.82 : x - 0.82;
-    put(room, "dryer", dryerX, room.y1 + 0.22);
+    put(room, "washer", startX(room), northY(room));
+    put(room, "dryer", startX(room) + 0.82, northY(room));
     putAny(
       room,
       "shelf",
       [
-        [outerX(room, FURNITURE.shelf.w), room.y2 - FURNITURE.shelf.d - 0.22],
-        [innerX(room, FURNITURE.shelf.w), room.y2 - FURNITURE.shelf.d - 0.22],
+        [westX(room), room.y1 + 1.2],
+        [room.x1 + 1.7, northY(room)],
       ],
       true,
     );
@@ -356,9 +323,8 @@ export function suburbInterior(b) {
       room,
       "crate",
       [
-        [innerX(room, FURNITURE.crate.w), room.y1 + 0.22],
-        [outerX(room, FURNITURE.crate.w), room.y1 + 0.22],
-        [outerX(room, FURNITURE.crate.w), room.y2 - FURNITURE.crate.d - 0.22],
+        [room.x1 + 1.7, northY(room)],
+        [westX(room), room.y1 + 2.1],
       ],
       true,
     );
