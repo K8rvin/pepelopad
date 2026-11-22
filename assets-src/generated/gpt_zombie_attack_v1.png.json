@@ -1,0 +1,24 @@
+{
+  "id": "zombie_attack",
+  "source": "GPT",
+  "prompt": "Тот же зомби, что на референсе zombie.png, выброс рук вперёд, раскрытая пасть, укус; RGBA.",
+  "originalImport": "tmp/Атакующий зомби с протянутыми когтями.png",
+  "createdAt": "2026-11-22T16:01:27.215Z",
+  "sha256": "f5749e3fbd6725cd958579645c32cdb25acb675bf0285b9f7a7a3d038bded528",
+  "originalSize": [
+    834,
+    1259
+  ],
+  "runtime": "public/assets/gen/zombie_attack.png",
+  "runtimeSize": [
+    834,
+    1259
+  ],
+  "processing": {
+    "pipeline": "scripts/process_zombie_frames.mjs",
+    "commonScale": 0.8447,
+    "anchor": "feet baseline + center of zombie.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр анимации ходока; единый масштаб набора из шага, якорь ступней по zombie.png."
+}

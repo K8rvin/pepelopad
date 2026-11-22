@@ -152,6 +152,7 @@ export function updateCombat(
         z.attackCd = (z.attackCd || 0) - dt;
         if (z.attackCd <= 0) {
           z.attackCd = ZOMBIE_ATTACK_CD;
+          z.attackT = 0.3; // кадр атаки/укуса
           C.playerHp -= ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
           C.hurtFlash = 1;
           C.shake = 6;
@@ -203,6 +204,7 @@ export function updateCombat(
 
 function hurtZombie(C, z, dmg, arrow) {
   z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
+  z.hurtT = 0.3; // кадр получения урона
   // отброс по направлению стрелы (громилы и Матка почти не сдвигаются)
   const knock = 0.35 * ZTYPES[z.type || "walker"].knock;
   z.x += arrow.dx * knock;
@@ -312,6 +314,7 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
     if (da > 0.9) continue; // дуга ~±50°
     const dmg = Math.round(weapon.dmg * (mods?.meleeDmgK ?? 1));
     z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
+    z.hurtT = 0.3;
     const knock = weapon.knock * ZTYPES[z.type || "walker"].knock;
     z.x += (dx / Math.max(d, 0.01)) * knock;
     z.y += (dy / Math.max(d, 0.01)) * knock;

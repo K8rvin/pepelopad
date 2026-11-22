@@ -114,6 +114,8 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
   const night = speedK > 1;
   for (const z of zombies) {
     if (z.dead) continue;
+    z.hurtT = Math.max(0, (z.hurtT || 0) - dt);
+    z.attackT = Math.max(0, (z.attackT || 0) - dt);
     // дальние зомби спят (не видны на экране)
     if (Math.abs(z.x - player.x) + Math.abs(z.y - player.y) > 80) continue;
     const t = ZTYPES[z.type || "walker"];

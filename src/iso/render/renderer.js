@@ -1767,15 +1767,22 @@ function actorDepth(city, a) {
 }
 
 function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
-  // павший зомби: спрайт на боку, затухание после 3 с
+  // павший зомби: кадр падения (если есть), затухание после 3 с
   const p = w2s(c.x, c.y);
   const alpha = c.t > 3 ? Math.max(0, 1 - (c.t - 3) / 3) : 1;
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(toX(p.x), toY(p.y));
-  ctx.rotate(c.pose ? 1.45 : -1.45); // на бок
-  ctx.scale(zoom * 0.9, zoom * 0.55); // сплющен к земле
-  ctx.drawImage(SPR.zombie[0], -32, -88, 64, 96);
+  const fall = SPRTEX.zombie_fall;
+  if (fall) {
+    const h = 62 * zoom,
+      w = h * (fall.width / fall.height);
+    ctx.drawImage(fall, toX(p.x) - w / 2, toY(p.y) - h * 0.55, w, h);
+  } else {
+    ctx.translate(toX(p.x), toY(p.y));
+    ctx.rotate(c.pose ? 1.45 : -1.45); // на бок
+    ctx.scale(zoom * 0.9, zoom * 0.55); // сплющен к земле
+    ctx.drawImage(SPR.zombie[0], -32, -88, 64, 96);
+  }
   ctx.restore();
 }
 
@@ -1819,7 +1826,18 @@ function drawActor(
     isPlayer &&
     ((combat?.releaseT > 0 && SPRTEX.survivor_bow_release) ||
       (combat?.bowDrawing && SPRTEX.survivor_bow_draw));
-  const base = bowSprite || SPRTEX[isPlayer ? "survivor" : "zombie"];
+  // покадровая анимация ходока: урон > атака > шаг > стойка
+  const zState = !isPlayer
+    ? a.hurtT > 0
+      ? "hurt"
+      : a.attackT > 0
+        ? "attack"
+        : a.moving
+          ? "walk"
+          : null
+    : null;
+  const zSprite = zState ? SPRTEX["zombie_" + zState] : null;
+  const base = bowSprite || zSprite || SPRTEX[isPlayer ? "survivor" : "zombie"];
   const img = base && zt?.tint ? tintedZombie(base, zt.tint) : base;
   if (img) {
     const isBow =

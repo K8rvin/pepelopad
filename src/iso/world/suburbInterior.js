@@ -302,7 +302,10 @@ export function suburbInterior(b) {
       [westX(room), room.y1 + 1.15],
     ]);
     putAny(room, "bathroom_sink", [
-      [bx + FURNITURE.bathtub.w + 0.25 + FURNITURE.toilet.w + 0.2, northY(room)],
+      [
+        bx + FURNITURE.bathtub.w + 0.25 + FURNITURE.toilet.w + 0.2,
+        northY(room),
+      ],
       [bx + FURNITURE.bathtub.w + 0.25, room.y1 + 0.95],
     ]);
   }

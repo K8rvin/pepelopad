@@ -1,0 +1,24 @@
+{
+  "id": "zombie_hurt",
+  "source": "GPT",
+  "prompt": "Тот же зомби, что на референсе zombie.png, отклонение назад от удара, голова запрокинута, кровь на груди; RGBA.",
+  "originalImport": "tmp/Зомби в паническом отступлении.png",
+  "createdAt": "2026-11-22T14:51:40.727Z",
+  "sha256": "ee14ee1b695d52b9d4102fd4eda1d700e94ac7444ce6a9c03c9f83b9bf2a7064",
+  "originalSize": [
+    834,
+    1259
+  ],
+  "runtime": "public/assets/gen/zombie_hurt.png",
+  "runtimeSize": [
+    834,
+    1259
+  ],
+  "processing": {
+    "pipeline": "scripts/process_zombie_frames.mjs",
+    "commonScale": 0.8447,
+    "anchor": "feet baseline + center of zombie.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр анимации ходока; единый масштаб набора из шага, якорь ступней по zombie.png."
+}

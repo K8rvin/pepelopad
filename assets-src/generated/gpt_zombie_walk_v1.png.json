@@ -1,0 +1,24 @@
+{
+  "id": "zombie_walk",
+  "source": "GPT",
+  "prompt": "Тот же зомби, что на референсе zombie.png, середина шага, ноги в противофазе, руки вперёд; RGBA, ступни на базовой линии.",
+  "originalImport": "tmp/Шагающий зомби в лохмотьях.png",
+  "createdAt": "2026-11-22T12:20:05.003Z",
+  "sha256": "8afa7f3c58a511091c19f5123af64c434bb657882c891c5cd79265d5ceafcfef",
+  "originalSize": [
+    834,
+    1259
+  ],
+  "runtime": "public/assets/gen/zombie_walk.png",
+  "runtimeSize": [
+    834,
+    1259
+  ],
+  "processing": {
+    "pipeline": "scripts/process_zombie_frames.mjs",
+    "commonScale": 0.8447,
+    "anchor": "feet baseline + center of zombie.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр анимации ходока; единый масштаб набора из шага, якорь ступней по zombie.png."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "zombie_fall",
+  "source": "GPT",
+  "prompt": "Тот же зомби, что на референсе zombie.png, падение на колени и бок, тело скошено к земле; RGBA.",
+  "originalImport": "tmp/Падающий зомби с протянутой рукой.png",
+  "createdAt": "2026-11-22T15:59:18.122Z",
+  "sha256": "dd1a09b60f663be41c3e2b83e4810acf3c9aaac972666fb27080879968c2c3bd",
+  "originalSize": [
+    834,
+    1259
+  ],
+  "runtime": "public/assets/gen/zombie_fall.png",
+  "runtimeSize": [
+    834,
+    1259
+  ],
+  "processing": {
+    "pipeline": "scripts/process_zombie_frames.mjs",
+    "commonScale": 0.8447,
+    "anchor": "feet baseline + center of zombie.png",
+    "alphaBelow4Removed": true
+  },
+  "notes": "Кадр анимации ходока; единый масштаб набора из шага, якорь ступней по zombie.png."
+}

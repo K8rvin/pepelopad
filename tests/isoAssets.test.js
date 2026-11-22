@@ -5,6 +5,11 @@ import { SPRITE_FILES } from "../src/iso/render/assets.js";
 const GPT_KEYS = [
   "tree",
   "tree_dead",
+  "furn_bed",
+  "zombie_walk",
+  "zombie_hurt",
+  "zombie_fall",
+  "zombie_attack",
   "tree_birch",
   "win_intact",
   "win_broken",
