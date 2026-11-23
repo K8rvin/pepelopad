@@ -1,0 +1,23 @@
+{
+  "id": "tent_olive",
+  "source": "GPT",
+  "prompt": "Isometric dimetric 2:1 two-person ridge camping tent, olive-drab patched tarp, sagging ridgeline, guy ropes with pegs, dark open entrance flap on the south-east face, mud splashes at base, transparent RGBA.",
+  "originalImport": "tmp/Потрёпанная палатка выжившего.webp",
+  "createdAt": "2026-11-23T18:05:23.260Z",
+  "sha256": "bd4c8b0925ce394ec588a3082e141c76412ab0c50dd245178420799a6bf01a5f",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/tent_olive.png",
+  "runtimeSize": [
+    512,
+    403
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8
+  }
+}

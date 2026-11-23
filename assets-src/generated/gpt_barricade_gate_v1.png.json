@@ -1,0 +1,23 @@
+{
+  "id": "barricade_gate",
+  "source": "GPT",
+  "prompt": "Isometric wide sandbag-and-plank barricade on trestle legs with corrugated top, long axis along world Y, transparent RGBA.",
+  "originalImport": "tmp/Изометрическая постапокалиптическая баррикада.webp",
+  "createdAt": "2026-11-23T18:05:23.915Z",
+  "sha256": "d24fd820be2ac32378f48da7ab98d44763e623ba395a18d1accf74ba96962f55",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/barricade_gate.png",
+  "runtimeSize": [
+    512,
+    512
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8
+  }
+}

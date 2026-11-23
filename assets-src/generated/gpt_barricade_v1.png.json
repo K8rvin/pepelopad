@@ -1,0 +1,23 @@
+{
+  "id": "barricade",
+  "source": "GPT",
+  "prompt": "Isometric makeshift barricade: stacked sandbags topped with crossed planks and rusty corrugated sheet, long axis along world Y, transparent RGBA.",
+  "originalImport": "tmp/Изометрическая баррикада из мешков и металла.webp",
+  "createdAt": "2026-11-23T18:05:23.738Z",
+  "sha256": "c7d673cb38c1f8c2e61d439c53f2d61d4d4e997f6fec00666f70c21abbd58448",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/barricade.png",
+  "runtimeSize": [
+    512,
+    347
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8
+  }
+}

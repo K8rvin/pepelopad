@@ -713,10 +713,20 @@ export function renderWorld({
   }
   if (siege?.gate && (siege.active || story?.projects.includes("gate"))) {
     const gate = siege.gate;
-    for (let i = 0; i < 3; i++)
-      push(gate.x + i + gate.y, 1, () =>
-        drawCrate(ctx, gate.x + i, gate.y, toX, toY, zoom),
-      );
+    // ворота — одна широкая баррикада поперёк проезда (ось X → зеркало)
+    push(gate.x + 1.5 + gate.y, 1, () =>
+      drawGroundSprite(
+        ctx,
+        SPRTEX.barricade_gate,
+        gate.x + 1.5,
+        gate.y,
+        110,
+        zoom,
+        toX,
+        toY,
+        true,
+      ),
+    );
     if (siege.active) {
       const p = w2s(gate.x + 1.5, gate.y);
       ctx.fillStyle = "#171a14";
@@ -751,10 +761,11 @@ export function renderWorld({
       const a = (i / (nBar * 3)) * Math.PI * 2;
       const tx = bx + Math.cos(a) * 5,
         ty = by + Math.sin(a) * 5;
+      const flip = Math.abs(Math.sin(a)) > Math.abs(Math.cos(a));
       push(
         actorDepth(city, { x: tx, y: ty, r: 0.5 }),
         1,
-        () => drawCrate(ctx, tx, ty, toX, toY, zoom),
+        () => drawBarricade(ctx, tx, ty, flip, toX, toY, zoom),
         tx + ty,
       );
     }
@@ -2076,84 +2087,38 @@ function drawActor(
   }
 }
 
-// палатка-пирамида: 4 грани painter-сортировкой, южная светлее
+// props-ассеты: спрайт якорится низом по центру в точке земли
+function drawGroundSprite(ctx, img, x, y, w, zoom, toX, toY, flip = false) {
+  if (!img) return;
+  const p = w2s(x, y);
+  const h = w * (img.height / img.width);
+  ctx.save();
+  ctx.translate(toX(p.x), toY(p.y));
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(img, (-w / 2) * zoom, -h * zoom, w * zoom, h * zoom);
+  ctx.restore();
+}
+
 function drawTent(ctx, x, y, col, toX, toY, zoom) {
-  const b = 1.2,
-    d = 0.9,
-    h = 1.5;
-  const cor = [
-    [-b, -d],
-    [b, -d],
-    [b, d],
-    [-b, d],
-  ];
-  const apex = w2s(x, y, h);
-  const faces = [];
-  for (let e = 0; e < 4; e++) {
-    const a = cor[e],
-      bb = cor[(e + 1) % 4];
-    const mx = (a[0] + bb[0]) / 2,
-      my = (a[1] + bb[1]) / 2;
-    faces.push({ d: mx + my, a, bb });
-  }
-  faces.sort((p, q) => p.d - q.d);
-  for (const f of faces) {
-    const shade = f.d > 0 ? 1 : 0.72;
-    const n = parseInt(col.slice(1), 16);
-    const r = Math.min(255, ((n >> 16) & 255) * shade) | 0;
-    const g = Math.min(255, ((n >> 8) & 255) * shade) | 0;
-    const bl = Math.min(255, (n & 255) * shade) | 0;
-    ctx.fillStyle = `rgb(${r},${g},${bl})`;
-    const p1 = w2s(x + f.a[0], y + f.a[1], 0);
-    const p2 = w2s(x + f.bb[0], y + f.bb[1], 0);
-    ctx.beginPath();
-    ctx.moveTo(toX(p1.x), toY(p1.y));
-    ctx.lineTo(toX(p2.x), toY(p2.y));
-    ctx.lineTo(toX(apex.x), toY(apex.y));
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.strokeStyle = "rgba(16,20,26,0.5)";
-  ctx.lineWidth = 1;
-  const p1 = w2s(x - b, y + d, 0);
-  const p2 = w2s(x + b, y + d, 0);
-  ctx.beginPath();
-  ctx.moveTo(toX(p1.x), toY(p1.y));
-  ctx.lineTo(toX(apex.x), toY(apex.y));
-  ctx.lineTo(toX(p2.x), toY(p2.y));
-  ctx.stroke();
+  drawGroundSprite(
+    ctx,
+    col === "#6a6252" ? SPRTEX.tent_tan : SPRTEX.tent_olive,
+    x,
+    y,
+    134,
+    zoom,
+    toX,
+    toY,
+  );
 }
 
 function drawCrate(ctx, x, y, toX, toY, zoom) {
-  const w = 0.9,
-    d = 0.7,
-    h = 0.6;
-  const s = w2s(x, y + d, 0),
-    e = w2s(x + w, y, 0);
-  const hgt = h * 32 * zoom;
-  ctx.fillStyle = "#6a5a3a";
-  ctx.beginPath();
-  ctx.moveTo(toX(s.x), toY(s.y) - hgt);
-  ctx.lineTo(toX(e.x), toY(e.y) - hgt);
-  ctx.lineTo(toX(e.x), toY(e.y));
-  ctx.lineTo(toX(s.x), toY(s.y));
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#7a6844";
-  const a1 = w2s(x, y, 0),
-    a2 = w2s(x + w, y, 0),
-    a3 = w2s(x + w, y + d, 0),
-    a4 = w2s(x, y + d, 0);
-  ctx.beginPath();
-  ctx.moveTo(toX(a1.x), toY(a1.y) - hgt);
-  ctx.lineTo(toX(a2.x), toY(a2.y) - hgt);
-  ctx.lineTo(toX(a3.x), toY(a3.y) - hgt);
-  ctx.lineTo(toX(a4.x), toY(a4.y) - hgt);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "rgba(16,20,26,0.4)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  drawGroundSprite(ctx, SPRTEX.crate_wood, x, y, 52, zoom, toX, toY);
+}
+
+// баррикада базы: длинная ось спрайта вдоль Y; касательная вдоль X — зеркалим
+function drawBarricade(ctx, x, y, flip, toX, toY, zoom) {
+  drawGroundSprite(ctx, SPRTEX.barricade, x, y, 84, zoom, toX, toY, flip);
 }
 
 function drawFire(ctx, x, y, toX, toY, zoom, now) {

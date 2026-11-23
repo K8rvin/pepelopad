@@ -1,0 +1,23 @@
+{
+  "id": "crate_wood",
+  "source": "GPT",
+  "prompt": "Isometric closed wooden supply crate, worn gray-brown planks, rusty steel corner brackets, faded abstract star stencil, rope handles, transparent RGBA.",
+  "originalImport": "tmp/Потёртый военный деревянный ящик.webp",
+  "createdAt": "2026-11-23T18:05:23.568Z",
+  "sha256": "1696e276d29966d89d1b6875685bba88b479e1fa5e5775aad65172896b5ba060",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/crate_wood.png",
+  "runtimeSize": [
+    256,
+    227
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "tent_tan",
+  "source": "GPT",
+  "prompt": "The same ridge tent in faded tan/khaki tarp with different patches, entrance closed with rolled-up door tie, same camera angle, transparent RGBA.",
+  "originalImport": "tmp/Изометрическая палатка с закрытым входом.webp",
+  "createdAt": "2026-11-23T18:05:23.410Z",
+  "sha256": "2127f5565c99566f434f4632b283aee94fe2a65867f905821dd0517ba0a4dbd9",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/tent_tan.png",
+  "runtimeSize": [
+    512,
+    401
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8
+  }
+}

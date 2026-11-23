@@ -37,6 +37,11 @@ const GPT_KEYS = [
   "furn_armchair",
   "furn_tv",
   "furn_bookcase",
+  "tent_olive",
+  "tent_tan",
+  "crate_wood",
+  "barricade",
+  "barricade_gate",
 ];
 
 const file = (path) => new URL(`../${path}`, import.meta.url);
@@ -87,6 +92,7 @@ describe("GPT-ассеты и ссылки загрузчика", () => {
   it("повторяемый обработчик и все пути загрузчика существуют", () => {
     expect(existsSync(file("scripts/process_portraits.mjs"))).toBe(true);
     expect(existsSync(file("scripts/process_gpt_assets.py"))).toBe(true);
+    expect(existsSync(file("scripts/process_props.mjs"))).toBe(true);
     for (const [key, path] of Object.entries({
       ...SPRITE_FILES,
       ...PORTRAIT_FILES,
