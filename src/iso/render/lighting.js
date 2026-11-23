@@ -198,7 +198,7 @@ export function renderNight({
   // светящиеся окна — после затемнения, их не гасим
   ctx.globalCompositeOperation = "lighter";
   for (const b of city.buildings) {
-    if (b === inside) continue;
+    if (b === inside || b.powerOff) continue;
     // отсев ДО обращения к кэшу: иначе первый ночной кадр печёт фасады
     // всего города синхронно (секунды фриза)
     const ccx = b.x + b.w / 2,

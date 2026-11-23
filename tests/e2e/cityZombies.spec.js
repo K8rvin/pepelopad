@@ -47,7 +47,7 @@ test("типы зомби, стадность и Матка: спавн, тре�
   // сейв сохраняет типы зомби
   await page.evaluate(() => window.__city.save());
   const types = await page.evaluate(() => {
-    const d = JSON.parse(localStorage.getItem("pepelopad_city_v5"));
+    const d = JSON.parse(localStorage.getItem("pepelopad_city_v6"));
     return [...new Set(d.zombies.map((z) => z.type))].sort();
   });
   expect(types).toContain("boss");

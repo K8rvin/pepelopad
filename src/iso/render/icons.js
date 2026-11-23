@@ -167,6 +167,36 @@ const DRAW = {
     for (let i = 0; i < 7; i++) px(8 - i, 6 + i, 1, 1, C.wood);
     px(2, 12, 2, 2, C.clothDark); // обмотка рукояти
   },
+  antibiotics({ px }) {
+    px(3, 6, 10, 5, C.outline);
+    px(4, 7, 4, 3, C.white);
+    px(8, 7, 4, 3, C.red);
+    px(8, 6, 1, 5, C.outline);
+  },
+  insulin({ px }) {
+    px(4, 2, 4, 9, C.outline);
+    px(5, 3, 2, 5, C.clothLight);
+    px(6, 11, 6, 1, C.steel);
+    px(11, 11, 1, 3, C.metalLight);
+    px(3, 4, 1, 4, C.metalDark);
+  },
+  battery({ px }) {
+    px(4, 4, 8, 10, C.outline);
+    px(5, 5, 6, 8, "#59634b");
+    px(6, 2, 2, 2, C.metal);
+    px(9, 2, 2, 2, C.metal);
+    px(6, 8, 5, 1, C.white);
+    px(8, 6, 1, 5, C.white);
+  },
+  meal({ px }) {
+    px(2, 6, 12, 5, C.outline);
+    px(3, 6, 10, 3, C.metal);
+    px(4, 6, 8, 2, "#b86f3c");
+    px(4, 3, 1, 3, C.white);
+    px(8, 2, 1, 4, C.white);
+    px(11, 3, 1, 3, C.white);
+    px(3, 11, 10, 2, C.metalDark);
+  },
   knife({ px }) {
     // клинок сверху-справа, рукоять снизу-слева
     px(10, 1, 4, 4, C.outline);

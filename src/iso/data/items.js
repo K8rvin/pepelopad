@@ -11,4 +11,8 @@ export const ITEMS = {
   torch: { name: "Факел", stack: 5, icon: "🔥" },
   bat: { name: "Бита", stack: 1, icon: "🏏" },
   knife: { name: "Нож", stack: 1, icon: "🔪" },
+  antibiotics: { name: "Антибиотики", stack: 5, icon: "💊", unique: true },
+  insulin: { name: "Инсулин", stack: 2, icon: "💉", unique: true },
+  battery: { name: "Батарея", stack: 2, icon: "🔋", unique: true },
+  meal: { name: "Горячая еда", stack: 5, icon: "🍲" },
 };

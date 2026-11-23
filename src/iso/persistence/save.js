@@ -1,16 +1,11 @@
-// Сохранения новой игры: версионированная схема, живые объекты не сериализуются.
-// Город пересоздаётся из сида; сохраняется только дельта состояния.
-// v3: навыки и характеристики (прогрессия «учись делая»).
-// v4: одноэтажный пригород — карта несовместима с v3; мировые дельты и позиция
-// сбрасываются, прогресс (навыки, квесты, инвентарь, сутки) сохраняется.
-// v5: новые пригородные интерьеры; старые индексные ID внутренних контейнеров
-// отделены от семантических ID комнат, мировой лут и остальной прогресс сохраняются.
 import { restoreSkills } from "../systems/skills.js";
 import { createStats } from "../systems/stats.js";
+import { createQuests } from "../systems/quests.js";
 import { PITCH } from "../world/cityGen.js";
 
-const SKEY = "pepelopad_city_v5";
+const SKEY = "pepelopad_city_v6";
 const OLD_KEYS = [
+  "pepelopad_city_v5",
   "pepelopad_city_v4",
   "pepelopad_city_v3",
   "pepelopad_city_v2",
@@ -30,9 +25,12 @@ export function saveGame({
   base,
   story,
   stats,
+  interactions,
+  survivors,
+  siege,
 }) {
   const data = {
-    v: 5,
+    v: 6,
     savedAt: Date.now(),
     seed: city.seed,
     nb: city.nb,
@@ -43,10 +41,7 @@ export function saveGame({
       lastSiegeDay: survival.lastSiegeDay,
       bossDone: !!survival.bossDone,
     },
-    combat: {
-      playerHp: combat.playerHp,
-      kills: combat.kills,
-    },
+    combat: { playerHp: combat.playerHp, kills: combat.kills },
     player: {
       x: player.x,
       y: player.y,
@@ -66,6 +61,9 @@ export function saveGame({
       hp: z.hp,
       dead: !!z.dead,
       type: z.type || "walker",
+      level: z.level || 0,
+      questGroup: z.questGroup || null,
+      siege: !!z.siege,
     })),
     cars: city.cars.map((c) => ({
       fuel: c.fuel,
@@ -77,7 +75,20 @@ export function saveGame({
     })),
     windows: [...city.brokenWindows.entries()].map(([k, v]) => [k, [...v]]),
     quests: quests
-      ? { i: quests.i, prog: quests.prog, done: quests.done }
+      ? quests.states
+        ? {
+            states: quests.states,
+            stages: quests.stages,
+            progress: quests.progress,
+            done: quests.done,
+            failed: quests.failed,
+            rewarded: quests.rewarded,
+            pendingRewards: quests.pendingRewards,
+            tracked: quests.tracked,
+            i: quests.i,
+            prog: quests.prog,
+          }
+        : { i: quests.i, prog: quests.prog, done: quests.done }
       : null,
     skills: skills ? { skills: skills.skills, attrs: skills.attrs } : null,
     camps: camps ? camps.map((c) => ({ ...c })) : null,
@@ -87,8 +98,51 @@ export function saveGame({
           storage: { slots: base.storage.slots, size: base.storage.size },
         }
       : null,
-    story: story ? { i: story.i, flags: story.flags } : null,
+    story: story?.home
+      ? {
+          flags: story.flags,
+          clues: story.clues,
+          seen: story.seen,
+          projects: story.projects,
+          ending: story.ending,
+          markRelation: story.markRelation,
+          generatorOn: story.generatorOn,
+          generatorFuel: story.generatorFuel,
+          home: { unlocked: story.home.unlocked, storage: story.home.storage },
+        }
+      : null,
     stats: stats ? { ...stats } : null,
+    interactions: interactions
+      ? interactions.objects.map((o) => ({
+          id: o.id,
+          done: !!o.done,
+          unlocked: !!o.unlocked,
+          uses: o.uses || 0,
+        }))
+      : null,
+    survivors: survivors
+      ? survivors.map((s) => ({
+          id: s.id,
+          x: s.x,
+          y: s.y,
+          level: s.level || 0,
+          hp: s.hp,
+          state: s.state,
+          campId: s.campId || null,
+          walkPh: s.walkPh || 0,
+        }))
+      : null,
+    siege: siege
+      ? {
+          active: !!siege.active,
+          finished: !!siege.finished,
+          wave: siege.phase === "respite" ? siege.wave + 1 : siege.wave,
+          phase: "combat",
+          gateHp: siege.gateHp,
+          gateMaxHp: siege.gateMaxHp,
+          attempts: siege.attempts || 0,
+        }
+      : null,
     wrecked: {
       lamps: city.lamps.map((l, i) => (l.dead ? i : -1)).filter((i) => i >= 0),
       fences: city.fences
@@ -110,8 +164,6 @@ export function saveGame({
   return data;
 }
 
-// миграции: v1 → v2 (квесты), v2 → v3 (навыки), v3 → v4 (новая карта),
-// v4 → v5 (семантические ID контейнеров новых интерьеров).
 function migrate(data) {
   if (data.v === 1) {
     data.v = 2;
@@ -135,21 +187,28 @@ function migrate(data) {
       ([id]) => !String(id).startsWith("int"),
     );
   }
+  if (data.v === 5) {
+    data.v = 6;
+    data.quests = null;
+    data.story = null;
+    data.interactions = null;
+    data.survivors = null;
+    data.siege = null;
+  }
   return data;
 }
 
 export function loadGameData() {
   let raw = localStorage.getItem(SKEY);
   if (!raw)
-    for (const k of OLD_KEYS) {
-      raw = localStorage.getItem(k);
+    for (const key of OLD_KEYS) {
+      raw = localStorage.getItem(key);
       if (raw) break;
     }
   if (!raw) return null;
   try {
     const data = migrate(JSON.parse(raw));
-    if (data.v !== 5) return null;
-    return data;
+    return data.v === 6 ? data : null;
   } catch {
     return null;
   }
@@ -157,16 +216,16 @@ export function loadGameData() {
 
 export function hasSave() {
   return !!(
-    localStorage.getItem(SKEY) || OLD_KEYS.some((k) => localStorage.getItem(k))
+    localStorage.getItem(SKEY) ||
+    OLD_KEYS.some((key) => localStorage.getItem(key))
   );
 }
 
 export function deleteSave() {
   localStorage.removeItem(SKEY);
-  for (const k of OLD_KEYS) localStorage.removeItem(k);
+  for (const key of OLD_KEYS) localStorage.removeItem(key);
 }
 
-// применить загруженное состояние к живой игре (город уже создан из сида)
 export function applySave(
   data,
   {
@@ -182,6 +241,9 @@ export function applySave(
     base,
     story,
     stats,
+    interactions,
+    survivors,
+    siege,
   },
 ) {
   survival.day = data.survival.day;
@@ -205,9 +267,12 @@ export function applySave(
   inv.size = data.inv.length;
   loot.opened = new Map(data.opened);
   if (quests && data.quests) {
-    quests.i = data.quests.i;
-    quests.prog = data.quests.prog || {};
-    quests.done = data.quests.done || [];
+    if (data.quests.states) Object.assign(quests, createQuests(data.quests));
+    else {
+      quests.i = data.quests.i;
+      quests.prog = data.quests.prog || {};
+      quests.done = data.quests.done || [];
+    }
   }
   if (skills) restoreSkills(skills, data.skills);
   if (base && data.base) {
@@ -218,45 +283,90 @@ export function applySave(
     };
   }
   if (story && data.story) {
-    story.i = data.story.i || 0;
     story.flags = data.story.flags || {};
+    story.clues = data.story.clues || [];
+    story.seen = data.story.seen || {};
+    story.projects = data.story.projects || [];
+    story.ending = data.story.ending || null;
+    story.markRelation = data.story.markRelation || 0;
+    story.generatorOn = !!data.story.generatorOn;
+    story.generatorFuel = data.story.generatorFuel || 0;
+    story.home = {
+      unlocked: !!data.story.home?.unlocked,
+      storage: data.story.home?.storage || new Array(8).fill(null),
+    };
   }
   if (stats) Object.assign(stats, createStats(data.stats));
   if (camps && data.camps)
-    for (const cs of data.camps) {
-      const c = camps.find((k) => k.id === cs.id);
-      if (!c) continue;
-      c.trust = cs.trust || 0;
-      c.upgrades = cs.upgrades || [];
-      c.stock = cs.stock || [];
-      c.request = cs.request || null;
-      c.usedServiceDay = cs.usedServiceDay || 0;
+    for (const saved of data.camps) {
+      const camp = camps.find((c) => c.id === saved.id);
+      if (!camp) continue;
+      camp.trust = saved.trust || 0;
+      camp.upgrades = saved.upgrades || [];
+      camp.stock = saved.stock || [];
+      camp.request = saved.request || null;
+      camp.rescued = saved.rescued || [];
+      camp.usedServiceDay = saved.usedServiceDay || 0;
     }
-  data.zombies.forEach((zs, i) => {
-    const z = city.zombies[i];
-    if (!z) return;
-    z.x = zs.x;
-    z.y = zs.y;
-    z.hp = zs.hp;
-    z.dead = zs.dead;
-    z.type = zs.type || "walker";
-    z.tx = zs.x;
-    z.ty = zs.y;
-  });
+  if (interactions && data.interactions)
+    for (const saved of data.interactions) {
+      const object = interactions.objects.find((o) => o.id === saved.id);
+      if (!object) continue;
+      object.done = !!saved.done;
+      object.unlocked = !!saved.unlocked;
+      object.uses = saved.uses || 0;
+    }
+  if (survivors && data.survivors)
+    for (const saved of data.survivors) {
+      const survivor = survivors.find((s) => s.id === saved.id);
+      if (!survivor) continue;
+      survivor.x = saved.x;
+      survivor.y = saved.y;
+      survivor.level = saved.level || 0;
+      survivor.hp = saved.hp;
+      survivor.state = saved.state;
+      survivor.campId = saved.campId || null;
+      survivor.walkPh = saved.walkPh || 0;
+    }
+  if (siege && data.siege) {
+    siege.active = !!data.siege.active;
+    siege.finished = !!data.siege.finished;
+    siege.wave = data.siege.wave || 0;
+    siege.phase = data.siege.phase || "idle";
+    siege.gateHp = data.siege.gateHp ?? 100;
+    siege.gateMaxHp = data.siege.gateMaxHp ?? 100;
+    siege.attempts = data.siege.attempts || 0;
+    siege.gate = null;
+  }
+  for (const [i, saved] of (data.zombies || []).entries()) {
+    const zombie = city.zombies[i];
+    if (!zombie) continue;
+    zombie.x = saved.x;
+    zombie.y = saved.y;
+    zombie.hp = saved.hp;
+    zombie.dead = saved.dead;
+    zombie.type = saved.type || "walker";
+    zombie.level = saved.level || 0;
+    zombie.questGroup = saved.questGroup || null;
+    zombie.siege = !!saved.siege;
+    zombie.tx = saved.x;
+    zombie.ty = saved.y;
+  }
   if (data.cars)
-    data.cars.forEach((cs, i) => {
-      const c = city.cars[i];
-      if (!c) return;
-      c.fuel = cs.fuel;
-      c.hp = cs.hp;
-      c.heading = cs.heading;
-      c.x = cs.x;
-      c.y = cs.y;
-      if (cs.trunk) c.trunk = { slots: cs.trunk, size: cs.trunk.length };
+    data.cars.forEach((saved, i) => {
+      const car = city.cars[i];
+      if (!car) return;
+      car.fuel = saved.fuel;
+      car.hp = saved.hp;
+      car.heading = saved.heading;
+      car.x = saved.x;
+      car.y = saved.y;
+      if (saved.trunk)
+        car.trunk = { slots: saved.trunk, size: saved.trunk.length };
     });
   if (data.windows)
-    for (const [k, arr] of data.windows)
-      city.brokenWindows.set(Number(k), new Set(arr));
+    for (const [key, values] of data.windows)
+      city.brokenWindows.set(Number(key), new Set(values));
   if (data.wrecked)
     for (const key of [
       "lamps",
@@ -266,6 +376,6 @@ export function applySave(
       "benches",
       "tires",
     ])
-      for (const i of data.wrecked[key] || [])
-        if (city[key][i]) city[key][i].dead = true;
+      for (const index of data.wrecked[key] || [])
+        if (city[key][index]) city[key][index].dead = true;
 }

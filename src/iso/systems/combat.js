@@ -61,6 +61,7 @@ export function updateCombat(
   now,
   protectedFlag = false,
   mods = null,
+  survivors = [],
 ) {
   if (C.dead) {
     C.deadT += dt;
@@ -142,54 +143,117 @@ export function updateCombat(
     }
   }
   C.arrows = C.arrows.filter((a) => a.alive);
-  // зомби атакуют
-  if (!protectedFlag)
-    for (const z of city.zombies) {
-      if (z.dead) continue;
-      if ((z.level || 0) !== (player.level || 0)) continue;
-      const d = Math.hypot(z.x - player.x, z.y - player.y);
-      if (d < 0.7) {
-        z.attackCd = (z.attackCd || 0) - dt;
-        // телеграф: замах (анимация удара) начинается раньше урона — игрок успевает отойти
-        if (z.attackCd <= 0 && !z.winding) {
-          z.winding = true;
-          z.hitDelay = 0.45;
-          z.attackT = 0.45;
-        }
-        // толкаем игрока слегка — только через коллизии, иначе вминает в перегородки
-        const push = 0.4 * dt;
-        moveActor(
-          city,
-          player,
-          ((player.x - z.x) / Math.max(d, 0.01)) * push,
-          ((player.y - z.y) / Math.max(d, 0.01)) * push,
-        );
+  // Без временных массивов: полный городской список проходится каждый кадр.
+  for (const z of city.zombies) {
+    if (z.dead) continue;
+    if (
+      Math.abs(z.x - player.x) + Math.abs(z.y - player.y) > 80 &&
+      !survivors.some(
+        (s) =>
+          !s.hidden &&
+          ["following", "waiting"].includes(s.state) &&
+          Math.abs(z.x - s.x) + Math.abs(z.y - s.y) <= 80,
+      )
+    )
+      continue;
+    let victim = null;
+    let victimKey = null;
+    let victimIsPlayer = false;
+    let distance = Infinity;
+    if (!protectedFlag && (z.level || 0) === (player.level || 0)) {
+      victim = player;
+      victimKey = "player";
+      victimIsPlayer = true;
+      distance = Math.hypot(z.x - player.x, z.y - player.y);
+    }
+    for (const survivor of survivors) {
+      if (survivor.hidden || !["following", "waiting"].includes(survivor.state))
+        continue;
+      if ((z.level || 0) !== (survivor.level || 0)) continue;
+      const d = Math.hypot(z.x - survivor.x, z.y - survivor.y);
+      if (d < distance) {
+        victim = survivor;
+        victimKey = survivor.id;
+        victimIsPlayer = false;
+        distance = d;
       }
-      // замах завершился: урон, только если игрок не увернулся (остался в радиусе)
-      if (z.winding) {
-        z.hitDelay -= dt;
-        if (z.hitDelay <= 0) {
-          z.winding = false;
-          z.attackCd = ZOMBIE_ATTACK_CD;
+    }
+    if (victim && distance < 0.7) {
+      z.attackCd = (z.attackCd || 0) - dt;
+      if (z.attackCd <= 0 && !z.winding) {
+        z.winding = true;
+        z.hitDelay = 0.45;
+        z.attackT = 0.45;
+        z.attackTarget = victimKey;
+      }
+      const push = 0.4 * dt;
+      moveActor(
+        city,
+        victim,
+        ((victim.x - z.x) / Math.max(distance, 0.01)) * push,
+        ((victim.y - z.y) / Math.max(distance, 0.01)) * push,
+      );
+    }
+    if (z.winding) {
+      z.hitDelay -= dt;
+      if (z.hitDelay <= 0) {
+        z.winding = false;
+        z.attackCd = ZOMBIE_ATTACK_CD;
+        let current = null;
+        let currentIsPlayer = false;
+        if (
+          z.attackTarget === "player" &&
+          !protectedFlag &&
+          (z.level || 0) === (player.level || 0)
+        ) {
+          current = player;
+          currentIsPlayer = true;
+        } else {
+          current =
+            survivors.find(
+              (s) =>
+                s.id === z.attackTarget &&
+                !s.hidden &&
+                ["following", "waiting"].includes(s.state) &&
+                (s.level || 0) === (z.level || 0),
+            ) || null;
+        }
+        if (current) {
+          const d = Math.hypot(z.x - current.x, z.y - current.y);
           if (d < 0.9) {
-            C.playerHp -=
+            const damage =
               ZTYPES[z.type || "walker"].dmg + Math.floor(rng() * 5);
-            C.hurtFlash = 1;
-            C.shake = 6;
-            C.onHurt?.();
-            if (!player.infected && rng() < 0.3) {
-              player.infected = true;
-              C.onInfect?.();
-            }
-            if (C.playerHp <= 0) {
-              C.playerHp = 0;
-              C.dead = true;
-              C.deadT = 0;
+            if (currentIsPlayer) {
+              C.playerHp -= damage;
+              C.hurtFlash = 1;
+              C.shake = 6;
+              C.onHurt?.();
+              if (!player.infected && rng() < 0.3) {
+                player.infected = true;
+                C.onInfect?.();
+              }
+              if (C.playerHp <= 0) {
+                C.playerHp = 0;
+                C.dead = true;
+                C.deadT = 0;
+              }
+            } else {
+              current.hp = Math.max(
+                current.id === "nina" ? 1 : 0,
+                current.hp - damage,
+              );
+              C.onSurvivorHurt?.(current);
+              if (current.hp <= 0) {
+                current.state = "dead";
+                current.moving = false;
+                C.onSurvivorDead?.(current);
+              }
             }
           }
         }
       }
     }
+  }
   // затухание эффектов
   C.hurtFlash = Math.max(0, C.hurtFlash - dt * 2.2);
   C.shake = Math.max(0, C.shake - dt * 18);

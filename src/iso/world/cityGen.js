@@ -1,7 +1,7 @@
 // Генератор компактного города (этап 16.2).
 // Нормативы: дорога 8 м + тротуары 3 м с двух сторон, квартал 62×62 м,
 // периметральная застройка, дворы с площадками/парковкой, POI-кварталы.
-import { mulberry32, pick } from "../core/rng.js";
+import { clamp, mulberry32, pick } from "../core/rng.js";
 import {
   T_GRASS,
   T_ASPHALT,
@@ -12,6 +12,7 @@ import {
 } from "../render/tiles.js";
 import { buildBuildingGrid, solidInteriorAt } from "./interiors.js";
 import { ZTYPES, GEN_RUNNER_CHANCE } from "../data/zombies.js";
+import { addStoryLocations, addStoryVehicle } from "./storyLocations.js";
 
 export const ROAD = 8,
   SW = 3,
@@ -170,6 +171,27 @@ export function createCity(seed = 11, nb = 19) {
       homeY: zy,
     });
     placed++;
+  }
+  // Сюжетный слой не участвует в seeded-спавне старого города.
+  addStoryLocations(city, PITCH);
+  addStoryVehicle(city);
+  buildBuildingGrid(city);
+  buildSolidIndex(city);
+  for (const z of city.zombies) {
+    if (!solidRectAt(city, z.x, z.y, 0.5)) continue;
+    let moved = false;
+    for (let radius = 2; radius <= 20 && !moved; radius += 2)
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const x = clamp(z.homeX + Math.cos(angle) * radius, 2, SIZE - 2);
+        const y = clamp(z.homeY + Math.sin(angle) * radius, 2, SIZE - 2);
+        if (solidRectAt(city, x, y, 0.5)) continue;
+        z.x = z.tx = z.homeX = x;
+        z.y = z.ty = z.homeY = y;
+        moved = true;
+        break;
+      }
+    if (!moved) z.dead = true;
   }
   // полы внутри зданий
   for (const b of city.buildings)
@@ -497,6 +519,9 @@ export function buildSolidIndex(city) {
     if (!p.dead) addSolid(city, p.x - 0.8, p.y - 0.3, 1.6, 0.6, "prop", p);
   for (const p of city.tires)
     if (!p.dead) addSolid(city, p.x - 0.4, p.y - 0.3, 0.8, 0.6, "prop", p);
+  const gate = city.siegeGate;
+  if (gate?.active && gate.hp > 0)
+    addSolid(city, gate.x, gate.y, gate.w, gate.h, "gate", gate);
 }
 
 // первое твёрдое тело в точке (для сноса машиной нужен kind/ref)

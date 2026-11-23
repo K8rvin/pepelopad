@@ -3,6 +3,7 @@
 import { countItem, removeItem, addItem } from "./inventory.js";
 import { poiBuilding } from "./quests.js";
 import { PITCH } from "../world/cityGen.js";
+import { SURVIVORS } from "../data/survivors.js";
 import {
   CAMPS,
   DON_VALUES,
@@ -29,6 +30,7 @@ export function createCamps(city) {
       upgrades: [],
       stock: [],
       request: null,
+      rescued: [],
       usedServiceDay: 0,
     };
   });
@@ -53,7 +55,11 @@ export function trustLevel(camp) {
 }
 
 export function residents(camp) {
-  return 2 + trustLevel(camp);
+  return (
+    (campDef(camp)?.baseResidents ?? 2) +
+    trustLevel(camp) +
+    (camp.rescued?.length || 0)
+  );
 }
 
 export function canAfford(inv, cost) {
@@ -135,6 +141,19 @@ export function newDay(camps, day) {
         camp.stock.push({
           id: up.produce.id,
           n: up.produce.n,
+          cost: {},
+          minTrust: 0,
+          free: true,
+        });
+    }
+    for (const id of camp.rescued || []) {
+      const role = SURVIVORS.find((s) => s.id === id)?.role;
+      const produced =
+        role === "Мастерская" ? "part" : role === "Поиск" ? "scrap" : null;
+      if (produced)
+        camp.stock.push({
+          id: produced,
+          n: 1,
           cost: {},
           minTrust: 0,
           free: true,

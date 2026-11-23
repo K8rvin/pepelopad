@@ -33,7 +33,7 @@ test("полировка: меню, HUD, карта, журнал, иконки,
   // журнал с текущим квестом
   await page.keyboard.press("KeyJ");
   await expect(page.locator("#ui .journal")).toBeVisible();
-  await expect(page.locator("#ui .journal")).toContainText("Осмотреться");
+  await expect(page.locator("#ui .journal")).toContainText("Стук на заправке");
   await page.keyboard.press("Escape");
   await expect(page.locator("#ui")).toBeHidden();
 

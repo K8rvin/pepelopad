@@ -2,6 +2,7 @@
 // прежний коридорный генератор. Коллизии — отрезки стен + AABB мебели.
 import { mulberry32 } from "../core/rng.js";
 import { suburbInterior } from "./suburbInterior.js";
+import { storyInterior } from "./storyInteriors.js";
 
 const cache = new Map(); // buildingId → interior
 
@@ -14,8 +15,14 @@ export function getInterior(city, b) {
   let it = cache.get(key);
   if (!it) {
     const residential =
-      (b.style === "house" || b.style === "brick") && b.floors === 1;
-    it = residential ? suburbInterior(b) : corridorInterior(b);
+      !b.locationId &&
+      (b.style === "house" || b.style === "brick") &&
+      b.floors === 1;
+    it = b.locationId
+      ? storyInterior(b)
+      : residential
+        ? suburbInterior(b)
+        : corridorInterior(b);
     cache.set(key, it);
   }
   return it;
@@ -236,6 +243,13 @@ export function solidInteriorAt(city, x, y, r, level = 0) {
         ];
         for (const [x1, y1, x2, y2] of ext)
           if (distToSeg(lx, ly, x1, y1, x2, y2) < r + 0.15) return true;
+        for (const lock of city.storyLocks || []) {
+          if (lock.buildingId !== b.id) continue;
+          const object = city.storyObjects?.find((o) => o.id === lock.id);
+          if (object?.unlocked) continue;
+          if (distToSeg(lx, ly, lock.x1, lock.y1, lock.x2, lock.y2) < r + 0.12)
+            return true;
+        }
         if (inside) {
           for (const sgm of it.walls)
             if (distToSeg(lx, ly, sgm.x1, sgm.y1, sgm.x2, sgm.y2) < r + 0.12)

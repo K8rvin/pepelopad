@@ -1,10 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { journalHtml } from "../src/iso/ui/journal.js";
-import { createQuests } from "../src/iso/systems/quests.js";
+import { createQuests, goalKey } from "../src/iso/systems/quests.js";
 import { createStory } from "../src/iso/systems/story.js";
 import { createStats } from "../src/iso/systems/stats.js";
 import { createSurvival } from "../src/iso/systems/survival.js";
 import { createCombat } from "../src/iso/systems/combat.js";
+import { MAIN_QUESTS } from "../src/iso/data/quests.js";
 
 function ctx(over = {}) {
   return {
@@ -17,32 +18,37 @@ function ctx(over = {}) {
   };
 }
 
-describe("журнал", () => {
-  it("показывает текущий квест и статистику", () => {
+describe("журнал кампании", () => {
+  it("показывает основную цель, этапы, выживших и улики", () => {
     const html = journalHtml(ctx());
-    expect(html).toContain("Осмотреться");
-    expect(html).toContain("Текущая цель");
-    expect(html).toContain("Статистика");
-    expect(html).toContain("Личная история");
+    expect(html).toContain("Стук на заправке");
+    expect(html).toContain("Текущая основная цель");
+    expect(html).toContain("Выжившие и поручения");
+    expect(html).toContain("Улики");
   });
-  it("прогресс цели отражается", () => {
-    const c = ctx();
-    c.quests.prog.kills = 2;
-    const html = journalHtml(c);
-    expect(html).toContain("2/3");
+
+  it("показывает scoped-прогресс текущего этапа", () => {
+    const context = ctx();
+    context.quests.stages.m01 = 2;
+    const goal = MAIN_QUESTS[0].stages[2].goals[0];
+    context.quests.progress.m01 = { [goalKey(goal)]: 2 };
+    expect(journalHtml(context)).toContain("2/3");
   });
-  it("выполненная цепочка — без текущего квеста", () => {
-    const c = ctx();
-    c.quests.i = 5;
-    c.quests.done = ["m1", "m2", "m3", "m4", "m5"];
-    const html = journalHtml(c);
-    expect(html).toContain("Цепочка района выполнена");
+
+  it("после финала оставляет свободную игру", () => {
+    const context = ctx();
+    context.quests.states.m01 = "completed";
+    context.quests.done = MAIN_QUESTS.map((q) => q.id);
+    expect(journalHtml(context)).toContain("Кампания завершена");
   });
-  it("статистика смерти и дистанции видна", () => {
-    const c = ctx();
-    c.stats.distance = 2500;
-    c.stats.deaths = 3;
-    const html = journalHtml(c);
+
+  it("показывает найденную улику и статистику", () => {
+    const context = ctx();
+    context.story.clues = ["mark_radio"];
+    context.stats.distance = 2500;
+    context.stats.deaths = 3;
+    const html = journalHtml(context);
+    expect(html).toContain("Голос в радио");
     expect(html).toContain("2.50 км");
     expect(html).toContain("3");
   });

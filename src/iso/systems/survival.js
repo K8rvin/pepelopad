@@ -97,6 +97,11 @@ export function useConsumable(
     S.hunger = Math.min(100, S.hunger + v);
     return `Ты съел тушёнку. +${v} сытости`;
   }
+  if (id === "meal") {
+    if (!removeFn("meal", 1)) return null;
+    S.hunger = Math.min(100, S.hunger + 65);
+    return "Горячая еда. +65 сытости";
+  }
   if (id === "meds") {
     if (combat.playerHp >= combat.playerMaxHp) return "Здоровье полное";
     if (!removeFn("meds", 1)) return null;

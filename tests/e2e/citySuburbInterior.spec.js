@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("новый интерьер: мебель, обыск кухонной тумбы и сейв v5", async ({
+test("новый интерьер: мебель, обыск кухонной тумбы и сейв v6", async ({
   page,
 }) => {
   const errors = [];
@@ -50,9 +50,9 @@ test("новый интерьер: мебель, обыск кухонной т�
   await page.evaluate(() => window.__city.save());
   expect(
     await page.evaluate(
-      () => JSON.parse(localStorage.getItem("pepelopad_city_v5")).v,
+      () => JSON.parse(localStorage.getItem("pepelopad_city_v6")).v,
     ),
-  ).toBe(5);
+  ).toBe(6);
   await page.goto("/");
   await page.waitForFunction(() => window.__city?.loot);
   expect(

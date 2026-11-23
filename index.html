@@ -680,7 +680,8 @@
       /* ── меню / настройки / подтверждение ── */
       #menu,
       #settings,
-      #confirm {
+      #confirm,
+      #epilogue {
         display: none;
         position: fixed;
         inset: 0;
@@ -816,6 +817,35 @@
         color: #9a9478;
         font-size: 12px;
         margin-top: 10px;
+      }
+      #epilogue {
+        z-index: 85;
+      }
+      .epilogue-panel {
+        width: min(680px, calc(100vw - 36px));
+        max-height: 85vh;
+        overflow: auto;
+        padding: 24px;
+        background: #11150f;
+        border: 2px solid #c96a35;
+        color: #ece5d0;
+      }
+      .epilogue-card {
+        padding: 10px 12px;
+        margin: 8px 0;
+        border-left: 3px solid #596248;
+        background: #1b2016;
+        line-height: 1.5;
+      }
+      #epilogueContinue {
+        width: 100%;
+        padding: 10px;
+        margin-top: 12px;
+        background: #39402e;
+        color: #ffd76a;
+        border: 1px solid #c96a35;
+        font: inherit;
+        cursor: pointer;
       }
       #fatal {
         display: none;
@@ -1088,13 +1118,15 @@
           WASD — движение/руль · ЛКМ — лук · E — обыск/сесть/лестница · I —
           рюкзак · C — крафт · P — персонаж · J — журнал · M — карта<br />
           Q — еда · H — бинт · B — разбить окно · X — спуск с этажа · F —
-          заправить · T — багажник · V — база · R — возрождение · G —
-          лаборатория походки · F3 — отладка<br />
+          заправить · T — багажник · V — база · R — возрождение · F3 —
+          отладка<br />
+          В диалоге: E / Enter — дальше · 1/2/3 — выбор ответа.<br />
           Автосохранение каждые 15 с.
         </div>
       </div>
     </div>
     <div id="menu"></div>
+    <div id="epilogue"></div>
     <div id="settings"></div>
     <div id="confirm"></div>
     <div id="loading">

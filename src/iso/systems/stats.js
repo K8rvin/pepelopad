@@ -1,6 +1,7 @@
 // Статистика выживания: счётчики для журнала и экрана смерти.
 // Сохраняется аддитивно в схеме v4 (старые сейвы получают нули).
 import { removeItem } from "./inventory.js";
+import { ITEMS } from "../data/items.js";
 
 export function createStats(saved) {
   return {
@@ -17,7 +18,7 @@ export function createStats(saved) {
 export function deathPenalty(slots) {
   const lost = [];
   for (const s of slots) {
-    if (!s) continue;
+    if (!s || ITEMS[s.id]?.unique) continue;
     const n = Math.floor(s.n * 0.25);
     if (n > 0) lost.push({ id: s.id, n });
   }

@@ -448,12 +448,12 @@ describe("сейвы v3: навыки и миграции", () => {
 
   beforeEach(() => mockStorage());
 
-  it("saveGame пишет v5, прогрессия переживает перезагрузку", () => {
+  it("saveGame пишет v6, прогрессия переживает перезагрузку", () => {
     const st = saveState();
     gainXp(st.skills, "archery", 500);
     saveGame(st);
     const data = loadGameData();
-    expect(data.v).toBe(5);
+    expect(data.v).toBe(6);
     const fresh = saveState();
     applySave(data, fresh);
     expect(fresh.skills.skills.archery.level).toBe(
@@ -463,15 +463,15 @@ describe("сейвы v3: навыки и миграции", () => {
     expect(fresh.skills.attrs.agility.xp).toBe(st.skills.attrs.agility.xp);
   });
 
-  it("миграция v2 → v5: старый сейв получает стартовую прогрессию", () => {
+  it("миграция v2 → v6: старый сейв получает стартовую прогрессию", () => {
     const st = saveState();
     const data = saveGame(st);
-    localStorage.removeItem("pepelopad_city_v5"); // эмуляция старого сейва
+    localStorage.removeItem("pepelopad_city_v6"); // эмуляция старого сейва
     data.v = 2;
     delete data.skills;
     localStorage.setItem("pepelopad_city_v2", JSON.stringify(data));
     const loaded = loadGameData();
-    expect(loaded.v).toBe(5);
+    expect(loaded.v).toBe(6);
     expect(loaded.skills).toBeNull();
     const fresh = saveState();
     applySave(loaded, fresh);
@@ -479,16 +479,16 @@ describe("сейвы v3: навыки и миграции", () => {
     expect(fresh.skills.attrs.strength.level).toBe(ATTR_START);
   });
 
-  it("миграция v1 → v5 через v2/v3", () => {
+  it("миграция v1 → v6 через предыдущие версии", () => {
     const st = saveState();
     const data = saveGame(st);
-    localStorage.removeItem("pepelopad_city_v5"); // эмуляция старого сейва
+    localStorage.removeItem("pepelopad_city_v6"); // эмуляция старого сейва
     data.v = 1;
     delete data.skills;
     delete data.quests;
     localStorage.setItem("pepelopad_city_v1", JSON.stringify(data));
     const loaded = loadGameData();
-    expect(loaded.v).toBe(5);
+    expect(loaded.v).toBe(6);
     expect(loaded.quests).toBeNull();
     expect(loaded.skills).toBeNull();
   });

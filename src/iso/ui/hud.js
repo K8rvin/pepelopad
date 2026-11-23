@@ -107,6 +107,7 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     itemsLooted,
     deaths,
     lost,
+    home,
     onRespawn,
   }) {
     respawnFn = onRespawn;
@@ -127,7 +128,7 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
         </div>
         <div class="death-lost">При возрождении потеряно: <b>${lostHtml}</b></div>
         <button id="respawnBtn">Возродиться (R)</button>
-        <div class="hint">Возрождение у парка, сытость снизится. Прогресс мира сохранён.</div>
+        <div class="hint">${home ? "Возрождение в своём номере мотеля" : "Возрождение у парка"}, сытость снизится. Прогресс мира сохранён.</div>
       </div>`;
     deathRoot.style.display = "flex";
     deathRoot.querySelector("#respawnBtn").addEventListener("click", () => {

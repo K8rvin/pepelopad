@@ -17,6 +17,7 @@ import { PITCH } from "./world/cityGen.js";
 import { createCity, buildSolidIndex } from "./world/cityGen.js";
 import { loadAssets, SPRTEX } from "./render/assets.js";
 import { makeGroundSet } from "./render/tiles.js";
+import { prewarmTextureTiles } from "./render/chunks.js";
 import {
   makeTree,
   makeLamp,
@@ -81,13 +82,7 @@ import { createMenu } from "./ui/menu.js";
 import { ITEMS } from "./data/items.js";
 import { RECIPES } from "./data/recipes.js";
 import { canCraft, craft } from "./systems/craft.js";
-import {
-  createNpcs,
-  npcNear,
-  createDialog,
-  openDialog,
-  advanceDialog,
-} from "./systems/npcs.js";
+import { createNpcs, npcNear } from "./systems/npcs.js";
 import { playerInside } from "./render/renderer.js";
 import { getInterior, groundWindows } from "./world/interiors.js";
 import {
@@ -95,11 +90,11 @@ import {
   mainQuest,
   goalText,
   goalDone,
-  qEvent,
-  questTargetPoi,
-  poiBuilding,
+  currentStage,
+  questProgress,
+  trackedQuest,
 } from "./systems/quests.js";
-import { QUESTS } from "./data/quests.js";
+import { ALL_QUESTS } from "./data/quests.js";
 import {
   saveGame,
   loadGameData,
@@ -143,12 +138,21 @@ import {
   baseNewDay,
   baseRaid,
 } from "./systems/base.js";
+import { createStory, storyHud } from "./systems/story.js";
 import {
-  createStory,
-  storyNear,
-  applyChoice,
-  storyHud,
-} from "./systems/story.js";
+  createSurvivors,
+  survivorNear,
+  toggleSurvivor,
+} from "./systems/survivors.js";
+import {
+  createInteractions,
+  nearestInteraction,
+} from "./systems/interactions.js";
+import { createSiege } from "./systems/siege.js";
+import { createCampaignRuntime } from "./systems/campaignRuntime.js";
+import { createDialogueUI } from "./ui/dialogue.js";
+import { showEpilogueScreen } from "./ui/epilogue.js";
+import { storyPoint } from "./world/storyLocations.js";
 import { createStats, deathPenalty, applyPenalty } from "./systems/stats.js";
 import { w2s } from "./core/geo.js";
 
@@ -177,6 +181,7 @@ export async function boot() {
   initActors(seed);
 
   const groundSet = makeGroundSet();
+  prewarmTextureTiles();
   const SPR = {
     trees: [0, 1, 2].map((v) => makeTree(false, v)),
     deadTrees: [0, 1, 2].map((v) => makeTree(true, v)),
@@ -236,32 +241,15 @@ export async function boot() {
   let trunkCar = null;
   let search = null;
   initVehicles(city);
-  const npcs = createNpcs(city, PITCH).filter((n) => n.id !== "oleg");
-  const hosp = poiBuilding(city, "Больница");
-  if (hosp) {
-    npcs.push({
-      id: "raya",
-      name: "Рая",
-      lines: [
-        "Рая: «Не шуми. Дети спят.»",
-        "Рая: «Инсулин в холодильнике. Не трогай.»",
-      ],
-      x: hosp.x + hosp.doorU,
-      y: hosp.y + hosp.h + 1.5,
-    });
-    npcs.push({
-      id: "masha",
-      name: "Маша",
-      lines: ["Маша: «...»", "Маша: «Не подходи. Пожалуйста.»"],
-      x: hosp.x + hosp.w / 2,
-      y: hosp.y - 3,
-    });
-  }
-  const dlg = createDialog();
   const camps = createCamps(city);
   let campTarget = null;
   const base = createBase();
   const story = createStory();
+  const survivors = createSurvivors(city);
+  const interactions = createInteractions(city);
+  city.storyObjects = interactions.objects;
+  const npcs = createNpcs(city, PITCH, camps, survivors, story);
+  const siege = createSiege();
   const stats = createStats();
   const levelFx = createLevelUp();
   const comic = createComic();
@@ -322,6 +310,9 @@ export async function boot() {
         base,
         story,
         stats,
+        interactions,
+        survivors,
+        siege,
       });
       buildSolidIndex(city);
       loaded = true;
@@ -344,16 +335,43 @@ export async function boot() {
         resizeInventory(inv, modifiers(skills).carrySlots);
     }
   };
-  const questEvent = (type, data) => {
-    const done = qEvent(quests, QUESTS, type, data);
-    if (done) {
-      for (const [id, n] of done.reward) addItem(inv, id, n);
-      showQuestBanner(done);
-      audio.play("quest");
-    }
-  };
+  let dialogueUI;
+  const campaign = createCampaignRuntime(
+    {
+      city,
+      player,
+      inv,
+      quests,
+      story,
+      camps,
+      survivors,
+      interactions,
+      npcs,
+      survival,
+      combat,
+      siege,
+    },
+    {
+      notify: (msg, big = false) => hud.toast(msg, big),
+      banner: showQuestBanner,
+      sound: (id) => audio.play(id),
+      dialogue: (d) => dialogueUI?.render(d),
+      openCamp: (id) => {
+        const camp = camps.find((c) => c.id === id);
+        if (!camp) return;
+        campTarget = camp;
+        ui.openCamp(camp);
+      },
+      openHome: () => ui.openHome(),
+      sleep: () => sleepAtHome(),
+      ending: (id) => showEpilogue(id),
+      noise: (radius) => alertNear(city, player.x, player.y, radius, 8),
+      rebuild: () => buildSolidIndex(city),
+    },
+  );
+  const questEvent = (type, data) => campaign.event(type, data);
   combat.onKill = (source, z) => {
-    questEvent("kill");
+    questEvent("kill", { group: z?.questGroup, zombieType: z?.type });
     if (source === "ram") skillXp("driving", 10);
     else if (source === "melee") skillXp("melee", 15);
     else skillXp("archery", 15);
@@ -380,6 +398,8 @@ export async function boot() {
   };
   combat.onKnock = () => audio.play("knock");
   combat.onCarHit = () => audio.play("carHit");
+  combat.onSurvivorHurt = (s) => say(comic, s.x, s.y, "Ай!", "alert", 0.9);
+  combat.onSurvivorDead = (s) => campaign.onSurvivorDead(s);
 
   const useItem = (id) => {
     if (id === "torch") {
@@ -462,6 +482,10 @@ export async function boot() {
     onDrop: (slotIndex) => {
       const s = inv.slots[slotIndex];
       if (s) {
+        if (ITEMS[s.id].unique) {
+          toast("Это пригодится выжившим. Нельзя просто выбросить.");
+          return;
+        }
         toast(`Выброшено: ${ITEMS[s.id].name} ×${s.n}`);
         inv.slots[slotIndex] = null;
       }
@@ -568,7 +592,29 @@ export async function boot() {
       inv.slots[i] = left ? { id: s.id, n: left } : null;
       audio.play("pickup");
     },
+    getHome: () => story.home,
+    onHomeTake: (i) => {
+      const slots = story.home.storage;
+      const s = slots[i];
+      if (!s) return;
+      const left = addItem(inv, s.id, s.n);
+      s.n = left;
+      if (!left) slots[i] = null;
+      audio.play("pickup");
+    },
+    onHomePut: (i) => {
+      const s = inv.slots[i];
+      if (!s) return;
+      const homeInv = {
+        slots: story.home.storage,
+        size: story.home.storage.length,
+      };
+      const left = addItem(homeInv, s.id, s.n);
+      inv.slots[i] = left ? { id: s.id, n: left } : null;
+      audio.play("pickup");
+    },
     getJournal: () => ({ quests, story, stats, survival, combat }),
+    onTrack: (id) => campaign.track(id),
     onOpenMap: () => map.open(),
   });
 
@@ -586,6 +632,9 @@ export async function boot() {
       base,
       story,
       stats,
+      interactions,
+      survivors,
+      siege,
     });
 
   // смерть и возрождение с ценой (четверть стаков, сытость снижается)
@@ -594,7 +643,11 @@ export async function boot() {
   function doRespawn() {
     applyPenalty(inv, deathLost);
     survival.hunger = Math.min(survival.hunger, 40);
-    respawn(combat, player, spawn.x, spawn.y);
+    const home = story.home.unlocked
+      ? storyPoint(city, { site: "motel", x: 3, y: 13 })
+      : spawn;
+    respawn(combat, player, home.x, home.y);
+    if (siege.active) campaign.retrySiegeWave();
     hud.hideDeath();
     deathShown = false;
     audio.play("respawn");
@@ -610,7 +663,13 @@ export async function boot() {
   });
   cv.addEventListener("mousedown", (e) => {
     audio.unlock();
-    if (e.button === 0 && !combat.dead && !ui.isOpen() && !map.isOpen()) {
+    if (
+      e.button === 0 &&
+      !combat.dead &&
+      !ui.isOpen() &&
+      !map.isOpen() &&
+      !campaign.dialogue.conversation
+    ) {
       const w = weaponDef(player.weapon);
       if (w.kind === "melee") {
         const camS = w2s(cam.x, cam.y);
@@ -631,7 +690,7 @@ export async function boot() {
     }
   });
   cv.addEventListener("mouseup", (e) => {
-    if (e.button !== 0 || ui.isOpen()) return;
+    if (e.button !== 0 || ui.isOpen() || campaign.dialogue.conversation) return;
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
     if (releaseBow(combat, player, aim, inv, city, mods)) {
@@ -669,6 +728,17 @@ export async function boot() {
     // большая карта: M/Esc закрыть, остальные клавиши не проходят
     if (map.isOpen()) {
       if (e.code === "KeyM" || e.code === "Escape") map.close();
+      return;
+    }
+    if (campaign.dialogue.conversation) {
+      if (["KeyE", "Space", "Enter"].includes(e.code)) {
+        e.preventDefault();
+        campaign.advance();
+        audio.play("uiClick");
+      } else if (["Digit1", "Digit2", "Digit3"].includes(e.code)) {
+        e.preventDefault();
+        dialogueUI?.chooseByNumber(Number(e.code.slice(-1)) - 1);
+      } else if (e.code === "Escape") campaign.close();
       return;
     }
     if (e.code === "KeyN")
@@ -827,16 +897,6 @@ export async function boot() {
       if (ui.isOpen()) {
         ui.close();
         audio.play("uiClose");
-      } else if (dlg.beat) {
-        if (dlg.line < dlg.beat.lines.length - 1) {
-          dlg.line++;
-          renderDialog(dlg, null);
-          audio.play("uiClick");
-        }
-      } else if (dlg.npc) {
-        if (!advanceDialog(dlg)) renderDialog(dlg, null);
-        else renderDialog(dlg, dlg.npc);
-        audio.play("uiClick");
       } else if (!combat.dead) {
         const ib = frameState.insideB;
         if (ib) {
@@ -853,24 +913,55 @@ export async function boot() {
             }
           }
         }
-        const sb = storyNear(story, city, camps, player);
-        if (sb) {
-          dlg.beat = sb.beat;
-          dlg.line = 0;
-          dlg.npc = null;
-          renderDialog(dlg, null);
-          return;
-        }
-        const camp = campNear(camps, player.x, player.y);
+        const object = nearestInteraction(
+          interactions,
+          player.x,
+          player.y,
+          campaign.context(),
+        );
         const npc = npcNear(npcs, player.x, player.y);
-        if (camp) {
-          campTarget = camp;
-          ui.openCamp(camp);
-          audio.play("uiOpen");
-        } else if (npc) {
-          openDialog(dlg, npc);
-          renderDialog(dlg, npc);
+        const survivor = survivorNear(survivors, player.x, player.y);
+        const candidates = [
+          object && {
+            kind: "object",
+            value: object,
+            d: Math.hypot(object.x - player.x, object.y - player.y),
+          },
+          npc && {
+            kind: "npc",
+            value: npc,
+            d: Math.hypot(npc.x - player.x, npc.y - player.y),
+          },
+          survivor && {
+            kind: "survivor",
+            value: survivor,
+            d: Math.hypot(survivor.x - player.x, survivor.y - player.y),
+          },
+        ]
+          .filter(Boolean)
+          .sort((a, b) => a.d - b.d);
+        const target = candidates[0];
+        if (target?.kind === "object") {
+          beginStoryInteraction(target.value);
+        } else if (target?.kind === "npc") {
+          campaign.talk(target.value.id);
           audio.play("uiClick");
+        } else if (target?.kind === "survivor") {
+          const s = target.value;
+          if (
+            s.id === "nina" &&
+            mainQuest(quests, ALL_QUESTS)?.id === "m02" &&
+            !(quests.stages.m02 || 0)
+          )
+            campaign.talk("nina");
+          else {
+            const mode = toggleSurvivor(s);
+            toast(
+              mode === "following"
+                ? `${s.name} следует за тобой.`
+                : `${s.name} ждёт на месте.`,
+            );
+          }
         } else if (veh.inCar) {
           exitCar(city, veh, player);
           audio.engineStop();
@@ -919,17 +1010,25 @@ export async function boot() {
             }
           }
         }
+        const camp = campNear(camps, player.x, player.y);
+        if (
+          !target &&
+          camp &&
+          !veh.inCar &&
+          !loot.nearest &&
+          !nearestCar(city, player.x, player.y)
+        ) {
+          campTarget = camp;
+          ui.openCamp(camp);
+          audio.play("uiOpen");
+        }
       }
     }
     if (e.code === "Escape") {
       if (ui.isOpen()) {
         ui.close();
         audio.play("uiClose");
-      } else if (dlg.npc || dlg.beat) {
-        dlg.npc = null;
-        dlg.beat = null;
-        dlg.line = 0;
-        renderDialog(dlg, null);
+      } else if (!campaign.close()) {
       } else setPaused(!paused);
     }
   });
@@ -1015,6 +1114,12 @@ export async function boot() {
     camps,
     base,
     story,
+    quests,
+    survivors,
+    interactions,
+    siege,
+    npcs,
+    campaign,
     levelFx,
     SPRTEX,
     frameMs: () => msLast,
@@ -1041,49 +1146,79 @@ export async function boot() {
   };
 
   let saveT = 15;
-  let visitT = 0;
   const frameState = { insideB: null, stairsNear: false, windowNear: null };
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) doSave();
   });
 
   function questHudText() {
-    const q = mainQuest(quests, QUESTS);
-    if (!q) return "◆ Цепочка выполнена. Выживай.";
-    return `◆ ${q.name}: ${q.goals.map((g) => goalText(g, quests.prog)).join(" · ")}`;
+    const q = mainQuest(quests, ALL_QUESTS);
+    if (!q) return "◆ Кампания завершена. Район живёт дальше.";
+    const stage = currentStage(quests, q);
+    return `◆ ${q.name}: ${(stage?.goals || []).map((g) => goalText(g, questProgress(quests, q.id))).join(" · ")}`;
   }
 
-  const dlgEl = document.getElementById("dlg");
-  function renderDialog(D, npc) {
-    if (D.beat) {
-      dlgEl.style.display = "block";
-      const b = D.beat;
-      const last = D.line >= b.lines.length - 1;
-      const choices = last
-        ? `<div class="dlg-choices">${b.choices
-            .map((c, i) => `<button data-ci="${i}">${c.text}</button>`)
-            .join("")}</div>`
-        : `<div class="hint">E — дальше</div>`;
-      dlgEl.innerHTML = `<div class="who">${b.title}</div><div>${b.lines[D.line]}</div>${choices}`;
-      return;
-    }
-    if (!npc) {
-      dlgEl.style.display = "none";
-      return;
-    }
-    dlgEl.style.display = "block";
-    dlgEl.innerHTML = `<div class="who">${npc.name}</div><div>${npc.lines[D.line]}</div><div class="hint">E — дальше</div>`;
+  function sideHudText() {
+    const q = trackedQuest(quests, ALL_QUESTS);
+    if (!q) return storyHud(story);
+    const stage = currentStage(quests, q);
+    return `◇ ${q.name}: ${(stage?.goals || []).map((g) => goalText(g, questProgress(quests, q.id))).join(" · ")}`;
   }
-  dlgEl.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-ci]");
-    if (!btn || !dlg.beat) return;
-    const ch = applyChoice(story, Number(btn.dataset.ci), { inv, camps, base });
-    if (ch) toast(`Выбор: ${ch.text}`);
-    audio.play("uiClick");
-    dlg.beat = null;
-    dlg.line = 0;
-    renderDialog(dlg, null);
+
+  dialogueUI = createDialogueUI({
+    root: document.getElementById("dlg"),
+    getContext: campaign.context,
+    onChoice: (choice) => campaign.choose(choice),
   });
+
+  function beginStoryInteraction(object) {
+    if (["homeStorage", "sleep", "toggleGenerator"].includes(object.action)) {
+      campaign.interact(object);
+      return;
+    }
+    search = {
+      c: object,
+      storyObject: true,
+      t: 0,
+      dur: ["repair", "build", "loadVehicle"].includes(object.action)
+        ? 1.5
+        : 0.8,
+    };
+    say(comic, object.x, object.y, "…", "think", search.dur + 0.4);
+  }
+
+  function sleepAtHome() {
+    if (survivors.some((s) => s.state === "following") || siege.active) {
+      toast("Сейчас нельзя спать: кто-то идёт за тобой или идёт осада.");
+      return;
+    }
+    const nextDay = survival.tod >= 6;
+    if (nextDay) {
+      survival.day++;
+      campsNewDay(camps, survival.day);
+      baseNewDay(base, survival.day);
+      campaign.newDay();
+    }
+    survival.tod = 6;
+    survival.hunger = Math.max(10, survival.hunger - 18);
+    combat.playerHp = Math.min(combat.playerMaxHp, combat.playerHp + 25);
+    toast("Ты проспал до утра. В мотеле слышны голоса.", true);
+    doSave();
+  }
+
+  function showEpilogue(id) {
+    paused = true;
+    showEpilogueScreen({
+      root: document.getElementById("epilogue"),
+      ending: id,
+      story,
+      survivors,
+      onClose: () => {
+        paused = false;
+        doSave();
+      },
+    });
+  }
 
   // титульный экран для нового игрока; сейв совместимый — сразу в игру
   if (!loaded && !wantNew && !hasSave()) menu.showTitle(false);
@@ -1099,10 +1234,10 @@ export async function boot() {
   let wasChased = false;
 
   function mapState() {
-    const poi = questTargetPoi(quests, QUESTS);
     return {
       player,
-      questTarget: poi ? poiBuilding(city, poi) : null,
+      questTarget: campaign.target(),
+      sideQuestTarget: campaign.target(true),
       camps,
       base,
       zombies: city.zombies,
@@ -1117,7 +1252,7 @@ export async function boot() {
       clock: clockText(survival),
       arrows: countItem(inv, "arrow"),
       quest: questHudText(),
-      story: storyHud(story),
+      story: sideHudText(),
       torch: player.torch,
       torchT: player.torchT || 0,
       inCar: veh.inCar,
@@ -1156,12 +1291,14 @@ export async function boot() {
       now: t / 1000,
       lootNearest: loot.nearest,
       uiOpen: ui.isOpen(),
-      questTarget: (() => {
-        const poi = questTargetPoi(quests, QUESTS);
-        return poi ? poiBuilding(city, poi) : null;
-      })(),
+      questTarget: campaign.target(),
+      sideQuestTarget: campaign.target(true),
       inCar: !!veh.inCar,
       npcs,
+      survivors,
+      interactions,
+      story,
+      siege,
       stairsNear: frameState.stairsNear,
       windowNear: frameState.windowNear,
       search,
@@ -1171,12 +1308,14 @@ export async function boot() {
       comic,
       car: veh.inCar,
       questLootId: (() => {
-        const q = mainQuest(quests, QUESTS);
+        const q = mainQuest(quests, ALL_QUESTS);
         if (!q) return null;
-        const g = q.goals.find(
-          (g) => g.type === "loot" && !goalDone(g, quests.prog),
+        const g = currentStage(quests, q)?.goals.find(
+          (goal) =>
+            goal.type === "collect" &&
+            !goalDone(goal, questProgress(quests, q.id)),
         );
-        return g ? g.id : null;
+        return g?.id || null;
       })(),
     };
   }
@@ -1226,18 +1365,32 @@ export async function boot() {
       else {
         search.t += dt;
         if (search.t >= search.dur) {
-          const c = search.c;
+          const current = search;
+          const c = current.c;
           search = null;
-          openContainer(loot, c, mods.lootBonus);
-          skillXp("scavenging", 6);
-          lootOpen = { c, taken: {} };
-          ui.openLoot(c);
-          audio.play("uiOpen");
+          if (current.storyObject) {
+            campaign.interact(c);
+            audio.play(
+              c.action === "repair" || c.action === "build"
+                ? "craft"
+                : "uiOpen",
+            );
+          } else {
+            openContainer(loot, c, mods.lootBonus);
+            skillXp("scavenging", 6);
+            lootOpen = { c, taken: {} };
+            ui.openLoot(c);
+            audio.play("uiOpen");
+          }
         }
       }
     }
     const canMove =
-      !ui.isOpen() && !dlg.npc && !search && !map.isOpen() && !combat.dead;
+      !ui.isOpen() &&
+      !campaign.dialogue.conversation &&
+      !search &&
+      !map.isOpen() &&
+      !combat.dead;
     if (canMove) {
       if (veh.inCar)
         updateVehicle(city, veh.inCar, keys, player, combat, dt, mods, (m) => {
@@ -1257,6 +1410,7 @@ export async function boot() {
       skillXp("survival", 20);
       campsNewDay(camps, survival.day);
       baseNewDay(base, survival.day);
+      campaign.newDay();
     }
     if (survival.tod >= 21 && survival.tod < 21.1) {
       const n = baseRaid(base, city, survival.day);
@@ -1272,6 +1426,7 @@ export async function boot() {
       toast("Матка пришла к больнице. Она зовёт подкрепление...", true);
       audio.play("boss");
     }
+    campaign.update(dt, veh.inCar);
     updateZombies(
       city,
       city.zombies,
@@ -1279,6 +1434,7 @@ export async function boot() {
       dt,
       night ? 1.35 : 1,
       !!veh.inCar,
+      survivors,
     );
     if (frameState.insideB && !loot.interior.has(frameState.insideB.id))
       registerInterior(
@@ -1299,6 +1455,12 @@ export async function boot() {
         : containerItems(nearC, mods.lootBonus)
       : null;
     loot.nearest = nearC && nearItems.some((s) => s) ? nearC : null;
+    interactions.nearest = nearestInteraction(
+      interactions,
+      player.x,
+      player.y,
+      campaign.context(),
+    );
     const luStarted = updateLevelUp(levelFx, dt);
     if (luStarted) {
       showLevelUpBanner(luStarted);
@@ -1325,20 +1487,6 @@ export async function boot() {
       alertSayT = 8;
     }
     wasChased = chased;
-    visitT -= dt;
-    if (visitT <= 0) {
-      visitT = 0.5;
-      const poi = questTargetPoi(quests, QUESTS);
-      if (poi) {
-        const b = poiBuilding(city, poi);
-        if (
-          b &&
-          Math.hypot(player.x - (b.x + b.w / 2), player.y - (b.y + b.h / 2)) <
-            25
-        )
-          questEvent("visit", { poi });
-      }
-    }
     const camS = w2s(cam.x, cam.y);
     const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
     updateCombat(
@@ -1350,6 +1498,7 @@ export async function boot() {
       t / 1000,
       !!veh.inCar || player.level > 0,
       mods,
+      survivors,
     );
     frameState.insideB = playerInside(city, player);
     frameState.stairsNear = false;
@@ -1413,6 +1562,7 @@ export async function boot() {
         itemsLooted: stats.itemsLooted,
         deaths: stats.deaths,
         lost: deathLost,
+        home: story.home.unlocked,
         onRespawn: doRespawn,
       });
     }

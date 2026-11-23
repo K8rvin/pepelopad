@@ -74,7 +74,7 @@ describe("багажник: ёмкость и перекладывание", () 
   });
 });
 
-describe("багажник в сейве v5", () => {
+describe("багажник в сейве v6", () => {
   beforeEach(() => mockStorage());
 
   const saveState = () => {
@@ -100,7 +100,7 @@ describe("багажник в сейве v5", () => {
     addItem(tr, "fuel", 5);
     saveGame(st);
     const loaded = loadGameData();
-    expect(loaded.v).toBe(5);
+    expect(loaded.v).toBe(6);
     const fresh = saveState();
     applySave(loaded, fresh);
     const car2 = fresh.city.cars[car.vid];
@@ -113,7 +113,7 @@ describe("багажник в сейве v5", () => {
     const st = saveState();
     const data = saveGame(st);
     data.cars = data.cars.map((c) => ({ ...c, trunk: null }));
-    localStorage.setItem("pepelopad_city_v5", JSON.stringify(data));
+    localStorage.setItem("pepelopad_city_v6", JSON.stringify(data));
     const fresh = saveState();
     applySave(loadGameData(), fresh);
     for (const c of fresh.city.cars) expect(c.trunk).toBeNull();

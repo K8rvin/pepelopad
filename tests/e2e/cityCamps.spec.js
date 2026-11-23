@@ -18,6 +18,9 @@ test("лагерь: панель E, пожертвование, бартер, с
     c.inv.slots[1] = { id: "cloth", n: 2 };
   });
   await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg")).toContainText("Вера");
+  await page.keyboard.press("KeyE");
+  await page.locator("#dlg button").click();
   await expect(page.locator("#ui .panel.wide h3").first()).toContainText(
     "Школьный лагерь",
   );

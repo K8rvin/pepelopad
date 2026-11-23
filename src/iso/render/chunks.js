@@ -7,6 +7,31 @@ import { tex2x } from "./assets.js";
 
 export const CH = 8; // тайлов на сторону чанка
 const LRU_MAX = 600;
+const TEXTURE_TILES = new Map();
+
+function texturedTile(t, tx, ty) {
+  const spec = TEXFILL[t];
+  if (!spec) return null;
+  const img = tex2x(spec.tex, spec.tint);
+  if (!img) return null;
+  const u = ((tx % 16) + 16) % 16;
+  const v = ((ty % 16) + 16) % 16;
+  const key = `${t}:${u}:${v}`;
+  if (TEXTURE_TILES.has(key)) return TEXTURE_TILES.get(key);
+  const canvas = mkCanvas(68, 36);
+  const g = canvas.getContext("2d");
+  g.beginPath();
+  g.moveTo(34, 1);
+  g.lineTo(67, 18);
+  g.lineTo(34, 35);
+  g.lineTo(1, 18);
+  g.closePath();
+  g.clip();
+  g.setTransform(32, 16, -32, 16, 34, 2);
+  g.drawImage(img, u * 64, v * 64, 64, 64, 0, 0, 1, 1);
+  TEXTURE_TILES.set(key, canvas);
+  return canvas;
+}
 
 export function createChunkCache() {
   return new Map();
@@ -15,7 +40,7 @@ export function createChunkCache() {
 // lite — дешёвая запечка только procedural-земли (без текстур, бордюров,
 // теней и листвы): placeholder на время бюджетной дозапечки полного чанка
 export function bakeChunk(city, groundSet, cx, cy, lite = false) {
-  const c = mkCanvas(CH * 64 + 4, CH * 32 + 4); // поле 2px под вылет тайлов
+  const c = mkCanvas(CH * 64 + 4, CH * 32 + 4);
   const g = c.getContext("2d");
   const ax = cx * CH,
     ay = cy * CH;
@@ -25,38 +50,13 @@ export function bakeChunk(city, groundSet, cx, cy, lite = false) {
     y: (wx + wy - (ax + ay)) * 16 + 2,
   });
 
-  const fillTextured = (t, tx, ty, p) => {
-    const spec = TEXFILL[t];
-    if (!spec) return false;
-    const img = tex2x(spec.tex, spec.tint);
-    if (!img) return false;
-    g.save();
-    g.translate(p.x, p.y);
-    g.beginPath();
-    g.moveTo(0, -1); // верхняя вершина ромба = точка (tx,ty)
-    g.lineTo(33, 16);
-    g.lineTo(0, 33);
-    g.lineTo(-33, 16);
-    g.closePath();
-    g.clip();
-    const o = local(0, 0);
-    g.setTransform(32, 16, -32, 16, o.x, o.y);
-    // рисуем ТОЛЬКО нужный срез 32×32 px композита
-    const ppm = 64; // px/м: зерно текстуры мельче (композит 1024px на 16 м)
-    const period = 1024 / ppm;
-    const u0 = ((tx % period) + period) % period,
-      v0 = ((ty % period) + period) % period;
-    g.drawImage(img, u0 * ppm, v0 * ppm, ppm, ppm, tx, ty, 1, 1);
-    g.restore();
-    return true;
-  };
-
   for (let ty = ay; ty < ay + CH; ty++)
     for (let tx = ax; tx < ax + CH; tx++) {
       const t = tileAt(city, tx, ty);
       const p = local(tx, ty);
-      if (!lite && fillTextured(t, tx, ty, p)) continue;
-      g.drawImage(groundSet[t][tileVariant(tx, ty)], p.x - 34, p.y - 2);
+      const textured = lite ? null : texturedTile(t, tx, ty);
+      if (textured) g.drawImage(textured, p.x - 34, p.y - 2);
+      else g.drawImage(groundSet[t][tileVariant(tx, ty)], p.x - 34, p.y - 2);
     }
 
   // разметка осевых
@@ -199,6 +199,12 @@ export function bakeChunk(city, groundSet, cx, cy, lite = false) {
         g.fillRect(p.x - 24 + r() * 48, p.y - 10 + r() * 22, 2.5, 1.6);
     }
   return { canvas: c, sx: (ax - ay - CH) * 32 - 2, sy: (ax + ay) * 16 - 2 };
+}
+
+export function prewarmTextureTiles() {
+  for (const t of Object.keys(TEXFILL))
+    for (let v = 0; v < 16; v++)
+      for (let u = 0; u < 16; u++) texturedTile(Number(t), u, v);
 }
 
 export function getChunk(city, groundSet, cache, cx, cy) {

@@ -119,6 +119,47 @@ export const CAMPS = [
       },
     ],
   },
+  {
+    id: "motel",
+    name: "Мотель «Последний»",
+    poi: "Мотель",
+    spec: "guard",
+    baseResidents: 5,
+    npc: {
+      name: "Виктор",
+      lines: [
+        "Здесь живут не за счёт стен. За счёт того, что кто-то каждый день их чинит.",
+      ],
+    },
+    stock: [
+      { id: "meal", n: 1, cost: { can: 1 }, minTrust: 1 },
+      { id: "part", n: 1, cost: { scrap: 3 }, minTrust: 1 },
+      { id: "meds", n: 2, cost: { cloth: 2 }, minTrust: 2 },
+    ],
+    upgrades: [
+      {
+        id: "infirmary",
+        name: "Лазарет мотеля",
+        desc: "Перевязка +30 HP раз в день",
+        cost: { meds: 2, cloth: 2 },
+        service: "heal",
+      },
+      {
+        id: "kitchen",
+        name: "Общая кухня",
+        desc: "+1 горячая еда в склад каждый день",
+        cost: { can: 3, wood: 2 },
+        produce: { id: "meal", n: 1 },
+      },
+      {
+        id: "workshop",
+        name: "Мастерская мотеля",
+        desc: "+1 деталь в склад каждый день",
+        cost: { wood: 8, scrap: 4 },
+        produce: { id: "part", n: 1 },
+      },
+    ],
+  },
 ];
 
 // поручения: доставь предметы → доверие + награда

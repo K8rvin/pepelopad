@@ -124,8 +124,13 @@ export function renderWorld({
   lootNearest,
   uiOpen,
   questTarget,
+  sideQuestTarget,
   inCar,
   npcs,
+  survivors,
+  interactions,
+  story,
+  siege,
   stairsNear,
   windowNear,
   search,
@@ -137,6 +142,12 @@ export function renderWorld({
   car,
 }) {
   R.drawCalls = 0;
+  const renderStart = performance.now();
+  const cameraJump =
+    R.lastCamX !== undefined &&
+    Math.hypot(cam.x - R.lastCamX, cam.y - R.lastCamY) > CH * 2;
+  R.lastCamX = cam.x;
+  R.lastCamY = cam.y;
   const shake = combat ? combat.shake : 0;
   const camS = w2s(cam.x, cam.y);
   if (shake > 0) {
@@ -211,10 +222,10 @@ export function renderWorld({
       }
       R.drawCalls++;
     }
-  // общий бюджет запечки ≤6 мс за кадр (фасады → lite → полная земля):
-  // одна тяжёлая запечка может превысить бюджет, но кадр остаётся <25 мс
+  // В кадр скачка камеры только placeholder'ы; запечка начинается со следующего.
   const bakeT0 = performance.now();
-  const bakeOver = () => performance.now() - bakeT0 > 6;
+  const bakeOver = () =>
+    cameraJump || bakeT0 - renderStart > 8 || performance.now() - bakeT0 > 6;
   for (const [id, b] of [...R.bldQueue]) {
     if (bakeOver()) break;
     buildingSprite(b);
@@ -234,7 +245,7 @@ export function renderWorld({
     R.phQueue.delete(k);
     R.bakeQueue.add(k);
   }
-  if (R.bakeQueue.size) {
+  if (R.bakeQueue.size && !R.phQueue.size && !R.bldQueue.size) {
     for (const k of [...R.bakeQueue]) {
       const [qx, qy] = k.split(",").map(Number);
       if (Math.abs(qx - camCx) > 6 || Math.abs(qy - camCy) > 6)
@@ -251,6 +262,7 @@ export function renderWorld({
       if (bakeOver()) break;
       getChunk(city, groundSet, R.chunkCache, qx, qy);
       R.bakeQueue.delete(qx + "," + qy);
+      break;
     }
   }
   evictIfNeeded(R.chunkCache, camS.x, camS.y);
@@ -558,14 +570,15 @@ export function renderWorld({
   // NPC (спрайт выжившего + подпись вблизи)
   if (npcs)
     for (const n of npcs) {
-      if (!vis(n.x, n.y, 45, 60)) continue;
+      if (n.hidden || !vis(n.x, n.y, 45, 60)) continue;
       push(n.x + n.y, 2, () => {
         const p = w2s(n.x, n.y);
         ctx.fillStyle = "rgba(16,20,26,0.35)";
         ctx.beginPath();
         ctx.ellipse(toX(p.x), toY(p.y), 14 * zoom, 6 * zoom, 0, 0, 7);
         ctx.fill();
-        const spriteKey = n.id ? `npc_${n.id}` : "survivor";
+        const spriteKey =
+          n.sprite === "survivor" ? "survivor" : `npc_${n.sprite || n.id}`;
         const img = SPRTEX[spriteKey] || SPRTEX.survivor;
         if (img) {
           const h = 78 * zoom,
@@ -619,13 +632,91 @@ export function renderWorld({
       }
       push(c.x + c.y, 1, () => drawFire(ctx, c.x, c.y, toX, toY, zoom, now));
       const def = campDef(c);
+      if (!npcs?.some((n) => n.camp === c.id && !n.hidden))
+        push(
+          actorDepth(city, { x: c.x + 1, y: c.y + 1, r: 0.35 }),
+          2,
+          () => drawCampNpc(ctx, c, def, player, toX, toY, zoom),
+          c.x + c.y + 2,
+        );
+      for (let i = 0; i < (c.rescued?.length || 0); i++) {
+        const rx = c.x - 3 + (i % 4) * 1.4;
+        const ry = c.y + 4 + Math.floor(i / 4);
+        push(
+          rx + ry,
+          2,
+          () =>
+            drawCampNpc(
+              ctx,
+              { x: rx - 1, y: ry - 1 },
+              { npc: { name: "Спасённый" } },
+              player,
+              toX,
+              toY,
+              zoom,
+            ),
+          rx + ry,
+        );
+      }
+    }
+
+  if (survivors)
+    for (const survivor of survivors) {
+      if (survivor.hidden || !vis(survivor.x, survivor.y, 50, 65)) continue;
       push(
-        actorDepth(city, { x: c.x + 1, y: c.y + 1, r: 0.35 }),
+        actorDepth(city, survivor),
         2,
-        () => drawCampNpc(ctx, c, def, player, toX, toY, zoom),
-        c.x + c.y + 2,
+        () => drawSurvivor(ctx, survivor, player, toX, toY, zoom),
+        survivor.x + survivor.y,
       );
     }
+  if (interactions)
+    for (const object of interactions.objects) {
+      if (!object.visible || !vis(object.x, object.y, 55, 55)) continue;
+      push(
+        object.x + object.y,
+        1,
+        () =>
+          drawStoryObject(
+            ctx,
+            object,
+            interactions.nearest === object,
+            toX,
+            toY,
+            zoom,
+          ),
+        object.x + object.y,
+      );
+    }
+  if (siege?.gate && (siege.active || story?.projects.includes("gate"))) {
+    const gate = siege.gate;
+    for (let i = 0; i < 3; i++)
+      push(gate.x + i + gate.y, 1, () =>
+        drawCrate(ctx, gate.x + i, gate.y, toX, toY, zoom),
+      );
+    if (siege.active) {
+      const p = w2s(gate.x + 1.5, gate.y);
+      ctx.fillStyle = "#171a14";
+      ctx.fillRect(toX(p.x) - 35, toY(p.y) - 40, 70, 7);
+      ctx.fillStyle =
+        siege.gateHp < siege.gateMaxHp * 0.3 ? "#c05a4a" : "#7ac06a";
+      ctx.fillRect(
+        toX(p.x) - 34,
+        toY(p.y) - 39,
+        68 * (siege.gateHp / siege.gateMaxHp),
+        5,
+      );
+      if (siege.phase === "respite") {
+        ctx.fillStyle = "#ffd76a";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          `Волна ${siege.wave + 1} через ${Math.ceil(siege.timer)} с`,
+          toX(p.x),
+          toY(p.y) - 50,
+        );
+      }
+    }
+  }
 
   // база игрока: флаг, баррикады, жилые модули, грядки, склад, жители
   if (base && base.founded && vis(base.x, base.y, 220, 180)) {
@@ -2081,6 +2172,106 @@ function drawGarden(ctx, x, y, toX, toY, zoom) {
     ctx.beginPath();
     ctx.ellipse(dx + i * 10 * zoom, dy - 2 * zoom, 4 * zoom, 3 * zoom, 0, 0, 7);
     ctx.fill();
+  }
+}
+
+function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
+  const p = w2s(survivor.x, survivor.y);
+  const dx = toX(p.x);
+  const dy = toY(p.y);
+  if (survivor.state === "dead") {
+    ctx.fillStyle = "rgba(70,38,34,0.8)";
+    ctx.beginPath();
+    ctx.ellipse(dx, dy, 24 * zoom, 8 * zoom, 0, 0, 7);
+    ctx.fill();
+    return;
+  }
+  const key =
+    survivor.sprite === "survivor" ? "survivor" : `npc_${survivor.sprite}`;
+  const img = SPRTEX[key] || SPRTEX.survivor;
+  if (img) {
+    const h = 78 * zoom;
+    const w = h * (img.width / img.height);
+    const bob = survivor.moving ? Math.sin(survivor.walkPh || 0) * 2 * zoom : 0;
+    ctx.drawImage(img, dx - w / 2, dy - h + bob, w, h);
+  }
+  const near = Math.hypot(player.x - survivor.x, player.y - survivor.y) < 6;
+  if (near || survivor.hp < survivor.maxHp) {
+    ctx.font = `${11 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText(survivor.name, dx + 1, dy - 84 * zoom + 1);
+    ctx.fillStyle = "#ece5d0";
+    ctx.fillText(survivor.name, dx, dy - 84 * zoom);
+    if (survivor.state !== "rescued") {
+      const hint =
+        survivor.state === "following"
+          ? "E — ждать"
+          : survivor.state === "waiting"
+            ? "E — следовать"
+            : "E — помочь";
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(hint, dx, dy - 70 * zoom);
+    }
+  }
+  if (survivor.hp < survivor.maxHp) {
+    ctx.fillStyle = "#171a14";
+    ctx.fillRect(dx - 18 * zoom, dy - 65 * zoom, 36 * zoom, 4 * zoom);
+    ctx.fillStyle = "#c05a4a";
+    ctx.fillRect(
+      dx - 18 * zoom,
+      dy - 65 * zoom,
+      36 * zoom * (survivor.hp / survivor.maxHp),
+      4 * zoom,
+    );
+  }
+}
+
+function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {
+  if (object.kind === "cache" || object.kind === "barricade")
+    drawCrate(ctx, object.x, object.y, toX, toY, zoom);
+  const p = w2s(object.x, object.y, object.kind === "document" ? 0.65 : 0.25);
+  const dx = toX(p.x);
+  const dy = toY(p.y);
+  const colors = {
+    document: "#e8dfc2",
+    radio: "#7a8a6a",
+    generator: "#c96a35",
+    door: "#9a6a42",
+    gate: "#9a6a42",
+    medical: "#c05a4a",
+    bag: "#7a6a4a",
+    keepsake: "#c9a06a",
+    vehicle: "#8a9096",
+    bed: "#7a8a9a",
+  };
+  ctx.fillStyle = colors[object.kind] || "#ffb23e";
+  if (["cache", "barricade", "vehicle", "bed"].includes(object.kind)) {
+    ctx.beginPath();
+    ctx.arc(dx, dy - 16 * zoom, 5 * zoom, 0, 7);
+    ctx.fill();
+  } else {
+    ctx.fillRect(dx - 6 * zoom, dy - 8 * zoom, 12 * zoom, 12 * zoom);
+    ctx.fillStyle = "#1a1712";
+    ctx.font = `bold ${9 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    const glyph =
+      object.kind === "medical"
+        ? "+"
+        : object.kind === "document"
+          ? "≡"
+          : object.kind === "radio"
+            ? "~"
+            : "!";
+    ctx.fillText(glyph, dx, dy + 1 * zoom);
+  }
+  if (nearest) {
+    ctx.font = `${11 * zoom}px monospace`;
+    ctx.fillStyle = "#0a0c09";
+    ctx.fillText(`${object.name} · E`, dx + 1, dy - 23 * zoom + 1);
+    ctx.fillStyle = "#ffd76a";
+    ctx.fillText(`${object.name} · E`, dx, dy - 23 * zoom);
+    ctx.textAlign = "left";
   }
 }
 

@@ -16,6 +16,9 @@ test("ночь: без фриза запечки города, окна заго
     c.teleport(b.x + b.w / 2, b.y + b.h + 7);
   });
   await page.waitForTimeout(600); // прогрев дневных фасадов
+  await page.waitForFunction(() => window.__city.bakeQueueSize() === 0, null, {
+    timeout: 10000,
+  });
 
   const stats = await page.evaluate(
     () =>

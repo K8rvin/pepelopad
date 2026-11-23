@@ -42,9 +42,9 @@ function mockStorage() {
 const city = createCity(11, 9);
 
 describe("лагеря: создание и доверие", () => {
-  it("три лагеря у POI, склад и поручение на старте", () => {
+  it("три старых лагеря и мотель у POI, склад и поручение на старте", () => {
     const camps = createCamps(city);
-    expect(camps.length).toBe(3);
+    expect(camps.length).toBe(4);
     for (const c of camps) {
       expect(c.stock.length).toBeGreaterThan(0);
       expect(c.request).toBeTruthy();
@@ -150,7 +150,7 @@ describe("лагеря: торговля, поручения, постройки
   });
 });
 
-describe("лагеря в сейве v5", () => {
+describe("лагеря в сейве v6", () => {
   beforeEach(() => mockStorage());
 
   const saveState = () => {

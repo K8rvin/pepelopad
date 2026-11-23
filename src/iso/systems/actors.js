@@ -103,6 +103,11 @@ export function spawnZombie(city, x, y, type = "walker") {
   z.ty = y;
   z.retarget = 0;
   z.alertT = 0;
+  z.questGroup = null;
+  z.siege = false;
+  z.winding = false;
+  z.attackCd = 0;
+  z.level = 0;
   z.homeX = x;
   z.homeY = y;
   return z;
@@ -123,7 +128,15 @@ export function alertNear(city, x, y, radius, t = 6) {
   }
 }
 
-export function updateZombies(city, zombies, player, dt, speedK = 1) {
+export function updateZombies(
+  city,
+  zombies,
+  player,
+  dt,
+  speedK = 1,
+  inCar = false,
+  survivors = [],
+) {
   const night = speedK > 1;
   for (const z of zombies) {
     if (z.dead) continue;
@@ -145,14 +158,34 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
         }
       }
     }
-    const dp = Math.hypot(player.x - z.x, player.y - z.y);
+    let target = player;
+    let dp = Math.hypot(player.x - z.x, player.y - z.y);
+    for (const survivor of survivors) {
+      if (survivor.hidden || !["following", "waiting"].includes(survivor.state))
+        continue;
+      const sd = Math.hypot(survivor.x - z.x, survivor.y - z.y);
+      if (sd < dp && sd < 18) {
+        target = survivor;
+        dp = sd;
+      }
+    }
+    const gate = city.siegeGate;
+    const gateDistance = gate
+      ? Math.hypot(gate.x + gate.w / 2 - z.x, gate.y - z.y)
+      : Infinity;
+    if (z.siege && gate?.active && gate.hp > 0 && gateDistance > 1.0) {
+      z.tx = gate.x + gate.w / 2;
+      z.ty = gate.y;
+      target = { x: z.tx, y: z.ty, level: 0 };
+      dp = 0;
+    }
     const chaseR = night ? t.chaseNight : t.chaseDay;
     if (dp < chaseR) {
       // цель ведём постоянно, но тревогу (и её распространение) запускаем один раз
-      if (z.alertT <= 0) alertZombie(z, player.x, player.y, 6);
+      if (z.alertT <= 0) alertZombie(z, target.x, target.y, 6);
       else {
-        z.tx = player.x;
-        z.ty = player.y;
+        z.tx = target.x;
+        z.ty = target.y;
       }
     } else if (z.alertT <= 0 && z.retarget <= 0) {
       z.retarget = 2 + rng() * 4;
@@ -181,15 +214,15 @@ export function updateZombies(city, zombies, player, dt, speedK = 1) {
     let tx = z.tx,
       ty = z.ty;
     const zb = buildingAtPoint(city, z.x, z.y);
-    const pb = buildingAtPoint(city, player.x, player.y);
-    const sameLvl = (z.level || 0) === (player.level || 0);
+    const pb = buildingAtPoint(city, target.x, target.y);
+    const sameLvl = (z.level || 0) === (target.level || 0);
     if (pb) {
       const it = getInterior(city, pb);
       // лестницы поднимают зомби за игроком даже при разных этажах
-      if (it.stairs && (player.level || 0) > (z.level || 0)) {
+      if (it.stairs && (target.level || 0) > (z.level || 0)) {
         const sx = pb.x + it.stairs.x + it.stairs.w / 2,
           sy = pb.y + it.stairs.y + it.stairs.h / 2;
-        if (Math.hypot(z.x - sx, z.y - sy) < 1.5) z.level = player.level;
+        if (Math.hypot(z.x - sx, z.y - sy) < 1.5) z.level = target.level;
       }
       if (sameLvl) {
         const doorX = pb.x + it.doorU,

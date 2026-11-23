@@ -45,7 +45,11 @@ export function createUI({
   onBaseBuild,
   onBaseTake,
   onBasePut,
+  getHome,
+  onHomeTake,
+  onHomePut,
   getJournal,
+  onTrack,
   onOpenMap,
 }) {
   const root = document.getElementById("ui");
@@ -77,9 +81,9 @@ export function createUI({
     const def = ITEMS[s.id];
     const m = getMods?.();
     const btns = [];
-    if (s.id === "can")
+    if (s.id === "can" || s.id === "meal")
       btns.push(
-        `<button data-act="use">Съесть (+${40 + (m?.foodBonus ?? 0)} сытости)</button>`,
+        `<button data-act="use">Съесть${s.id === "can" ? ` (+${40 + (m?.foodBonus ?? 0)} сытости)` : " (+65 сытости)"}</button>`,
       );
     if (s.id === "meds")
       btns.push(
@@ -89,7 +93,7 @@ export function createUI({
       btns.push(`<button data-act="use">Зажечь / погасить</button>`);
     if (MELEE_ITEMS.includes(s.id))
       btns.push(`<button data-act="equip">Взять в руки</button>`);
-    btns.push(`<button data-act="drop">Выбросить</button>`);
+    if (!def.unique) btns.push(`<button data-act="drop">Выбросить</button>`);
     return `<div class="ctxmenu" data-slot="${i}">${btns.join("")}</div>`;
   }
 
@@ -260,6 +264,20 @@ export function createUI({
       <div class="hint">клик по предмету — переложить · жители приходят при месте и еде · ночью рейд · V / Esc — закрыть</div></div>`;
   }
 
+  function homePanel() {
+    const home = getHome();
+    const inv = getInventory();
+    const grid = (slots, side) =>
+      slots
+        .map((s, i) => {
+          if (!s)
+            return `<div class="slot" data-side="${side}" data-slot="${i}"></div>`;
+          return `<div class="slot" data-side="${side}" data-slot="${i}" title="${ITEMS[s.id].name}">${iconHtml(s.id, 24)}<span class="n">${s.n}</span></div>`;
+        })
+        .join("");
+    return `<div class="panel wide"><h3>Номер Дэна</h3><div class="j-desc">Личный ящик · кровать · возрождение в мотеле</div><h3>Ящик</h3><div class="grid">${grid(home.storage, "home")}</div><h3>Рюкзак</h3><div class="grid">${grid(inv.slots, "inv")}</div><div class="hint">клик по предмету — переложить · E / Esc — закрыть</div></div>`;
+  }
+
   function journalPanel() {
     return `<div class="panel wide journal">${journalHtml(getJournal())}</div>`;
   }
@@ -280,7 +298,8 @@ export function createUI({
     return `<div class="panel wide"><h3>Справка</h3>
       <div class="menu-controls" style="display:block">
         WASD — движение / руль · Shift — бег (стамина) · ЛКМ — лук / ближний удар<br>
-        E — обыск / сесть / лестница / диалог · в окне лута E — взять верхнюю вещь<br>
+        E — обыск / сесть / лестница / диалог / сюжетное действие · у спутника — следовать / ждать<br>
+        В диалоге E / Enter — дальше, 1/2/3 — ответ · в окне лута E — взять верхнюю вещь<br>
         Space — взять всё (в окне лута) · I — рюкзак · C — крафт · P — персонаж<br>
         TAB — панель с вкладками · M — карта · J — журнал · Q — еда · H — бинт (снимает инфекцию)<br>
         T — багажник · F — заправить · Y — ремонт машины деталью · V — база<br>
@@ -315,11 +334,13 @@ export function createUI({
                 ? campPanel()
                 : mode === "base"
                   ? basePanel()
-                  : mode === "journal"
-                    ? journalPanel()
-                    : mode === "help"
-                      ? helpPanel()
-                      : lootPanel();
+                  : mode === "home"
+                    ? homePanel()
+                    : mode === "journal"
+                      ? journalPanel()
+                      : mode === "help"
+                        ? helpPanel()
+                        : lootPanel();
     if (mode === "inv" || mode === "journal" || mode === "help")
       html = `<div class="tabwrap">${tabBar(mode)}${html}</div>`;
     root.innerHTML = html;
@@ -328,6 +349,13 @@ export function createUI({
       .querySelectorAll("button[data-tab]")
       .forEach((b) =>
         b.addEventListener("click", () => openTab(b.dataset.tab)),
+      );
+    if (mode === "journal")
+      root.querySelectorAll("button[data-track]").forEach((button) =>
+        button.addEventListener("click", () => {
+          onTrack?.(button.dataset.track);
+          render();
+        }),
       );
     if (mode === "base") {
       root.querySelectorAll("button[data-base]").forEach((btn) =>
@@ -343,6 +371,17 @@ export function createUI({
           const i = Number(el.dataset.slot);
           if (el.dataset.side === "base") onBaseTake?.(i);
           else onBasePut?.(i);
+          render();
+        }),
+      );
+      return;
+    }
+    if (mode === "home") {
+      root.querySelectorAll(".slot[data-side]").forEach((el) =>
+        el.addEventListener("click", () => {
+          const i = Number(el.dataset.slot);
+          if (el.dataset.side === "home") onHomeTake?.(i);
+          else onHomePut?.(i);
           render();
         }),
       );
@@ -473,6 +512,11 @@ export function createUI({
     },
     openBase() {
       mode = "base";
+      ctxSlot = -1;
+      render();
+    },
+    openHome() {
+      mode = "home";
       ctxSlot = -1;
       render();
     },

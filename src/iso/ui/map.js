@@ -37,6 +37,8 @@ const POI_COLOR = {
   Больница: "#c05a4a",
   Полиция: "#7a86c8",
   АЗС: "#d08a3c",
+  Мотель: "#d0a03c",
+  Автомастерская: "#8a9096",
 };
 const POI_LETTER = {
   Парк: "П",
@@ -45,6 +47,8 @@ const POI_LETTER = {
   Больница: "Б",
   Полиция: "О",
   АЗС: "З",
+  Мотель: "М",
+  Автомастерская: "А",
 };
 
 function quad(g, v, x1, y1, x2, y2) {
@@ -234,6 +238,20 @@ export function createMap({ minimapCanvas, bigRoot, city }) {
         g.font = "bold 11px monospace";
         g.textAlign = "center";
         g.fillText("Цель", p.x, p.y - 12);
+      }
+    }
+    if (s.sideQuestTarget && s.sideQuestTarget !== s.questTarget) {
+      const b = s.sideQuestTarget;
+      const p = worldToMap(b.x + b.w / 2, b.y + b.h / 2, v);
+      g.strokeStyle = "#6fc3d0";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(p.x, p.y, labels ? 7 : 4, 0, 7);
+      g.stroke();
+      if (labels) {
+        g.fillStyle = "#9bd8e0";
+        g.font = "10px monospace";
+        g.fillText("Побочная", p.x, p.y - 10);
       }
     }
     if (marker) {

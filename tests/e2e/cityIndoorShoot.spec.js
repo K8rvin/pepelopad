@@ -51,6 +51,18 @@ test("стрельба внутри здания: стрела летит и п�
   await page.mouse.move(setup.mx, setup.my);
   await page.mouse.down();
   await page.waitForTimeout(1000); // натяжение 0,8 с
+  const currentAim = await page.evaluate((zi) => {
+    const c = window.__city;
+    const z = c.city.zombies[zi];
+    const cv = document.querySelector("canvas");
+    const camS = { x: (c.cam.x - c.cam.y) * 32, y: (c.cam.x + c.cam.y) * 16 };
+    const aimS = { x: (z.x - z.y) * 32, y: (z.x + z.y) * 16 - 0.9 * 32 };
+    return {
+      mx: (aimS.x - camS.x) * 2 + cv.width / 2,
+      my: (aimS.y - camS.y) * 2 + cv.height / 2,
+    };
+  }, setup.zi);
+  await page.mouse.move(currentAim.mx, currentAim.my);
   await page.mouse.up();
 
   await page.waitForFunction(
