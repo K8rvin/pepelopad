@@ -226,6 +226,12 @@ test("обучение на АЗС: лут, крафт, пауза, портре
   expect(
     await page.evaluate(() => window.__city.quests.done.includes("m00")),
   ).toBe(true);
+  // крупные цветные баннеры: новая миссия, затем празднование завершения
+  await expect(page.locator("#levelup .lu-card.quest-new")).toBeVisible();
+  await expect(page.locator("#levelup .lu-kind")).toHaveText("НОВОЕ ЗАДАНИЕ");
+  await expect(page.locator("#levelup .lu-card.quest-completed")).toBeVisible({
+    timeout: 6000,
+  });
   expect(errors).toEqual([]);
 });
 

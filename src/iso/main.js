@@ -394,7 +394,7 @@ export async function boot() {
     },
     {
       notify: (msg, big = false) => hud.toast(msg, big),
-      banner: showQuestBanner,
+      banner: (q, kind, desc) => showQuestBanner(q, kind, desc),
       sound: (id) => audio.play(id),
       dialogue: (d) => dialogueUI?.render(d),
       openCamp: (id) => {

@@ -61,38 +61,80 @@ export function updateLevelUp(L, dt) {
   return started;
 }
 
-// баннер: иконка, имя, новый уровень и что он даёт (desc из данных)
-export function showLevelUpBanner(ev) {
+// очередь баннеров: несколько событий за кадр не перезаписывают друг друга;
+// подряд идущие "stage" схлопываются в последнюю цель
+const bannerQueue = [];
+let bannerBusy = false;
+function pumpBanner() {
+  const item = bannerQueue.shift();
+  if (!item) {
+    bannerBusy = false;
+    return;
+  }
+  bannerBusy = true;
   const el = document.getElementById("levelup");
-  if (!el) return;
-  const def = ev.kind === "skill" ? SKILLS[ev.id] : ATTRS[ev.id];
-  if (!def) return;
-  el.innerHTML =
-    `<div class="lu-card">` +
-    `<div class="lu-kind">${ev.kind === "skill" ? "НАВЫК ПОВЫШЕН" : "ХАРАКТЕРИСТИКА ПОВЫШЕНА"}</div>` +
-    `<div class="lu-name">${def.icon} ${def.name}</div>` +
-    `<div class="lu-level">УРОВЕНЬ ${ev.level}</div>` +
-    `<div class="lu-desc">${def.desc}</div>` +
-    `</div>`;
-  el.classList.remove("show");
-  void el.offsetWidth; // перезапуск CSS-анимации
-  el.classList.add("show");
+  if (el) {
+    el.innerHTML = item.html;
+    el.classList.remove("show");
+    void el.offsetWidth; // перезапуск CSS-анимации
+    el.classList.add("show");
+  }
+  setTimeout(pumpBanner, LEVELUP_DUR * 1000);
+}
+function enqueueBanner(html, kind) {
+  if (kind === "stage") {
+    for (let i = bannerQueue.length - 1; i >= 0; i--)
+      if (bannerQueue[i].kind === "stage") {
+        bannerQueue[i] = { html, kind };
+        if (!bannerBusy) pumpBanner();
+        return;
+      }
+  }
+  bannerQueue.push({ html, kind });
+  if (!bannerBusy) pumpBanner();
 }
 
-// завершение квеста — тот же праздничный баннер, что и повышение уровня
-export function showQuestBanner(q) {
+// баннер: иконка, имя, новый уровень и что он даёт (desc из данных)
+export function showLevelUpBanner(ev) {
+  const def = ev.kind === "skill" ? SKILLS[ev.id] : ATTRS[ev.id];
+  if (!def) return;
+  enqueueBanner(
+    `<div class="lu-card">` +
+      `<div class="lu-kind">${ev.kind === "skill" ? "НАВЫК ПОВЫШЕН" : "ХАРАКТЕРИСТИКА ПОВЫШЕНА"}</div>` +
+      `<div class="lu-name">${def.icon} ${def.name}</div>` +
+      `<div class="lu-level">УРОВЕНЬ ${ev.level}</div>` +
+      `<div class="lu-desc">${def.desc}</div>` +
+      `</div>`,
+    "level",
+  );
+}
+
+// квестовые баннеры: завершение / новое задание / новая цель этапа.
+// kind задаёт цвет и шапку; desc — текст цели для kind="stage"
+export function showQuestBanner(q, kind = "completed", desc = null) {
   const el = document.getElementById("levelup");
   if (!el) return;
+  const head =
+    kind === "new"
+      ? "НОВОЕ ЗАДАНИЕ"
+      : kind === "stage"
+        ? "НОВАЯ ЦЕЛЬ"
+        : "ЗАДАНИЕ ВЫПОЛНЕНО";
   const reward = (q.reward || [])
-    .map(([id, n]) => `${ITEMS[id]?.name || id} ×${n}`)
-    .join(", ");
-  el.innerHTML =
-    `<div class="lu-card quest">` +
-    `<div class="lu-kind">ЗАДАНИЕ ВЫПОЛНЕНО</div>` +
-    `<div class="lu-name">${q.name}</div>` +
-    `<div class="lu-desc">Награда: ${reward}</div>` +
-    `</div>`;
-  el.classList.remove("show");
-  void el.offsetWidth;
-  el.classList.add("show");
+    .map(([id, n]) => `${ITEMS[id]?.icon || ""} ${ITEMS[id]?.name || id} ×${n}`)
+    .join(" · ");
+  const body =
+    kind === "completed"
+      ? reward
+        ? `<div class="lu-reward">Награда: ${reward}</div>`
+        : ""
+      : `<div class="lu-desc">${desc || q.stages?.[0]?.desc || q.desc || ""}</div>`;
+  enqueueBanner(
+    `<div class="lu-card quest quest-${kind}">` +
+      `<div class="lu-kind">${head}</div>` +
+      `<div class="lu-name">${q.name}</div>` +
+      body +
+      `</div>`,
+    kind,
+  );
 }

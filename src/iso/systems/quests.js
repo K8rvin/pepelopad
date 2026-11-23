@@ -170,6 +170,8 @@ function complete(Q, quests, def, result) {
   if (def.next) {
     Q.states[def.next] = "active";
     Q.stages[def.next] = 0;
+    const nextDef = quests.find((q) => q.id === def.next);
+    if (nextDef) result.started.push(nextDef);
   }
   result.completed.push(def);
   syncLegacy(Q, quests);
@@ -195,7 +197,7 @@ function settle(Q, quests, def, result) {
 }
 
 function emptyResult() {
-  return { completed: [], advanced: [], deliveries: [] };
+  return { completed: [], advanced: [], started: [], deliveries: [] };
 }
 
 export function qEvent(Q, quests, type, data = {}) {

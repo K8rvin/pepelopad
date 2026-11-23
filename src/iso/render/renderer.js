@@ -572,11 +572,12 @@ export function renderWorld({
       player.x + player.y,
     );
 
-  // NPC (спрайт выжившего + подпись вблизи)
+  // NPC (спрайт выжившего + подпись вблизи); actorDepth — чтобы стоящий
+  // перед южной стеной не оказывался за фасадом
   if (npcs)
     for (const n of npcs) {
       if (n.hidden || !vis(n.x, n.y, 45, 60)) continue;
-      push(n.x + n.y, 2, () => {
+      push(actorDepth(city, n), 2, () => {
         const p = w2s(n.x, n.y);
         ctx.fillStyle = "rgba(16,20,26,0.35)";
         ctx.beginPath();
@@ -644,30 +645,31 @@ export function renderWorld({
           () => drawCampNpc(ctx, c, def, player, toX, toY, zoom),
           c.x + c.y + 2,
         );
-      for (let i = 0; i < (c.rescued?.length || 0); i++) {
-        const rx = c.x - 3 + (i % 4) * 1.4;
-        const ry = c.y + 4 + Math.floor(i / 4);
+      // спасённые без NPC-двойника: именованный спрайт на слоте лагеря;
+      // с двойником (Нина, Павел) рисует только npcs-проход
+      for (const id of c.rescued || []) {
+        const s = survivors?.find((k) => k.id === id);
+        if (!s || s.hidden || s.state !== "rescued") continue;
+        if (npcs?.some((n) => n.id === id && !n.hidden)) continue;
+        if (!vis(s.x, s.y, 50, 65)) continue;
         push(
-          rx + ry,
+          actorDepth(city, s),
           2,
-          () =>
-            drawCampNpc(
-              ctx,
-              { x: rx - 1, y: ry - 1 },
-              { npc: { name: "Спасённый" } },
-              player,
-              toX,
-              toY,
-              zoom,
-            ),
-          rx + ry,
+          () => drawSurvivor(ctx, s, player, toX, toY, zoom),
+          s.x + s.y,
         );
       }
     }
 
   if (survivors)
     for (const survivor of survivors) {
-      if (survivor.hidden || !vis(survivor.x, survivor.y, 50, 65)) continue;
+      // rescued рисует лагерь или NPC-двойник — здесь только живые роли
+      if (
+        survivor.hidden ||
+        survivor.state === "rescued" ||
+        !vis(survivor.x, survivor.y, 50, 65)
+      )
+        continue;
       push(
         actorDepth(city, survivor),
         2,

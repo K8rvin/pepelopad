@@ -92,15 +92,16 @@ export function createCampaignRuntime(state, callbacks = {}) {
 
   function handleResult(result) {
     if (!result) return;
-    for (const advanced of result.advanced || []) {
-      if (advanced.quest.kind === "main")
-        callbacks.notify?.(
-          advanced.quest.stages[advanced.stage]?.desc || advanced.quest.desc,
-        );
-    }
+    for (const advanced of result.advanced || [])
+      callbacks.banner?.(
+        advanced.quest,
+        "stage",
+        advanced.quest.stages[advanced.stage]?.desc || advanced.quest.desc,
+      );
+    for (const def of result.started || []) callbacks.banner?.(def, "new");
     for (const def of result.completed || []) {
       const reward = claimQuestReward(quests, def, inv);
-      callbacks.banner?.(def);
+      callbacks.banner?.(def, "completed");
       callbacks.sound?.("quest");
       if (reward.pending.length)
         callbacks.notify?.(
@@ -132,10 +133,9 @@ export function createCampaignRuntime(state, callbacks = {}) {
           true,
         );
       else if (command.type === "accepted") {
-        callbacks.notify?.(
-          `Новое задание: ${ALL_QUESTS.find((q) => q.id === command.id)?.name || command.id}`,
-          true,
-        );
+        const def = ALL_QUESTS.find((q) => q.id === command.id);
+        if (def) callbacks.banner?.(def, "new");
+        else callbacks.notify?.(`Новое задание: ${command.id}`, true);
         if (command.id === "s_last_ride" && story.flags.workshop_van_ready)
           event("repair", { target: "workshop_van" });
       } else if (command.type === "items")
