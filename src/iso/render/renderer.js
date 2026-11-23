@@ -2126,6 +2126,21 @@ function drawBarricade(ctx, x, y, flip, toX, toY, zoom) {
 }
 
 function drawFire(ctx, x, y, toX, toY, zoom, now) {
+  // покадровый цикл ~6 к/с, когда кадры сгенерированы; иначе процедурное пламя
+  const frames = [SPRTEX.fire_0, SPRTEX.fire_1, SPRTEX.fire_2].filter(Boolean);
+  if (frames.length) {
+    drawGroundSprite(
+      ctx,
+      frames[Math.floor(now * 6) % frames.length],
+      x,
+      y,
+      40,
+      zoom,
+      toX,
+      toY,
+    );
+    return;
+  }
   const p = w2s(x, y, 0);
   const dx = toX(p.x),
     dy = toY(p.y);
@@ -2300,6 +2315,10 @@ function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {
   }
   if (object.kind === "cache" || object.kind === "barricade")
     drawCrate(ctx, object.x, object.y, toX, toY, zoom);
+  // генератор: ассет когда сгенерирован, иначе процедурный бокс ниже
+  const genSprite = object.kind === "generator" ? SPRTEX.generator : null;
+  if (genSprite)
+    drawGroundSprite(ctx, genSprite, object.x, object.y, 64, zoom, toX, toY);
   const p = w2s(object.x, object.y, object.kind === "document" ? 0.65 : 0.25);
   const dx = toX(p.x);
   const dy = toY(p.y);
@@ -2315,25 +2334,27 @@ function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {
     vehicle: "#8a9096",
     bed: "#7a8a9a",
   };
-  ctx.fillStyle = colors[object.kind] || "#ffb23e";
-  if (["cache", "barricade", "vehicle", "bed"].includes(object.kind)) {
-    ctx.beginPath();
-    ctx.arc(dx, dy - 16 * zoom, 5 * zoom, 0, 7);
-    ctx.fill();
-  } else {
-    ctx.fillRect(dx - 6 * zoom, dy - 8 * zoom, 12 * zoom, 12 * zoom);
-    ctx.fillStyle = "#1a1712";
-    ctx.font = `bold ${9 * zoom}px monospace`;
-    ctx.textAlign = "center";
-    const glyph =
-      object.kind === "medical"
-        ? "+"
-        : object.kind === "document"
-          ? "≡"
-          : object.kind === "radio"
-            ? "~"
-            : "!";
-    ctx.fillText(glyph, dx, dy + 1 * zoom);
+  if (!genSprite) {
+    ctx.fillStyle = colors[object.kind] || "#ffb23e";
+    if (["cache", "barricade", "vehicle", "bed"].includes(object.kind)) {
+      ctx.beginPath();
+      ctx.arc(dx, dy - 16 * zoom, 5 * zoom, 0, 7);
+      ctx.fill();
+    } else {
+      ctx.fillRect(dx - 6 * zoom, dy - 8 * zoom, 12 * zoom, 12 * zoom);
+      ctx.fillStyle = "#1a1712";
+      ctx.font = `bold ${9 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      const glyph =
+        object.kind === "medical"
+          ? "+"
+          : object.kind === "document"
+            ? "≡"
+            : object.kind === "radio"
+              ? "~"
+              : "!";
+      ctx.fillText(glyph, dx, dy + 1 * zoom);
+    }
   }
   if (nearest) {
     ctx.font = `${11 * zoom}px monospace`;
