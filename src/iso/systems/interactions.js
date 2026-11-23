@@ -29,13 +29,34 @@ export function objectAvailable(object, ctx) {
   return conditionMatches(object.when, ctx);
 }
 
-export function nearestInteraction(interactions, x, y, ctx, radius = 2.1) {
+// look — единичный вектор взгляда: объект в конусе взгляда (±60°) важнее
+// просто ближайшего; без look — прежнее поведение по дистанции
+export function nearestInteraction(
+  interactions,
+  x,
+  y,
+  ctx,
+  radius = 2.1,
+  look = null,
+) {
   let best = null;
   let bestDistance = radius;
+  let bestInLook = false;
   for (const object of interactions.objects) {
     if (object.action === "none" || !objectAvailable(object, ctx)) continue;
-    const distance = Math.hypot(object.x - x, object.y - y);
-    if (distance < bestDistance) {
+    const dx = object.x - x,
+      dy = object.y - y;
+    const distance = Math.hypot(dx, dy);
+    if (distance >= radius) continue;
+    const inLook =
+      look && distance > 1e-6
+        ? (dx * look.x + dy * look.y) / distance >= 0.5
+        : false;
+    if (inLook && !bestInLook) {
+      best = object;
+      bestDistance = distance;
+      bestInLook = true;
+    } else if (inLook === bestInLook && distance < bestDistance) {
       best = object;
       bestDistance = distance;
     }

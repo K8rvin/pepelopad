@@ -992,6 +992,8 @@ export async function boot() {
           player.x,
           player.y,
           campaign.context(),
+          2.1,
+          lookVector(),
         );
         const npc = npcNear(npcs, player.x, player.y);
         const nearbySurvivor = survivorNear(survivors, player.x, player.y);
@@ -1252,6 +1254,26 @@ export async function boot() {
     getContext: campaign.context,
     onChoice: (choice) => campaign.choose(choice),
   });
+
+  // направление взгляда для E: при натяжении лука — по прицелу, иначе по
+  // экранному курсу персонажа (мировые векторы сторон iso 2:1)
+  function lookVector() {
+    if (combat.bowDrawing) {
+      const camS = w2s(cam.x, cam.y);
+      const a = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
+      const dx = a.x - player.x,
+        dy = a.y - player.y;
+      const n = Math.hypot(dx, dy) || 1;
+      return { x: dx / n, y: dy / n };
+    }
+    const v = {
+      right: [1, -1],
+      left: [-1, 1],
+      down: [1, 1],
+      up: [-1, -1],
+    }[player.dir || "right"];
+    return { x: v[0] * Math.SQRT1_2, y: v[1] * Math.SQRT1_2 };
+  }
 
   function beginStoryInteraction(object) {
     if (["homeStorage", "sleep", "toggleGenerator"].includes(object.action)) {
@@ -1567,6 +1589,8 @@ export async function boot() {
       player.x,
       player.y,
       campaign.context(),
+      2.1,
+      lookVector(),
     );
     const luStarted = updateLevelUp(levelFx, dt);
     if (luStarted) {

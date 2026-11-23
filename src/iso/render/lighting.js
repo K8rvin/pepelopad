@@ -6,6 +6,10 @@ import { carCenter } from "../world/cityGen.js";
 import { makeGlowSprite } from "./buildings.js";
 import { buildingSprite, buildingLitCanvas } from "./buildings.js";
 
+// ночной конус взгляда: значительно больше прежнего (240×62), чтобы ночью
+// было видно, куда смотришь, а не только пятно вокруг персонажа
+export const NIGHT_CONE = { len: 560, wid: 170 };
+
 export function createLighting() {
   const lightCv = mkCanvas(2, 2);
   const warmCv = mkCanvas(2, 2);
@@ -77,13 +81,13 @@ export function renderNight({
     const ox = toX(pp.x) * s,
       oy = (toY(pp.y) - 40 * zoom) * s;
     const ang = Math.atan2(toY(ap.y) - toY(pp.y), toX(ap.x) - toX(pp.x));
-    const len = 240 * zoom * s,
-      wid = 62 * zoom * s;
+    const len = NIGHT_CONE.len * zoom * s,
+      wid = NIGHT_CONE.wid * zoom * s;
     g.save();
     g.translate(ox, oy);
     g.rotate(ang);
     const grad = g.createLinearGradient(0, 0, len, 0);
-    grad.addColorStop(0, "rgba(255,255,255,0.5)");
+    grad.addColorStop(0, "rgba(255,255,255,0.6)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = grad;
     g.beginPath();
