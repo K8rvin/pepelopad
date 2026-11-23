@@ -30,6 +30,7 @@ export function createUI({
   onDrop,
   onCraft,
   canCraft,
+  getTutorialRecipes,
   onClose,
   getSkills,
   getMods,
@@ -85,6 +86,10 @@ export function createUI({
       btns.push(
         `<button data-act="use">Съесть${s.id === "can" ? ` (+${40 + (m?.foodBonus ?? 0)} сытости)` : " (+65 сытости)"}</button>`,
       );
+    if (s.id === "medkit")
+      btns.push(
+        `<button data-act="use">Использовать аптечку (+60 HP)</button>`,
+      );
     if (s.id === "meds")
       btns.push(
         `<button data-act="use">Перевязать (+${30 + (m?.healBonus ?? 0)} HP)</button>`,
@@ -128,15 +133,16 @@ export function createUI({
   }
 
   function craftPanel() {
+    const tutorial = getTutorialRecipes?.() || [];
     const rows = RECIPES.map((r) => {
       const ok = canCraft(r);
       const ins = Object.entries(r.inputs)
         .map(([id, n]) => `${iconHtml(id, 14)} ${n}`)
         .join(" + ");
-      return `<div class="loot-row ${ok ? "" : "dim"}">${iconHtml(r.out.id, 18)} ${r.name} <span class="dim">(${ins})</span>
+      return `<div class="loot-row ${ok ? "" : "dim"} ${tutorial.includes(r.id) ? "tutorial" : ""}">${iconHtml(r.out.id, 18)} ${r.name} <span class="dim">(${ins})</span>
         <button class="craft" data-id="${r.id}" ${ok ? "" : "disabled"}>создать</button></div>`;
     }).join("");
-    return `<div class="panel"><h3>Крафт</h3><div class="loot-list">${rows}</div>
+    return `<div class="panel"><h3>Крафт</h3>${tutorial.length ? '<div class="hint tutorial-hint">Олег: сначала стрелы, затем нож и аптечка. Нажми «создать» на каждой строке.</div>' : ""}<div class="loot-list">${rows}</div>
       <div class="hint">C / Esc — закрыть</div></div>`;
   }
 
@@ -302,7 +308,7 @@ export function createUI({
         В диалоге E / Enter — дальше, 1/2/3 — ответ · в окне лута E — взять верхнюю вещь<br>
         Space — взять всё (в окне лута) · I — рюкзак · C — крафт · P — персонаж<br>
         TAB — панель с вкладками · M — карта · J — журнал · Q — еда · H — бинт (снимает инфекцию)<br>
-        T — багажник · F — заправить · Y — ремонт машины деталью · V — база<br>
+        T — багажник · F — заправить · Y — ремонт машины деталью · V — база · G — спутник следует / ждёт<br>
         B — разбить окно · X — спуск с этажа · 1/2/3 — лук/бита/нож · R — возрождение · Esc — пауза
       </div>
       <div class="hint">Ставки: голод на нуле и инфекция точат HP; спринт тратит стамину; укус может заразить.</div>

@@ -1,0 +1,22 @@
+{
+  "id": "portrait_oleg",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет Олег.jfif",
+  "createdAt": "2026-11-23T02:47:59.979Z",
+  "sha256": "d4e5bad82a30fe6047d7da25e268ee22fa59507befe860f1959c6858c6419396",
+  "originalSize": [
+    2048,
+    2048
+  ],
+  "runtime": "public/assets/gen/portrait_oleg.png",
+  "runtimeSize": [
+    384,
+    384
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

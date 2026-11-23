@@ -72,7 +72,14 @@ export function createLoot(city) {
   // контейнеры мира: мусорки и бочки с координатами
   const containers = [];
   city.containers.forEach((c, i) =>
-    containers.push({ id: "dn" + i, kind: "dumpster", x: c.x, y: c.y, src: c }),
+    containers.push({
+      id: c.id || "dn" + i,
+      kind: c.kind || "dumpster",
+      x: c.x,
+      y: c.y,
+      src: c,
+      fixedItems: c.fixedItems,
+    }),
   );
   city.barrels.forEach((b, i) =>
     containers.push({ id: "br" + i, kind: "barrel", x: b.x, y: b.y, src: b }),
@@ -130,6 +137,7 @@ export function nearestContainer(L, x, y, r = 1.6, insideB = null) {
 // bonusChance (навык поиска + восприятие) даёт доп. стак по каждой строке.
 // Позволяет заранее знать, пуст ли контейнер (подсказка обыска не показывается).
 export function containerItems(c, bonusChance = 0) {
+  if (c.fixedItems) return c.fixedItems.map(([id, n]) => ({ id, n }));
   const seed = c.id
     .split("")
     .reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 5);

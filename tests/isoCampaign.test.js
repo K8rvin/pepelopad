@@ -41,6 +41,8 @@ function fixture() {
   ])
     addItem(inv, id, 50);
   const quests = createQuests();
+  quests.states = { m01: "active" };
+  quests.done.push("m00");
   const story = createStory();
   const camps = createCamps(city);
   const survivors = createSurvivors(city);
@@ -155,7 +157,7 @@ describe("данные кампании", () => {
 });
 
 describe("сквозная кампания", () => {
-  it("проходит все шестнадцать миссий, осаду и открытый финал", () => {
+  it("проходит обучение и всю кампанию, осаду и открытый финал", () => {
     const f = fixture();
     f.campaign.event("visit", { target: "gas" });
     interact(f, "gas_door");
@@ -234,7 +236,7 @@ describe("сквозная кампания", () => {
     interact(f, "motel_final_list");
     talk(f, "gromov", 0);
     expect(f.story.ending).toBe("open");
-    expect(f.quests.done).toHaveLength(16);
+    expect(f.quests.done).toHaveLength(17);
     expect(mainQuest(f.quests, ALL_QUESTS)).toBeNull();
     expect(f.story.flags.gates_open).toBe(true);
   });

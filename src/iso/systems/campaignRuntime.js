@@ -182,7 +182,7 @@ export function createCampaignRuntime(state, callbacks = {}) {
     if (current && current !== target) current.state = "waiting";
     target.state = "following";
     target.hidden = false;
-    callbacks.notify?.(`${target.name}: E — следовать или ждать.`);
+    callbacks.notify?.(`${target.name}: G — следовать или ждать.`);
   }
 
   function spawnGroup(id) {

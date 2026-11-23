@@ -452,49 +452,108 @@
       .journal .j-stat b {
         color: #ffb23e;
       }
+      #ui .loot-row.tutorial {
+        border-color: #ffb23e;
+        background: rgba(255, 178, 62, 0.12);
+      }
+      #ui .tutorial-hint {
+        color: #ffd76a;
+        margin-bottom: 10px;
+      }
       /* ── диалог ── */
       #dlg {
         display: none;
         position: fixed;
         left: 50%;
-        bottom: 24px;
+        bottom: 28px;
         transform: translateX(-50%);
-        max-width: 620px;
+        width: min(1000px, calc(100vw - 48px));
+        max-height: calc(100vh - 56px);
+        overflow: auto;
+        grid-template-columns: minmax(0, 1fr) 220px;
+        gap: 20px;
         background: rgba(17, 20, 14, 0.97);
-        border: 1px solid #596248;
-        padding: 12px 16px;
+        border: 2px solid #596248;
+        padding: 20px 22px;
         color: #ece5d0;
+        font-size: 18px;
+        line-height: 1.55;
         z-index: 35;
+        box-sizing: border-box;
+      }
+      #dlg .dlg-main {
+        min-width: 0;
+      }
+      #dlg .dlg-line {
+        font-size: 18px;
+      }
+      #dlg .dlg-portrait {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 240px;
+        background: #1b2016;
+        border: 1px solid #39402e;
+      }
+      #dlg .dlg-portrait img {
+        width: 100%;
+        height: 250px;
+        object-fit: contain;
+        image-rendering: pixelated;
       }
       #dlg .who {
-        color: #c96a35;
-        font-size: 12px;
+        color: #e28a4a;
+        font-size: 17px;
+        font-weight: bold;
         letter-spacing: 1px;
-        margin-bottom: 4px;
+        margin-bottom: 10px;
       }
       #dlg .hint {
-        color: #9a9478;
-        font-size: 10px;
+        color: #b8b0a0;
+        font-size: 13px;
         margin-top: 6px;
         text-align: right;
       }
       #dlg .dlg-choices {
-        margin-top: 8px;
+        margin-top: 14px;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 8px;
       }
       #dlg .dlg-choices button {
         background: #39402e;
         color: #ece5d0;
-        border: 1px solid #596248;
-        padding: 5px 9px;
+        border: 1px solid #71805a;
+        padding: 10px 13px;
         cursor: pointer;
         font: inherit;
+        font-size: 17px;
+        line-height: 1.35;
         text-align: left;
       }
       #dlg .dlg-choices button:hover {
         background: #4a5438;
+      }
+      @media (max-width: 700px) {
+        #dlg {
+          width: calc(100vw - 24px);
+          grid-template-columns: minmax(0, 1fr) 110px;
+          gap: 10px;
+          padding: 14px;
+          font-size: 16px;
+        }
+        #dlg .dlg-line {
+          font-size: 16px;
+        }
+        #dlg .dlg-portrait {
+          min-height: 150px;
+        }
+        #dlg .dlg-portrait img {
+          height: 160px;
+        }
+        #dlg .dlg-choices button {
+          font-size: 15px;
+        }
       }
       /* ── большая карта ── */
       #bigmap {

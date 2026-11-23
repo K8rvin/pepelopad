@@ -425,6 +425,39 @@ function genPoiBlock(city, bx0, by0, kind, r) {
     city.containers.push(
       { x: bx0 + 14, y: by0 + 28 },
       { x: bx0 + 24, y: by0 + 28 },
+      {
+        id: "gas_training_wood",
+        kind: "crate",
+        x: bx0 + 10,
+        y: by0 + 31,
+        protected: true,
+        fixedItems: [
+          ["wood", 4],
+          ["scrap", 2],
+        ],
+      },
+      {
+        id: "gas_training_blade",
+        kind: "crate",
+        x: bx0 + 18,
+        y: by0 + 32,
+        protected: true,
+        fixedItems: [
+          ["scrap", 2],
+          ["cloth", 2],
+        ],
+      },
+      {
+        id: "gas_training_medical",
+        kind: "crate",
+        x: bx0 + 26,
+        y: by0 + 31,
+        protected: true,
+        fixedItems: [
+          ["meds", 2],
+          ["cloth", 2],
+        ],
+      },
     );
     city.lamps.push({ x: bx0 + 8, y: by0 + 24 }, { x: bx0 + 32, y: by0 + 24 });
   } else if (kind === "park") {

@@ -1,5 +1,16 @@
 export const STORY_OBJECTS = [
   {
+    id: "gas_practice_target",
+    name: "Учебная мишень",
+    kind: "target",
+    site: "gas",
+    x: 12,
+    y: 25,
+    action: "none",
+    when: { main: "m00", stage: 4 },
+    repeat: true,
+  },
+  {
     id: "gas_door",
     name: "Заваленная дверь",
     kind: "door",

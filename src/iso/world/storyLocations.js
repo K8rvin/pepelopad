@@ -60,6 +60,12 @@ export function addStoryLocations(city, PITCH) {
       });
     }
   }
+  const targetDef = STORY_OBJECTS.find((o) => o.id === "gas_practice_target");
+  const targetPoint = storyPoint(city, targetDef);
+  city.trainingTargets =
+    targetDef && targetPoint
+      ? [{ id: targetDef.id, x: targetPoint.x, y: targetPoint.y }]
+      : [];
 }
 
 export function addStoryVehicle(city) {

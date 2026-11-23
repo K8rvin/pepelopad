@@ -27,6 +27,15 @@ export const TEX_FILES = {
 // Машины рисуются процедурной iso-моделью (data/carShapes.js): турнтейбл-атласы
 // Gemini не дали равномерной сетки курсов (этап 18), атласы больше не грузятся.
 
+export const PORTRAIT_FILES = {
+  portrait_oleg: "assets/gen/portrait_oleg.png",
+  portrait_vera: "assets/gen/portrait_vera.png",
+  portrait_sanych: "assets/gen/portrait_sanych.png",
+  portrait_raya: "assets/gen/portrait_raya.png",
+  portrait_masha: "assets/gen/portrait_masha.png",
+  portrait_gg: "assets/gen/portrait_gg.png",
+};
+
 export const SPRITE_FILES = {
   tree: "assets/gen/tree_poplar.png", // GPT-замена Gemini-тополя (без белых карманов)
   tree_dead: "assets/gen/tree_dead.png",
@@ -98,7 +107,11 @@ function loadSet(files, target) {
 }
 
 export async function loadAssets() {
-  await Promise.all([loadSet(TEX_FILES, TEX), loadSet(SPRITE_FILES, SPRTEX)]);
+  await Promise.all([
+    loadSet(TEX_FILES, TEX),
+    loadSet(SPRITE_FILES, SPRTEX),
+    loadSet(PORTRAIT_FILES, SPRTEX),
+  ]);
   for (const kind of ["chair", "floor_lamp", "table_lamp", "washer", "dryer"]) {
     const key = "furn_" + kind;
     if (!SPRTEX[key]) SPRTEX[key] = createFurnitureModel(kind);

@@ -152,6 +152,7 @@ export function updateVehicle(
   const knockable =
     hit &&
     (hit.kind === "lamp" || hit.kind === "fence" || hit.kind === "prop") &&
+    !hit.ref?.protected &&
     Math.abs(car.v) > 2.5;
   if (knockable) {
     hit.ref.dead = true;

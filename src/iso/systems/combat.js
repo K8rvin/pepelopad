@@ -138,6 +138,21 @@ export function updateCombat(
           break;
         }
       }
+      if (a.alive)
+        for (const target of city.trainingTargets || []) {
+          const zx = (target.x - target.y) * 32;
+          const zy = (target.x + target.y) * 16;
+          const ax = (a.x - a.y) * 32;
+          const ay = (a.x + a.y) * 16 - FLIGHT_H * 32;
+          const bx = (nx - ny) * 32;
+          const by = (nx + ny) * 16 - FLIGHT_H * 32;
+          if (!segHitsRect(ax, ay, bx, by, zx - 18, zy - 72, zx + 18, zy))
+            continue;
+          a.alive = false;
+          C.stuck.push({ x: nx, y: ny, dx: a.dx, dy: a.dy, t: 0, ttl: 30 });
+          C.onPractice?.("bow", target);
+          break;
+        }
       a.x = nx;
       a.y = ny;
     }
@@ -429,6 +444,17 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
       C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
       C.onKill?.("melee", z);
     }
+  }
+  for (const target of city.trainingTargets || []) {
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const d = Math.hypot(dx, dy);
+    if (d > weapon.range + 0.35) continue;
+    let da = Math.abs(Math.atan2(dy, dx) - ang);
+    if (da > Math.PI) da = 2 * Math.PI - da;
+    if (da > 0.9) continue;
+    hits++;
+    C.onPractice?.(weapon.id, target);
   }
   for (const z of city.zombies) {
     if (z.dead) continue;

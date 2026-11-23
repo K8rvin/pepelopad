@@ -5,6 +5,13 @@ async function boot(page) {
   page.on("pageerror", (e) => errors.push(e.stack));
   await page.goto("/?new=1&nb=9");
   await page.waitForFunction(() => window.__city?.campaign);
+  await page.evaluate(() => {
+    const c = window.__city;
+    c.quests.states = { m01: "active" };
+    c.quests.stages = { m01: 0 };
+    if (!c.quests.done.includes("m00")) c.quests.done.push("m00");
+    c.campaign.sync();
+  });
   return errors;
 }
 

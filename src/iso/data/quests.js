@@ -1,5 +1,64 @@
 export const MAIN_QUESTS = [
   {
+    id: "m00",
+    kind: "main",
+    chapter: "I. Возвращение",
+    name: "Первые правила",
+    desc: "Олег отзывается из подсобки заправки. Прежде чем открывать дверь, собери снаряжение и проверь руку.",
+    next: "m01",
+    target: { site: "gas" },
+    stages: [
+      {
+        desc: "Доберись до заправки.",
+        goals: [{ type: "visit", target: "gas", label: "Старая заправка" }],
+        target: { site: "gas" },
+      },
+      {
+        desc: "Обыск три помеченных ящика.",
+        goals: [
+          {
+            type: "search",
+            target: "gas_training_wood",
+            label: "Столярный ящик",
+          },
+          {
+            type: "search",
+            target: "gas_training_blade",
+            label: "Ящик с металлом",
+          },
+          {
+            type: "search",
+            target: "gas_training_medical",
+            label: "Медицинский ящик",
+          },
+        ],
+        target: { site: "gas" },
+      },
+      {
+        desc: "Открой C и создай стрелы, нож и аптечку.",
+        goals: [
+          { type: "craft", target: "arrows", label: "Стрелы" },
+          { type: "craft", target: "knife", label: "Нож" },
+          { type: "craft", target: "medkit", label: "Аптечка" },
+        ],
+        target: { site: "gas" },
+      },
+      {
+        desc: "Поговори с Олегом через дверь.",
+        goals: [{ type: "talk", target: "oleg", label: "Правила боя" }],
+        target: { npc: "oleg" },
+      },
+      {
+        desc: "Попади по мишени из лука, затем ударь её ножом.",
+        goals: [
+          { type: "practice", target: "bow", label: "Попадание из лука" },
+          { type: "practice", target: "knife", label: "Удар ножом" },
+        ],
+        target: { object: "gas_practice_target" },
+      },
+    ],
+  },
+  {
     id: "m01",
     kind: "main",
     chapter: "I. Возвращение",
@@ -63,7 +122,7 @@ export const MAIN_QUESTS = [
         target: { npc: "nina" },
       },
       {
-        desc: "Сопроводи Нину к мотелю. E — следовать или ждать.",
+        desc: "Сопроводи Нину к мотелю. G — следовать или ждать.",
         goals: [
           {
             type: "rescue",

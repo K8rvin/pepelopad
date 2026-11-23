@@ -13,6 +13,12 @@ export const RECIPES = [
     inputs: { cloth: 2 },
   },
   {
+    id: "medkit",
+    name: "Аптечка",
+    out: { id: "medkit", n: 1 },
+    inputs: { meds: 1, cloth: 2 },
+  },
+  {
     id: "torch",
     name: "Факел",
     out: { id: "torch", n: 1 },

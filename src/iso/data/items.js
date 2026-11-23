@@ -15,4 +15,5 @@ export const ITEMS = {
   insulin: { name: "Инсулин", stack: 2, icon: "💉", unique: true },
   battery: { name: "Батарея", stack: 2, icon: "🔋", unique: true },
   meal: { name: "Горячая еда", stack: 5, icon: "🍲" },
+  medkit: { name: "Аптечка", stack: 3, icon: "⛑️" },
 };

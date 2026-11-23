@@ -1,0 +1,22 @@
+{
+  "id": "portrait_vera",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет Вера.jfif",
+  "createdAt": "2026-11-23T02:54:58.916Z",
+  "sha256": "267ef7b558d9ce87b479ddae0ba7b736f185b696559bca40d7633c36e79e8311",
+  "originalSize": [
+    1696,
+    2528
+  ],
+  "runtime": "public/assets/gen/portrait_vera.png",
+  "runtimeSize": [
+    384,
+    572
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

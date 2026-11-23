@@ -1,0 +1,22 @@
+{
+  "id": "portrait_raya",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет Рая.jfif",
+  "createdAt": "2026-11-23T02:52:58.254Z",
+  "sha256": "e9761676ff558b201be02b74c87a7d700f949abaca2420d45357d172ed3049d6",
+  "originalSize": [
+    1696,
+    2528
+  ],
+  "runtime": "public/assets/gen/portrait_raya.png",
+  "runtimeSize": [
+    384,
+    572
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

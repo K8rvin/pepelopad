@@ -1,0 +1,22 @@
+{
+  "id": "portrait_masha",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет Маша.jfif",
+  "createdAt": "2026-11-23T02:53:48.715Z",
+  "sha256": "943400f19ed228470f57f9f00abe74a0f190b736cdbdaa1fea7874f069e25d22",
+  "originalSize": [
+    1696,
+    2528
+  ],
+  "runtime": "public/assets/gen/portrait_masha.png",
+  "runtimeSize": [
+    384,
+    572
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "portrait_sanych",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет Саныч.jfif",
+  "createdAt": "2026-11-23T02:58:56.937Z",
+  "sha256": "8cdb06a7051ff7e799959af6241cbb6f3ff829dbe0a54515adbd083146d5034e",
+  "originalSize": [
+    1696,
+    2528
+  ],
+  "runtime": "public/assets/gen/portrait_sanych.png",
+  "runtimeSize": [
+    384,
+    572
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

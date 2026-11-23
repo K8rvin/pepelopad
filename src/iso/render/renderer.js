@@ -468,6 +468,10 @@ export function renderWorld({
     // парный тест со зданиями: контейнер перед домом — на переднем плане
     push(actorDepth(city, cn), 1, () => {
       const p = w2s(cn.x, cn.y);
+      if (cn.kind === "crate") {
+        drawCrate(ctx, cn.x, cn.y, toX, toY, zoom);
+        return;
+      }
       const img = SPRTEX.dumpster;
       if (img) {
         const w = 66 * zoom,
@@ -2228,6 +2232,28 @@ function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
 }
 
 function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {
+  if (object.kind === "target") {
+    const p = w2s(object.x, object.y);
+    const dx = toX(p.x);
+    const dy = toY(p.y);
+    ctx.strokeStyle = "#5a4632";
+    ctx.lineWidth = 4 * zoom;
+    ctx.beginPath();
+    ctx.moveTo(dx, dy);
+    ctx.lineTo(dx, dy - 54 * zoom);
+    ctx.stroke();
+    for (const [radius, color] of [
+      [18, "#e8dfc2"],
+      [12, "#a83a2a"],
+      [5, "#e8dfc2"],
+    ]) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(dx, dy - 58 * zoom, radius * zoom, 0, 7);
+      ctx.fill();
+    }
+    return;
+  }
   if (object.kind === "cache" || object.kind === "barricade")
     drawCrate(ctx, object.x, object.y, toX, toY, zoom);
   const p = w2s(object.x, object.y, object.kind === "document" ? 0.65 : 0.25);

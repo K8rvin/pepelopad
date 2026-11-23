@@ -36,8 +36,11 @@ export function syncNpcs(
   for (const n of npcs) {
     n.hidden = false;
     if (n.id === "oleg") {
-      if (!story.flags.oleg_free) n.hidden = true;
-      if (!quests.done.includes("m01"))
+      const tutorial = quests.states.m00 === "active";
+      if (!story.flags.oleg_free && !tutorial) n.hidden = true;
+      if (tutorial)
+        Object.assign(n, storyPoint(city, { site: "gas", x: 4, y: 5.2 }));
+      else if (!quests.done.includes("m01"))
         Object.assign(n, storyPoint(city, { site: "gas", x: 4, y: 3 }));
       else {
         const camp = camps.find((c) => c.id === "park");

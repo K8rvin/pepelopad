@@ -33,7 +33,7 @@ export function nearestInteraction(interactions, x, y, ctx, radius = 2.1) {
   let best = null;
   let bestDistance = radius;
   for (const object of interactions.objects) {
-    if (!objectAvailable(object, ctx)) continue;
+    if (object.action === "none" || !objectAvailable(object, ctx)) continue;
     const distance = Math.hypot(object.x - x, object.y - y);
     if (distance < bestDistance) {
       best = object;

@@ -70,7 +70,10 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
           ? `<span class="hb lit">${iconHtml("torch", 16)} ${Math.ceil(s.torchT)}с</span>`
           : "") +
         (s.camp ? `<span class="hb"><b>E</b> лагерь «${s.camp}»</span>` : "") +
-        (s.noArrows ? `<span class="hb lit">НЕТ СТРЕЛ</span>` : "");
+        (s.noArrows ? `<span class="hb lit">НЕТ СТРЕЛ</span>` : "") +
+        (s.companion
+          ? `<span class="hb"><b>G</b> ${s.companion.name}: ${s.companion.state === "following" ? "идёт" : "ждёт"}</span>`
+          : "");
     }
     if (hb !== lastHotbar) {
       hotbarEl.innerHTML = hb;

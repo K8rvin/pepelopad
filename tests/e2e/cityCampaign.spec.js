@@ -112,6 +112,39 @@ test("побочное спасение: Толя освобождён, след
   await page.keyboard.press("KeyE");
   await page.evaluate(() => {
     const c = window.__city;
+    const container = c.loot.containers.find(
+      (item) => item.id === "gas_training_wood",
+    );
+    const s = c.survivors.find((s) => s.id === "tolya");
+    c.teleport(container.x, container.y + 0.8);
+    s.x = container.x + 0.4;
+    s.y = container.y + 0.6;
+  });
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__city.ui.isLoot());
+  expect(
+    await page.evaluate(
+      () => window.__city.survivors.find((s) => s.id === "tolya").state,
+    ),
+  ).toBe("following");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyG");
+  expect(
+    await page.evaluate(
+      () => window.__city.survivors.find((s) => s.id === "tolya").state,
+    ),
+  ).toBe("waiting");
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__city.ui.isLoot());
+  expect(
+    await page.evaluate(
+      () => window.__city.survivors.find((s) => s.id === "tolya").state,
+    ),
+  ).toBe("waiting");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyG");
+  await page.evaluate(() => {
+    const c = window.__city;
     const camp = c.camps.find((camp) => camp.id === "park");
     const s = c.survivors.find((s) => s.id === "tolya");
     c.teleport(camp.x, camp.y);

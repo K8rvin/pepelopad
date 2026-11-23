@@ -1,0 +1,22 @@
+{
+  "id": "portrait_gg",
+  "source": "GPT; изображение предоставлено пользователем",
+  "prompt": null,
+  "originalImport": "tmp/Портрет ГГ.jfif",
+  "createdAt": "2026-11-23T02:51:14.692Z",
+  "sha256": "81c27b143944ac7c08d1525f899f940d0db0c245924866eeed4c498cf54d837a",
+  "originalSize": [
+    1696,
+    2528
+  ],
+  "runtime": "public/assets/gen/portrait_gg.png",
+  "runtimeSize": [
+    384,
+    572
+  ],
+  "processing": {
+    "pipeline": "scripts/process_portraits.mjs",
+    "width": 384,
+    "crop": false
+  }
+}

@@ -133,7 +133,7 @@ describe("сохранение кампании v6", () => {
     expect(fresh.camps[0].trust).toBe(42);
     expect(fresh.city.cars[0].fuel).toBe(17);
     expect(fresh.city.cars.at(-1).storyId).toBe("story_van");
-    expect(fresh.quests.states.m01).toBe("active");
+    expect(fresh.quests.states.m00).toBe("active");
     expect(fresh.story.flags.hope).toBeUndefined();
   });
 });

@@ -102,6 +102,15 @@ export function useConsumable(
     S.hunger = Math.min(100, S.hunger + 65);
     return "Горячая еда. +65 сытости";
   }
+  if (id === "medkit") {
+    if (combat.playerHp >= combat.playerMaxHp && !player?.infected)
+      return "Здоровье полное";
+    if (!removeFn("medkit", 1)) return null;
+    const v = 60 + (mods?.healBonus ?? 0);
+    combat.playerHp = Math.min(combat.playerMaxHp, combat.playerHp + v);
+    if (player) player.infected = false;
+    return `Аптечка. +${v} HP, инфекция снята`;
+  }
   if (id === "meds") {
     if (combat.playerHp >= combat.playerMaxHp) return "Здоровье полное";
     if (!removeFn("meds", 1)) return null;

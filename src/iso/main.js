@@ -143,7 +143,9 @@ import {
   createSurvivors,
   survivorNear,
   toggleSurvivor,
+  followingSurvivor,
 } from "./systems/survivors.js";
+import { isSimulationPaused, isTutorialCraft } from "./systems/pause.js";
 import {
   createInteractions,
   nearestInteraction,
@@ -398,6 +400,11 @@ export async function boot() {
   };
   combat.onKnock = () => audio.play("knock");
   combat.onCarHit = () => audio.play("carHit");
+  combat.onPractice = (weapon, target) => {
+    questEvent("practice", { target: weapon });
+    say(comic, target.x, target.y, "Есть!", "heal", 1);
+    audio.play("hit");
+  };
   combat.onSurvivorHurt = (s) => say(comic, s.x, s.y, "Ай!", "alert", 0.9);
   combat.onSurvivorDead = (s) => campaign.onSurvivorDead(s);
 
@@ -428,8 +435,8 @@ export async function boot() {
     );
     if (msg) {
       toast(msg);
-      audio.play(id === "meds" ? "bandage" : "eat");
-      if (id === "meds" && combat.playerHp > hpBefore) {
+      audio.play(id === "meds" || id === "medkit" ? "bandage" : "eat");
+      if ((id === "meds" || id === "medkit") && combat.playerHp > hpBefore) {
         skillXp("medicine", 10);
         say(comic, player.x, player.y, "+HP", "heal", 1.2);
       }
@@ -496,10 +503,13 @@ export async function boot() {
         toast(`Создано: ${r.name}`);
         skillXp("crafting", 8);
         stats.crafts++;
+        questEvent("craft", { target: r.id });
         audio.play("craft");
       }
     },
     canCraft: (r) => canCraft(inv, r),
+    getTutorialRecipes: () =>
+      isTutorialCraft(quests) ? ["arrows", "knife", "medkit"] : [],
     onClose: () => {
       // закрыл обыск — всплывающие «+N предмет» над контейнером и звук лутания
       if (lootOpen) {
@@ -741,6 +751,31 @@ export async function boot() {
       } else if (e.code === "Escape") campaign.close();
       return;
     }
+    if (e.code === "KeyG" && !combat.dead) {
+      const active = followingSurvivor(survivors);
+      const waiting = survivors
+        .filter(
+          (s) =>
+            s.state === "waiting" &&
+            !s.hidden &&
+            Math.hypot(s.x - player.x, s.y - player.y) < 4,
+        )
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x - player.x, a.y - player.y) -
+            Math.hypot(b.x - player.x, b.y - player.y),
+        )[0];
+      const companion = active || waiting;
+      if (companion) {
+        const mode = toggleSurvivor(companion);
+        toast(
+          mode === "following"
+            ? `${companion.name} идёт за тобой.`
+            : `${companion.name} ждёт на месте.`,
+        );
+      } else toast("Нет спутника, который мог бы ответить.");
+      return;
+    }
     if (e.code === "KeyN")
       survival.tod = darknessFor(survival.tod) > 0.4 ? 7 : 20.9;
     if (e.code === "KeyZ") zoom = zoom === 1 ? 2 : 1;
@@ -920,7 +955,16 @@ export async function boot() {
           campaign.context(),
         );
         const npc = npcNear(npcs, player.x, player.y);
-        const survivor = survivorNear(survivors, player.x, player.y);
+        const nearbySurvivor = survivorNear(survivors, player.x, player.y);
+        const survivor =
+          nearbySurvivor?.state === "stranded" ? nearbySurvivor : null;
+        const nearLoot = nearestContainer(
+          loot,
+          player.x,
+          player.y,
+          1.6,
+          frameState.insideB,
+        );
         const candidates = [
           object && {
             kind: "object",
@@ -940,10 +984,13 @@ export async function boot() {
         ]
           .filter(Boolean)
           .sort((a, b) => a.d - b.d);
-        const target = candidates[0];
+        let target = candidates[0];
+        if (target?.kind === "survivor" && nearLoot) target = null;
         if (target?.kind === "object") {
           beginStoryInteraction(target.value);
         } else if (target?.kind === "npc") {
+          combat.bowDrawing = false;
+          combat.bowCharge = 0;
           campaign.talk(target.value.id);
           audio.play("uiClick");
         } else if (target?.kind === "survivor") {
@@ -952,9 +999,11 @@ export async function boot() {
             s.id === "nina" &&
             mainQuest(quests, ALL_QUESTS)?.id === "m02" &&
             !(quests.stages.m02 || 0)
-          )
+          ) {
+            combat.bowDrawing = false;
+            combat.bowCharge = 0;
             campaign.talk("nina");
-          else {
+          } else {
             const mode = toggleSurvivor(s);
             toast(
               mode === "following"
@@ -982,13 +1031,7 @@ export async function boot() {
             const wreck = nearestCar(city, player.x, player.y);
             if (wreck) toast("Машина разбита");
             else {
-              const c = nearestContainer(
-                loot,
-                player.x,
-                player.y,
-                1.6,
-                frameState.insideB,
-              );
+              const c = nearLoot;
               if (c) {
                 const contents = loot.opened.has(c.id)
                   ? loot.opened.get(c.id)
@@ -1245,6 +1288,14 @@ export async function boot() {
   }
   function hudState() {
     const nc = campNear(camps, player.x, player.y);
+    const companion =
+      followingSurvivor(survivors) ||
+      survivors.find(
+        (s) =>
+          s.state === "waiting" &&
+          !s.hidden &&
+          Math.hypot(s.x - player.x, s.y - player.y) < 4,
+      );
     return {
       hp: combat.playerHp,
       maxHp: combat.playerMaxHp,
@@ -1267,6 +1318,7 @@ export async function boot() {
       stamina: player.stamina ?? 100,
       exhausted: player.exhausted,
       infected: player.infected,
+      companion,
     };
   }
   function renderPayload(aim, night, t) {
@@ -1335,7 +1387,14 @@ export async function boot() {
       if (night && !combat.dead)
         say(comic, player.x, player.y, "Тихо…", "think", 2.2);
     }
-    if (paused || menu.isOpen()) {
+    if (
+      isSimulationPaused({
+        paused,
+        menuOpen: menu.isOpen(),
+        dialogueOpen: !!campaign.dialogue.conversation,
+        tutorialModal: isTutorialCraft(quests) && ui.isOpen(),
+      })
+    ) {
       const camS0 = w2s(cam.x, cam.y);
       const aim0 = screenToWorld(mouse.x, mouse.y, camS0, W, H, zoom);
       renderWorld(renderPayload(aim0, night, t));
@@ -1377,6 +1436,7 @@ export async function boot() {
             );
           } else {
             openContainer(loot, c, mods.lootBonus);
+            questEvent("search", { target: c.id });
             skillXp("scavenging", 6);
             lootOpen = { c, taken: {} };
             ui.openLoot(c);

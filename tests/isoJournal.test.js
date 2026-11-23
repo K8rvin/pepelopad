@@ -29,14 +29,17 @@ describe("журнал кампании", () => {
 
   it("показывает scoped-прогресс текущего этапа", () => {
     const context = ctx();
+    context.quests.states.m00 = "completed";
+    context.quests.states.m01 = "active";
     context.quests.stages.m01 = 2;
-    const goal = MAIN_QUESTS[0].stages[2].goals[0];
+    const goal = MAIN_QUESTS.find((q) => q.id === "m01").stages[2].goals[0];
     context.quests.progress.m01 = { [goalKey(goal)]: 2 };
     expect(journalHtml(context)).toContain("2/3");
   });
 
   it("после финала оставляет свободную игру", () => {
     const context = ctx();
+    context.quests.states.m00 = "completed";
     context.quests.states.m01 = "completed";
     context.quests.done = MAIN_QUESTS.map((q) => q.id);
     expect(journalHtml(context)).toContain("Кампания завершена");

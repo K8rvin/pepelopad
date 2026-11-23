@@ -197,6 +197,15 @@ const DRAW = {
     px(11, 3, 1, 3, C.white);
     px(3, 11, 10, 2, C.metalDark);
   },
+  medkit({ px }) {
+    px(2, 5, 12, 9, C.outline);
+    px(3, 6, 10, 7, C.white);
+    px(5, 3, 6, 3, C.outline);
+    px(6, 4, 4, 2, C.metal);
+    px(6, 7, 4, 5, C.red);
+    px(7, 8, 2, 3, C.white);
+    px(5, 9, 6, 2, C.white);
+  },
   knife({ px }) {
     // клинок сверху-справа, рукоять снизу-слева
     px(10, 1, 4, 4, C.outline);

@@ -18,7 +18,7 @@ export function createQuests(saved = null) {
       prog: { ...(saved.prog || {}) },
     };
   return {
-    states: { m01: "active" },
+    states: { m00: "active" },
     stages: {},
     progress: {},
     done: [],
@@ -144,6 +144,9 @@ function goalMatches(g, type, data) {
       "load",
       "choice",
       "ending",
+      "craft",
+      "practice",
+      "search",
     ].includes(g.type)
   )
     return (
