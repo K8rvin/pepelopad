@@ -7,7 +7,7 @@ test("полировка: меню, HUD, карта, журнал, иконки,
   page.on("pageerror", (e) => errors.push(e.stack));
 
   // чистый контекст (нет сейва) → титульный экран
-  await page.goto("/");
+  await page.goto("/?intro=0");
   await page.waitForFunction(() => window.__city);
   await expect(page.locator("#menu")).toBeVisible();
   await expect(page.locator("#menu h1")).toContainText("МЁРТВЫЙ РАЙОН");

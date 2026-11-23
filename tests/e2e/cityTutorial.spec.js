@@ -11,6 +11,60 @@ test("обучение на АЗС: лут, крафт, пауза, портре
     "active",
   );
 
+  // вступление: монолог Дэна с портретом ГГ, мир на паузе
+  await expect(page.locator("#dlg")).toBeVisible();
+  const introPortrait = page.locator('#dlg img[data-portrait="dan"]');
+  await expect(introPortrait).toBeVisible();
+  expect(await introPortrait.getAttribute("src")).toContain("portrait_gg.png");
+  const introTod = await page.evaluate(() => window.__city.survival.tod);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__city.survival.tod)).toBe(introTod);
+  for (let i = 0; i < 4; i++) await page.keyboard.press("KeyE");
+  await page.locator("#dlg button").click(); // «К заправке.»
+  await expect(page.locator("#dlg")).toBeHidden();
+
+  // старт рядом с АЗС: до двери меньше 30 м
+  const startDist = await page.evaluate(() => {
+    const c = window.__city;
+    const b = c.city.buildings.find((b) => b.poi === "АЗС");
+    return Math.hypot(c.player.x - (b.x + b.w / 2), c.player.y - (b.y + b.h));
+  });
+  expect(startDist).toBeLessThan(30);
+
+  // заваленная дверь: замок на месте, E у двери — подсказка Олега
+  expect(
+    await page.evaluate(() =>
+      window.__city.city.storyLocks.some((l) => l.id === "gas_door"),
+    ),
+  ).toBe(true);
+  await page.evaluate(() => {
+    const c = window.__city;
+    const b = c.city.buildings.find((b) => b.poi === "АЗС");
+    c.teleport(b.x + (b.doorU ?? Math.round(b.w / 2)), b.y + b.h + 0.8);
+  });
+  await page.waitForTimeout(150);
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg")).toContainText("Дверь завалена");
+  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg")).toBeHidden();
+
+  // маркер этапа обыска ведёт к конкретному ящику, а не к зданию
+  await expect
+    .poll(() => page.evaluate(() => window.__city.quests.stages.m00))
+    .toBe(1);
+  const marker = await page.evaluate(() => {
+    const c = window.__city;
+    const t = c.campaign.target();
+    const crate = c.loot.containers.find((k) => k.id === "gas_training_wood");
+    return {
+      poi: t?.poi,
+      near: t ? Math.hypot(t.x + 0.5 - crate.x, t.y + 0.5 - crate.y) : 99,
+    };
+  });
+  expect(marker.poi).toBe("Столярный ящик");
+  expect(marker.near).toBeLessThan(1);
+
   await page.evaluate(() => {
     const c = window.__city;
     const b = c.city.buildings.find((b) => b.poi === "АЗС");
@@ -180,7 +234,7 @@ test("портреты: загрузка файлов, Лена→Маша и р
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1&nb=9");
+  await page.goto("/?new=1&nb=9&intro=0");
   await page.waitForFunction(() => window.__city?.SPRTEX?.portrait_gg);
   expect(
     await page.evaluate(() =>

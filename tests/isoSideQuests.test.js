@@ -25,6 +25,9 @@ function fixture(mainDone = "m04") {
   const quests = createQuests();
   const mainIndex = MAIN_QUESTS.findIndex((q) => q.id === mainDone);
   quests.done.push(...MAIN_QUESTS.slice(0, mainIndex + 1).map((q) => q.id));
+  // пройденные mains не остаются active (как в реальном прохождении)
+  for (const q of MAIN_QUESTS.slice(0, mainIndex + 1))
+    quests.states[q.id] = "completed";
   const story = createStory();
   const camps = createCamps(city);
   const survivors = createSurvivors(city);

@@ -48,6 +48,7 @@ export function createCampaignRuntime(state, callbacks = {}) {
     npcs,
     survival,
     combat,
+    loot,
   } = state;
   const siege = state.siege || createSiege();
   const dialogue = createDialogue();
@@ -294,6 +295,19 @@ export function createCampaignRuntime(state, callbacks = {}) {
 
   function resolveTarget(descriptor) {
     if (!descriptor) return null;
+    if (descriptor.container) {
+      const c = loot?.containers.find((k) => k.id === descriptor.container);
+      return c
+        ? {
+            x: c.x - 0.5,
+            y: c.y - 0.5,
+            w: 1,
+            h: 1,
+            floors: 1,
+            poi: descriptor.name || "Ящик",
+          }
+        : null;
+    }
     if (descriptor.object) {
       const object = interactions.objects.find(
         (o) => o.id === descriptor.object,

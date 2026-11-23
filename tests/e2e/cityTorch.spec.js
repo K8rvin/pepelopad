@@ -5,7 +5,7 @@ test("факел: зажигание из рюкзака, свет ночью, �
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.player);
 
   // кладём факел в рюкзак и зажигаем через действие предмета

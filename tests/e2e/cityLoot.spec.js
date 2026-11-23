@@ -5,7 +5,7 @@ test("обыск: шкала времени, пустые без подсказ�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.peek);
 
   // пустой контейнер: подсказки обыска нет

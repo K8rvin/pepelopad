@@ -5,7 +5,7 @@ test("походка: фаза от дистанции, ноги в против
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.peek);
 
   // свободная точка с путём до 6 м по экранному D, чтобы ходьба не упёрлась

@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 async function boot(page, main = "m03", stage = 0) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1&nb=9");
+  await page.goto("/?new=1&nb=9&intro=0");
   await page.waitForFunction(() => window.__city?.campaign);
   await page.evaluate(
     ({ main, stage }) => {

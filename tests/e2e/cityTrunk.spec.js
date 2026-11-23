@@ -5,7 +5,7 @@ test("багажник: T открывает, клик перекладывае�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.veh);
 
   // подходим к исправной машине и садимся

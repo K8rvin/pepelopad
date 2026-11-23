@@ -322,6 +322,12 @@ export function questTarget(Q, quests, id = null) {
   const def = id ? questDef(quests, id) : mainQuest(Q, quests);
   if (!def || questStatus(Q, def.id) !== "active") return null;
   const stage = currentStage(Q, def);
+  // обыск конкретных ящиков важнее общей точки сайта: маркер ведёт к ящику
+  const search = stage?.goals.find(
+    (g) =>
+      g.type === "search" && g.target && !goalDone(g, questProgress(Q, def.id)),
+  );
+  if (search) return { container: search.target, name: search.label };
   if (stage?.target) return stage.target;
   const goal = stage?.goals.find((g) => !goalDone(g, questProgress(Q, def.id)));
   if (!goal) return null;

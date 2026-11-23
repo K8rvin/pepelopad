@@ -5,7 +5,7 @@ test("ночь: без фриза запечки города, окна заго
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.peek);
   // встаём южнее дома: фасад и его окна попадают в кадр для визуальной проверки
   await page.evaluate(() => {

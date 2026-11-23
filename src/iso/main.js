@@ -236,10 +236,13 @@ export async function boot() {
   fit();
   addEventListener("resize", fit);
 
-  // состояние
+  // состояние; старт у АЗС: ящики у колонок видны сразу, до двери ~20 м
+  const gasB = city.buildings.find((b) => b.poi === "АЗС");
+  const startX = gasB ? gasB.x + gasB.w / 2 : PITCH + 11 + 31;
+  const startY = gasB ? gasB.y + gasB.h + 20 : PITCH + 11 + 31;
   const player = {
-    x: PITCH + 11 + 31,
-    y: PITCH + 11 + 31,
+    x: startX,
+    y: startY,
     r: 0.35,
     pose: 0,
     animT: 0,
@@ -250,6 +253,13 @@ export async function boot() {
     infected: false,
   };
   const spawn = { x: player.x, y: player.y };
+  // стартовая зона спокойна: зомби ближе 10 м отодвигаем вместе с якорем
+  for (const z of city.zombies) {
+    if (z.dead || Math.hypot(z.x - spawn.x, z.y - spawn.y) >= 10) continue;
+    const a = Math.atan2(z.y - spawn.y, z.x - spawn.x);
+    z.x = z.tx = z.homeX = spawn.x + Math.cos(a) * 14;
+    z.y = z.ty = z.homeY = spawn.y + Math.sin(a) * 14;
+  }
   const cam = { x: player.x, y: player.y };
   const keys = {};
   const combat = createCombat();
@@ -380,6 +390,7 @@ export async function boot() {
       survival,
       combat,
       siege,
+      loot,
     },
     {
       notify: (msg, big = false) => hud.toast(msg, big),
@@ -1397,6 +1408,14 @@ export async function boot() {
         );
         return g?.id || null;
       })(),
+      questSearchIds: (() => {
+        const q = mainQuest(quests, ALL_QUESTS);
+        if (!q) return [];
+        const prog = questProgress(quests, q.id);
+        return (currentStage(quests, q)?.goals || [])
+          .filter((g) => g.type === "search" && g.target && !goalDone(g, prog))
+          .map((g) => g.target);
+      })(),
     };
   }
 
@@ -1687,6 +1706,10 @@ export async function boot() {
     }
     requestAnimationFrame(frame);
   }
+
+  // вступление только для новой игры: монолог Дэна с портретом, мир на паузе;
+  // intro=0 — служебный флаг для e2e, где вступление не нужно
+  if (!loaded && params.get("intro") !== "0") campaign.talk("gg");
 
   await step(1, "Район проснулся. Удачи!");
   loading.done();

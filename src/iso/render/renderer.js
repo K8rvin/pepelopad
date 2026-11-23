@@ -139,6 +139,7 @@ export function renderWorld({
   levelFx,
   comic,
   questLootId,
+  questSearchIds,
   car,
 }) {
   R.drawCalls = 0;
@@ -692,6 +693,22 @@ export function renderWorld({
         object.x + object.y,
       );
     }
+  // заваленные сюжетные двери: доски поверх проёма, пока замок не снят
+  for (const lock of city.storyLocks || []) {
+    const object = interactions?.objects.find((o) => o.id === lock.id);
+    if (object?.unlocked) continue;
+    const b = city.buildings.find((k) => k.id === lock.buildingId);
+    if (!b) continue;
+    const wx = b.x + (lock.x1 + lock.x2) / 2,
+      wy = b.y + (lock.y1 + lock.y2) / 2;
+    if (!vis(wx, wy, 55, 55)) continue;
+    push(
+      wx + wy,
+      1,
+      () => drawDoorBarricade(ctx, wx, wy, toX, toY, zoom),
+      wx + wy,
+    );
+  }
   if (siege?.gate && (siege.active || story?.projects.includes("gate"))) {
     const gate = siege.gate;
     for (let i = 0; i < 3; i++)
@@ -1168,6 +1185,27 @@ export function renderWorld({
       ctx.textAlign = "left";
     }
     R.drawCalls += 3;
+  }
+  // ящики под цель обыска: пульс над ещё не обысканными (уличные учебные)
+  if (questSearchIds?.length && loot) {
+    for (const c of loot.containers) {
+      if (
+        !questSearchIds.includes(c.id) ||
+        loot.opened.has(c.id) ||
+        c.src?.dead
+      )
+        continue;
+      const p = w2s(c.x, c.y);
+      const dx = toX(p.x),
+        dy = toY(p.y);
+      const pr = 1 + Math.sin(now * 5) * 0.25;
+      ctx.strokeStyle = "rgba(255,178,62,0.85)";
+      ctx.lineWidth = 2 * zoom;
+      ctx.beginPath();
+      ctx.ellipse(dx, dy - 20 * zoom, 12 * pr * zoom, 6 * pr * zoom, 0, 0, 7);
+      ctx.stroke();
+      R.drawCalls++;
+    }
   }
   // вводный квест: внутри здания подсвечиваем контейнеры с лутом под текущую цель
   if (questLootId && inside && loot) {
@@ -1988,21 +2026,24 @@ function drawActor(
           dir: a.dir || "right",
         }
       : null;
-    // походка — выбираемый вариант (лаборатория G); фаза от дистанции
-    // (walkPh), поэтому бег чаще ходьбы; стоя — спрайт ровно
+    // походка: фаза от дистанции (walkPh), стоя — спрайт ровно;
+    // при натяжении/отпускании лука походка не проигрывается — только поза
     ctx.save();
     ctx.translate(toX(p.x), toY(p.y));
     if (flip) ctx.scale(-1, 1);
-    const bob = (GAITS[gait] || GAITS.bob)(
-      ctx,
-      img,
-      w,
-      h,
-      zoom * scale,
-      a.walkPh || 0,
-      a.moving,
-      alts,
-    );
+    let bob = 0;
+    if (isBow) ctx.drawImage(img, -w / 2, -h, w, h);
+    else
+      bob = (GAITS[gait] || GAITS.bob)(
+        ctx,
+        img,
+        w,
+        h,
+        zoom * scale,
+        a.walkPh || 0,
+        a.moving,
+        alts,
+      );
     // факел в руке игрока
     if (isPlayer && a.torch) {
       const fx = w * 0.32,
@@ -2229,6 +2270,38 @@ function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
       4 * zoom,
     );
   }
+}
+
+// доски завала вдоль южной грани (iso 2:1): три поперечины + диагональ
+function drawDoorBarricade(ctx, wx, wy, toX, toY, zoom) {
+  const p = w2s(wx, wy);
+  const dx = toX(p.x),
+    dy = toY(p.y);
+  const ang = Math.atan2(16, 32);
+  const len = 46 * zoom;
+  ctx.save();
+  ctx.translate(dx, dy);
+  ctx.lineWidth = 1 * zoom;
+  for (const [hh, tilt] of [
+    [-16, -0.09],
+    [-36, 0.07],
+    [-56, -0.05],
+  ]) {
+    ctx.save();
+    ctx.translate(0, hh * zoom);
+    ctx.rotate(ang + tilt);
+    ctx.fillStyle = "#7a5636";
+    ctx.fillRect(-len / 2, -3.5 * zoom, len, 7 * zoom);
+    ctx.strokeStyle = "#3a2a1a";
+    ctx.strokeRect(-len / 2, -3.5 * zoom, len, 7 * zoom);
+    ctx.restore();
+  }
+  ctx.rotate(ang - 0.5);
+  ctx.fillStyle = "#6a4a2e";
+  ctx.fillRect(-len * 0.45, -3 * zoom, len * 0.9, 6 * zoom);
+  ctx.strokeStyle = "#3a2a1a";
+  ctx.strokeRect(-len * 0.45, -3 * zoom, len * 0.9, 6 * zoom);
+  ctx.restore();
 }
 
 function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {

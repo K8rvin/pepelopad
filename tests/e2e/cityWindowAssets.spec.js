@@ -5,7 +5,7 @@ test("новое окно: B создаёт проход, WASD входит, с�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.city);
 
   const selected = await page.evaluate(async () => {

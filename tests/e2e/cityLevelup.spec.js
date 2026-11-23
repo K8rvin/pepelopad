@@ -5,7 +5,7 @@ test("повышение навыка: баннер с эффектом, иск�
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.peek);
 
   // ровно один уровень Стрельбы (40 XP = порог L0→1), характеристики не растут

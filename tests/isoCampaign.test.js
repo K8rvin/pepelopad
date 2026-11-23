@@ -145,7 +145,10 @@ describe("данные кампании", () => {
         }
     }
     for (const dialogue of DIALOGUES) {
-      expect(npcs.has(dialogue.npc), dialogue.id).toBe(true);
+      // gg — монолог протагониста (вступление), NPC-сущности в мире нет
+      expect(npcs.has(dialogue.npc) || dialogue.npc === "gg", dialogue.id).toBe(
+        true,
+      );
       for (const choice of dialogue.choices || []) {
         if (choice.effects?.startQuest)
           expect(ids.has(choice.effects.startQuest)).toBe(true);

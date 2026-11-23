@@ -5,7 +5,7 @@ test("телепорт не фризит: запечка чанков стрим
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.peek);
   await page.waitForTimeout(600); // прогрев стартовых чанков
 

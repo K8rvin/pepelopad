@@ -5,10 +5,12 @@ test("база: основание V, постройка, склад, сейв �
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.stack));
-  await page.goto("/?new=1");
+  await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.base);
 
-  // спавн на газоне парка — основать базу
+  // базу можно основать только на траве: газон парка (старт теперь у АЗС)
+  await page.evaluate(() => window.__city.teleport(118, 118));
+  await page.waitForTimeout(150);
   await page.keyboard.press("KeyV");
   const founded = await page.evaluate(() => window.__city.base.founded);
   expect(founded).toBe(true);
