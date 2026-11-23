@@ -153,6 +153,7 @@ import {
 import { createSiege } from "./systems/siege.js";
 import { createCampaignRuntime } from "./systems/campaignRuntime.js";
 import { createDialogueUI } from "./ui/dialogue.js";
+import { createLoading } from "./ui/loading.js";
 import { showEpilogueScreen } from "./ui/epilogue.js";
 import { storyPoint } from "./world/storyLocations.js";
 import { createStats, deathPenalty, applyPenalty } from "./systems/stats.js";
@@ -172,16 +173,36 @@ function fatal(err) {
 }
 
 export async function boot() {
+  const loading = createLoading({
+    root: document.getElementById("loading"),
+    sub: document.getElementById("loadSub"),
+    fill: document.getElementById("loadFill"),
+    pct: document.getElementById("loadPct"),
+  });
+  // уступить событийному циклу, чтобы браузер успел отрисовать этап
+  const step = async (frac, label) => {
+    loading.set(frac, label);
+    await new Promise((r) => setTimeout(r, 0));
+  };
+
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
   const params = new URLSearchParams(location.search);
   const seed = Number(params.get("seed")) || 11;
   const nb = Number(params.get("nb")) || 19;
 
-  await loadAssets();
+  const assetStage = {
+    textures: "Красим асфальт и стены…",
+    sprites: "Поднимаем мертвецов из могил…",
+    portraits: "Фотографируем выживших…",
+  };
+  await step(0.02, assetStage.textures);
+  await loadAssets((f, kind) => loading.set(0.02 + f * 0.62, assetStage[kind]));
+  await step(0.66, "Строим здания и дороги…");
   const city = createCity(seed, nb);
   initActors(seed);
 
+  await step(0.76, "Сажаем деревья и зажигаем фонари…");
   const groundSet = makeGroundSet();
   prewarmTextureTiles();
   const SPR = {
@@ -197,6 +218,7 @@ export async function boot() {
     zombie: [makeActor("zombie", 0), makeActor("zombie", 1)],
   };
 
+  await step(0.86, "Пишем сценарий выживания…");
   const R = createRenderer();
   const L = createLighting();
 
@@ -295,6 +317,12 @@ export async function boot() {
 
   // загрузка сохранения
   const wantNew = params.get("new") === "1";
+  await step(
+    0.92,
+    hasSave() && !wantNew
+      ? "Вспоминаем прошлую жизнь…"
+      : "Прячем консервы по тайникам…",
+  );
   let loaded = false;
   if (hasSave() && !wantNew) {
     const data = loadGameData();
@@ -1660,7 +1688,8 @@ export async function boot() {
     requestAnimationFrame(frame);
   }
 
-  document.getElementById("loading")?.remove();
+  await step(1, "Район проснулся. Удачи!");
+  loading.done();
   requestAnimationFrame(frame);
 }
 

@@ -89,7 +89,7 @@ export const SPRITE_FILES = {
   furn_bookcase: "assets/gen/furn_bookcase.png",
 };
 
-function loadSet(files, target) {
+function loadSet(files, target, onFile) {
   return Promise.all(
     Object.entries(files).map(
       ([k, src]) =>
@@ -97,21 +97,44 @@ function loadSet(files, target) {
           const img = new Image();
           img.onload = () => {
             target[k] = img;
+            onFile?.();
             res();
           };
-          img.onerror = () => res(); // fallback: процедурные спрайты
+          img.onerror = () => {
+            onFile?.();
+            res(); // fallback: процедурные спрайты
+          };
           img.src = BASE + src;
         }),
     ),
   );
 }
 
-export async function loadAssets() {
-  await Promise.all([
-    loadSet(TEX_FILES, TEX),
-    loadSet(SPRITE_FILES, SPRTEX),
-    loadSet(PORTRAIT_FILES, SPRTEX),
-  ]);
+// onProgress(frac, kind): kind — набор, который ещё грузится (textures/sprites/portraits)
+export async function loadAssets(onProgress) {
+  const sets = [
+    ["textures", TEX_FILES, TEX],
+    ["sprites", SPRITE_FILES, SPRTEX],
+    ["portraits", PORTRAIT_FILES, SPRTEX],
+  ];
+  const total = sets.reduce((n, [, f]) => n + Object.keys(f).length, 0);
+  const done = { textures: 0, sprites: 0, portraits: 0 };
+  let loaded = 0;
+  const report = () => {
+    const kind =
+      sets.find(([k, f]) => done[k] < Object.keys(f).length)?.[0] ||
+      "portraits";
+    onProgress?.(loaded / total, kind);
+  };
+  await Promise.all(
+    sets.map(([kind, files, target]) =>
+      loadSet(files, target, () => {
+        done[kind]++;
+        loaded++;
+        report();
+      }),
+    ),
+  );
   for (const kind of ["chair", "floor_lamp", "table_lamp", "washer", "dryer"]) {
     const key = "furn_" + kind;
     if (!SPRTEX[key]) SPRTEX[key] = createFurnitureModel(kind);

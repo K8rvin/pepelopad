@@ -872,10 +872,29 @@
         letter-spacing: 5px;
         animation: barPulse 1.6s ease-in-out infinite;
       }
+      .load-bar {
+        width: min(360px, 72vw);
+        height: 10px;
+        margin-top: 18px;
+        border: 1px solid #596248;
+        background: #141810;
+      }
+      .load-fill {
+        height: 100%;
+        width: 0%;
+        background: #c96a35;
+        transition: width 0.15s ease-out;
+      }
       .load-sub {
         color: #9a9478;
         font-size: 12px;
         margin-top: 10px;
+      }
+      .load-pct {
+        color: #6f6a55;
+        font-size: 11px;
+        margin-top: 6px;
+        letter-spacing: 1px;
       }
       #epilogue {
         z-index: 85;
@@ -1190,7 +1209,9 @@
     <div id="confirm"></div>
     <div id="loading">
       <div class="load-title">МЁРТВЫЙ РАЙОН</div>
-      <div class="load-sub">Загрузка…</div>
+      <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+      <div class="load-sub" id="loadSub">Будим район…</div>
+      <div class="load-pct" id="loadPct">0%</div>
     </div>
     <div id="fatal"></div>
     <script type="module" src="/src/iso/main.js"></script>
