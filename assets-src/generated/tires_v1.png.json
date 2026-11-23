@@ -5,5 +5,12 @@
   "mode": "Создание изображений",
   "aspectRatio": "default UI setting (not changed)",
   "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\tires_v1.png",
-  "createdAt": "2026-11-17T02:49:20.128Z"
+  "createdAt": "2026-11-17T02:49:20.128Z",
+  "runtimeSize": [
+    192,
+    138
+  ],
+  "processing": {
+    "optimizedForScreen": 192
+  }
 }

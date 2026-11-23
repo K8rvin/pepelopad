@@ -5,5 +5,12 @@
   "mode": "Создание изображений",
   "aspectRatio": "default UI setting (not changed)",
   "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\bench_v1.png",
-  "createdAt": "2026-11-17T02:47:51.080Z"
+  "createdAt": "2026-11-17T02:47:51.080Z",
+  "runtimeSize": [
+    264,
+    256
+  ],
+  "processing": {
+    "optimizedForScreen": 264
+  }
 }

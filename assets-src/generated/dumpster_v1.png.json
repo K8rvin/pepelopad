@@ -5,5 +5,12 @@
   "mode": "Создание изображений",
   "aspectRatio": "default UI setting (not changed)",
   "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\dumpster_v1.png",
-  "createdAt": "2026-11-17T02:48:35.203Z"
+  "createdAt": "2026-11-17T02:48:35.203Z",
+  "runtimeSize": [
+    264,
+    264
+  ],
+  "processing": {
+    "optimizedForScreen": 264
+  }
 }

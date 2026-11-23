@@ -5,5 +5,12 @@
   "mode": "Создание изображений",
   "aspectRatio": "default UI setting (not changed)",
   "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\barrel_v1.png",
-  "createdAt": "2026-11-17T02:50:07.672Z"
+  "createdAt": "2026-11-17T02:50:07.672Z",
+  "runtimeSize": [
+    120,
+    99
+  ],
+  "processing": {
+    "optimizedForScreen": 120
+  }
 }
