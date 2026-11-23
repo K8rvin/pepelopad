@@ -15,6 +15,19 @@ export function initActors(seed) {
 // поэтому бег мельтешит чаще ходьбы, а стояние на месте не анимируется
 export const STRIDE = 2.0;
 
+// Экранный курс с мёртвой зоной и гистерезисом. При строгом W/S экранный
+// sdx = dx−dy ≈ 0 (шум округления ±1e-16): без мёртвой зоны знак шума
+// зеркалит спрайт каждый кадр, без гистерезиса дребезжит набор кадров.
+export function faceDir(sdx, sdy, prevFace = 1, prevDir = "right") {
+  const ax = Math.abs(sdx),
+    ay = Math.abs(sdy);
+  let dir = prevDir;
+  if (ax > ay * 1.2) dir = sdx >= 0 ? "right" : "left";
+  else if (ay > ax * 1.2) dir = sdy >= 0 ? "down" : "up";
+  const face = ax > 1e-4 ? (sdx >= 0 ? 1 : -1) : prevFace;
+  return { face, dir };
+}
+
 export function moveActor(city, a, dx, dy) {
   const lvl = a.level || 0;
   if (!solidRectAt(city, a.x + dx, a.y, a.r, null, lvl)) a.x += dx;
@@ -59,15 +72,9 @@ export function updatePlayer(
     if (player.moving) {
       const sdx = player.x - ox - (player.y - oy);
       const sdy = player.x - ox + (player.y - oy);
-      player.face = sdx >= 0 ? 1 : -1;
-      player.dir =
-        Math.abs(sdx) >= Math.abs(sdy)
-          ? sdx >= 0
-            ? "right"
-            : "left"
-          : sdy >= 0
-            ? "down"
-            : "up";
+      const fd = faceDir(sdx, sdy, player.face, player.dir);
+      player.face = fd.face;
+      player.dir = fd.dir;
     }
     // кламп приращения фазы: скачок dt (запечка чанка) не должен мельтешить кадры
     player.walkPh =
@@ -259,15 +266,9 @@ export function updateZombies(
       if (moved > 1e-4) {
         const sdx = z.x - ox - (z.y - oy);
         const sdy = z.x - ox + (z.y - oy);
-        z.face = sdx >= 0 ? 1 : -1;
-        z.dir =
-          Math.abs(sdx) >= Math.abs(sdy)
-            ? sdx >= 0
-              ? "right"
-              : "left"
-            : sdy >= 0
-              ? "down"
-              : "up";
+        const fd = faceDir(sdx, sdy, z.face, z.dir);
+        z.face = fd.face;
+        z.dir = fd.dir;
       }
       z.walkPh =
         (z.walkPh || 0) + (Math.min(moved, 0.1) / STRIDE) * Math.PI * 2;

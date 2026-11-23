@@ -22,6 +22,8 @@ export const ZTYPES = {
     chaseNight: 13,
     knock: 1.2,
     scale: 0.92,
+    // кадр бега поверх нормализации к стойке: бег читается крупнее, не «усадка»
+    runScale: 1.06,
     tint: "rgba(150,60,40,0.28)",
   },
   brute: {

@@ -11,14 +11,16 @@
   ],
   "runtime": "public/assets/gen/runner_attack.png",
   "runtimeSize": [
-    1237,
-    1547
+    1459,
+    1551
   ],
   "processing": {
     "pipeline": "scripts/process_runner_frames.mjs",
     "commonScale": 1.0128,
     "anchor": "feet baseline + horizontal center of runner.png",
-    "alphaBelow4Removed": true
+    "alphaBelow4Removed": true,
+    "normalizedToStandContent": true,
+    "normalizeK": 1.2021
   },
   "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
 }

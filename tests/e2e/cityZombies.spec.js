@@ -55,3 +55,41 @@ test("типы зомби, стадность и Матка: спавн, тре�
   expect(types).toContain("runner");
   expect(errors).toEqual([]);
 });
+
+test("бегун не уменьшается при беге: контент кадра не ниже стойки", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.stack));
+  await page.goto("/?new=1&intro=0");
+  await page.waitForFunction(() => window.__city?.SPRTEX?.runner_walk);
+  const heights = await page.evaluate(async () => {
+    const content = (img) =>
+      new Promise((res) => {
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        g.drawImage(img, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        let minY = c.height,
+          maxY = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++)
+            if (d[(y * c.width + x) * 4 + 3] >= 16) {
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+        res(maxY - minY + 1);
+      });
+    const S = window.__city.SPRTEX;
+    return {
+      stand: await content(S.runner),
+      walk: await content(S.runner_walk),
+      attack: await content(S.runner_attack),
+    };
+  });
+  expect(heights.walk).toBeGreaterThanOrEqual(heights.stand * 0.95);
+  expect(heights.attack).toBeGreaterThanOrEqual(heights.stand * 0.95);
+  expect(errors).toEqual([]);
+});

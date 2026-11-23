@@ -33,6 +33,10 @@ function emptyCity(seed = 1) {
 }
 
 describe("типы зомби: данные и спавн", () => {
+  it("кадр бега бегуна не меньше стойки: runScale >= 1", () => {
+    expect(ZTYPES.runner.runScale).toBeGreaterThanOrEqual(1);
+  });
+
   it("смесь генерации: только ходоки и бегуны, hp по типу", () => {
     const city = createCity(11, 5);
     const types = new Set(city.zombies.map((z) => z.type));

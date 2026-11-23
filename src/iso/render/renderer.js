@@ -2017,7 +2017,11 @@ function drawActor(
   if (img) {
     const isBow =
       base === SPRTEX.survivor_bow_draw || base === SPRTEX.survivor_bow_release;
-    const h = (isBow ? 96 : 78) * zoom * scale; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
+    // кадр бега бегуна нормализован по высоте контента к стойке и слегка
+    // крупнее её: бег не должен «усаживать» силуэт
+    const runK =
+      zKind === "runner" && zState === "walk" ? (zt?.runScale ?? 1) : 1;
+    const h = (isBow ? 96 : 78) * zoom * scale * runK; // ~2,4 м — читаемость важнее строгого масштаба (как в PZ)
     const w = h * (img.width / img.height);
     const aimPoint = isBow && aim ? w2s(aim.x, aim.y) : null;
     // профильные покадровые варианты смотрят по курсу движения, а не по прицелу
