@@ -14,8 +14,13 @@ function portraitSource(npcId) {
   return image.toDataURL ? image.toDataURL() : "";
 }
 
-export function createDialogueUI({ root, getContext, onChoice }) {
+export function createDialogueUI({ root, getContext, onChoice, onAdvance }) {
   let state = null;
+  // клик по диалогу (кроме кнопок выбора) листает реплику, как E / Space
+  root.addEventListener("click", (e) => {
+    if (e.target.closest("button")) return;
+    onAdvance?.();
+  });
 
   function render(D) {
     state = D;
@@ -30,8 +35,8 @@ export function createDialogueUI({ root, getContext, onChoice }) {
     const buttons = choices.length
       ? `<div class="dlg-choices">${choices.map((choice, i) => `<button data-di="${i}"><b>${i + 1}.</b> ${choice.text}</button>`).join("")}</div>`
       : last
-        ? `<div class="hint">E / Enter — закрыть</div>`
-        : `<div class="hint">E / Enter — дальше</div>`;
+        ? `<div class="hint">E / Space / Enter или клик — закрыть</div>`
+        : `<div class="hint">E / Space / Enter или клик — дальше</div>`;
     const line = c.lines[D.line];
     const speaker = /^Дэн\s*:/.test(line) ? "dan" : c.npc;
     const character = CHARACTERS.find((n) => n.id === speaker);

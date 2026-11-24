@@ -428,6 +428,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
       {
         id: "gas_training_wood",
         kind: "crate",
+        name: "Столярный ящик",
         x: bx0 + 10,
         y: by0 + 31,
         protected: true,
@@ -439,6 +440,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
       {
         id: "gas_training_blade",
         kind: "crate",
+        name: "Ящик с металлом",
         x: bx0 + 18,
         y: by0 + 32,
         protected: true,
@@ -450,6 +452,7 @@ function genPoiBlock(city, bx0, by0, kind, r) {
       {
         id: "gas_training_medical",
         kind: "crate",
+        name: "Медицинский ящик",
         x: bx0 + 26,
         y: by0 + 31,
         protected: true,

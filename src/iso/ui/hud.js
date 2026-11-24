@@ -11,8 +11,9 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
       <div class="hudbar stam"><i></i><span></span></div>
       <div id="hudMeta"><span id="hudClock"></span><span id="hudArrows"></span><span id="hudFloor"></span><span id="hudInf"></span></div>
     </div>
-    <div id="hudQuest"></div>
+    <div id="objective"></div>
     <div id="hudStory"></div>
+    <div id="hudWeapons"></div>
     <div id="hudHotbar"></div>`;
   const hpBar = hudRoot.querySelector(".hudbar.hp");
   const foodBar = hudRoot.querySelector(".hudbar.food");
@@ -27,11 +28,12 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
   const clockEl = hudRoot.querySelector("#hudClock");
   const arrowsEl = hudRoot.querySelector("#hudArrows");
   const floorEl = hudRoot.querySelector("#hudFloor");
-  const questEl = hudRoot.querySelector("#hudQuest");
   const storyEl = hudRoot.querySelector("#hudStory");
+  const weaponsEl = hudRoot.querySelector("#hudWeapons");
   const hotbarEl = hudRoot.querySelector("#hudHotbar");
 
   let lastHotbar = "";
+  let lastWeapons = "";
   let deathOpen = false;
   let respawnFn = null;
 
@@ -55,8 +57,27 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     clockEl.textContent = s.clock;
     arrowsEl.innerHTML = `${iconHtml("arrow", 14)} ${s.arrows}`;
     floorEl.textContent = s.level > 0 ? `этаж ${s.level + 1}` : "";
-    questEl.textContent = s.quest || "";
     storyEl.textContent = s.story || "";
+    const wb = (s.weapons || [])
+      .map(
+        (w) =>
+          `<span class="wep${w.active ? " on" : ""}${w.owned ? "" : " off"}"><b>${w.key}</b> ${w.name} · ${
+            w.owned
+              ? w.kind === "ranged"
+                ? "ЛКМ выстрел"
+                : "ЛКМ удар"
+              : "нет предмета"
+          }</span>`,
+      )
+      .join("");
+    const fists = s.fists
+      ? `<span class="wep on"><b>✊</b> Кулаки · ЛКМ удар</span>`
+      : "";
+    const wh = wb + fists;
+    if (wh !== lastWeapons) {
+      lastWeapons = wh;
+      weaponsEl.innerHTML = wh;
+    }
     // хотбар: Q — еда, H — бинт, факел; в машине — скорость и топливо
     let hb;
     if (s.inCar) {

@@ -27,7 +27,7 @@
         position: fixed;
         left: 8px;
         top: 8px;
-        width: 250px;
+        width: 340px;
         pointer-events: none;
         z-index: 40;
       }
@@ -912,17 +912,13 @@
       #hllab[hidden] {
         display: none;
       }
+      /* панель цели — в потоке HUD слева сверху, вместо старой строки квеста */
       #objective {
-        position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: 12px;
-        z-index: 40;
-        max-width: min(680px, 92vw);
+        margin-top: 6px;
         background: rgba(12, 15, 10, 0.9);
         border: 1px solid #596248;
-        padding: 10px 18px 12px;
-        text-align: center;
+        padding: 8px 12px 10px;
+        text-align: left;
       }
       #objective[hidden] {
         display: none;
@@ -934,7 +930,7 @@
       }
       #objective .obj-desc {
         color: #ece5d0;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: bold;
         margin-top: 4px;
       }
@@ -942,8 +938,8 @@
         margin-top: 6px;
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 14px;
-        justify-content: center;
+        gap: 4px 12px;
+        justify-content: flex-start;
       }
       #objective .obj-goal {
         color: #cfc8b4;
@@ -955,8 +951,37 @@
       #objective .obj-hint {
         margin-top: 7px;
         color: #ffb23e;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
+      }
+      /* постоянная панель оружия с хоткеями — слева снизу над хотбаром */
+      #hudWeapons {
+        position: fixed;
+        left: 8px;
+        bottom: 44px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        z-index: 40;
+        pointer-events: none;
+      }
+      .wep {
+        background: rgba(17, 20, 14, 0.9);
+        border: 1px solid #39402e;
+        padding: 3px 8px;
+        font-size: 13px;
+        color: #ece5d0;
+      }
+      .wep b {
+        color: #ffb23e;
+        margin-right: 4px;
+      }
+      .wep.on {
+        border-color: #ffb23e;
+        color: #ffd76a;
+      }
+      .wep.off {
+        opacity: 0.55;
       }
       #hllab .hl-title {
         color: #9a9478;

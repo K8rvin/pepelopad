@@ -42,3 +42,28 @@ test("обыск: шкала времени, пустые без подсказ�
   await expect(page.locator("#ui")).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test("окно обыска: имя контейнера и хоткеи в названиях кнопок", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.stack));
+  await page.goto("/?new=1&intro=0");
+  await page.waitForFunction(() => window.__city?.ui?.openLoot);
+  await page.evaluate(() => {
+    const c = window.__city;
+    const k = c.loot.containers.find((x) => x.id === "gas_training_wood");
+    // содержимое фиксируется при обыске; эмулируем завершённый обыск
+    c.loot.opened.set(k.id, c.peek(k));
+    c.ui.openLoot(k);
+  });
+  await expect(page.locator("#ui .panel h3").first()).toContainText(
+    "Столярный ящик",
+  );
+  await expect(page.locator("#takeAll")).toContainText("Space");
+  await expect(page.locator("#ui .loot-row button").first()).toContainText(
+    "(E)",
+  );
+  await expect(page.locator("#ui .hint").last()).toContainText("Space — всё");
+  expect(errors).toEqual([]);
+});

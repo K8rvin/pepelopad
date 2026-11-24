@@ -75,6 +75,7 @@ export function createLoot(city) {
     containers.push({
       id: c.id || "dn" + i,
       kind: c.kind || "dumpster",
+      name: c.name,
       x: c.x,
       y: c.y,
       src: c,
@@ -100,6 +101,7 @@ export function registerInterior(L, b, interior) {
     interior.containers.map((c) => ({
       id: c.id,
       kind: c.kind,
+      name: c.name,
       x: b.x + c.x,
       y: b.y + c.y,
       interior: true,

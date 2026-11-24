@@ -198,12 +198,6 @@ export async function boot() {
   }
   hlLab.mark(highlightVariant);
 
-  // постоянная панель «что делать сейчас» (крупно, для всех квестов)
-  const objectiveRoot = document.createElement("div");
-  objectiveRoot.id = "objective";
-  document.body.appendChild(objectiveRoot);
-  const objectiveUI = createObjective({ root: objectiveRoot });
-
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
   const params = new URLSearchParams(location.search);
@@ -319,6 +313,10 @@ export async function boot() {
     deathRoot: document.getElementById("death"),
   });
   hud.setDebug(settings.debug);
+  // постоянная панель «что делать сейчас» — слева сверху под статусом HUD
+  const objectiveUI = createObjective({
+    root: document.getElementById("objective"),
+  });
   const map = createMap({
     minimapCanvas: document.getElementById("minimap"),
     bigRoot: document.getElementById("bigmap"),
@@ -1260,13 +1258,6 @@ export async function boot() {
     if (document.hidden) doSave();
   });
 
-  function questHudText() {
-    const q = mainQuest(quests, ALL_QUESTS);
-    if (!q) return "◆ Кампания завершена. Район живёт дальше.";
-    const stage = currentStage(quests, q);
-    return `◆ ${q.name}: ${(stage?.goals || []).map((g) => goalText(g, questProgress(quests, q.id))).join(" · ")}`;
-  }
-
   // контекстная подсказка действия для первой незавершённой цели этапа
   function objectiveHint() {
     const q = mainQuest(quests, ALL_QUESTS);
@@ -1293,6 +1284,14 @@ export async function boot() {
     if (g.type === "visit") return `Иди к маркеру: ${label}`;
     if (g.type === "deliver")
       return `Отнеси: ${label}${g.npc ? ` → ${g.npc}` : ""}`;
+    if (g.type === "practice") {
+      const key = { bow: 1, bat: 2, knife: 3 }[g.target];
+      const wn = WEAPONS[g.target]?.name || g.target;
+      const act = g.target === "bow" ? "зажми ЛКМ и отпусти" : "ЛКМ — удар";
+      return player.weapon === g.target
+        ? `${act} по мишени`
+        : `${key} — ${wn}, затем ${act} по мишени`;
+    }
     return label;
   }
 
@@ -1307,6 +1306,7 @@ export async function boot() {
     root: document.getElementById("dlg"),
     getContext: campaign.context,
     onChoice: (choice) => campaign.choose(choice),
+    onAdvance: () => campaign.advance(),
   });
 
   // направление взгляда для E: при натяжении лука — по прицелу, иначе по
@@ -1417,8 +1417,19 @@ export async function boot() {
       hunger: survival.hunger,
       clock: clockText(survival),
       arrows: countItem(inv, "arrow"),
-      quest: questHudText(),
       story: sideHudText(),
+      weapons: [
+        { key: 1, id: "bow" },
+        { key: 2, id: "bat" },
+        { key: 3, id: "knife" },
+      ].map((w) => ({
+        ...w,
+        name: WEAPONS[w.id].name,
+        kind: WEAPONS[w.id].kind,
+        owned: countItem(inv, w.id) > 0 || player.weapon === w.id,
+        active: player.weapon === w.id,
+      })),
+      fists: player.weapon === "fists",
       torch: player.torch,
       torchT: player.torchT || 0,
       inCar: veh.inCar,

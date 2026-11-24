@@ -121,15 +121,20 @@ export function createUI({
     const rows = items
       .map((s, i) =>
         s
-          ? `<div class="loot-row" data-i="${i}">${iconHtml(s.id, 18)} ${ITEMS[s.id].name} ×${s.n} <button data-i="${i}">взять</button></div>`
+          ? `<div class="loot-row" data-i="${i}">${iconHtml(s.id, 18)} ${ITEMS[s.id].name} ×${s.n} <button data-i="${i}">${
+              i === 0 ? "взять (E)" : "взять"
+            }</button></div>`
           : "",
       )
       .join("");
-    return `<div class="panel"><h3>Обыск: ${CONTAINER_NAMES[lootTarget.kind] || lootTarget.kind}</h3>
+    const tn =
+      lootTarget.name || CONTAINER_NAMES[lootTarget.kind] || lootTarget.kind;
+    const title = tn.charAt(0).toUpperCase() + tn.slice(1);
+    return `<div class="panel"><h3>Обыск: ${title}</h3>
       <div class="loot-list">${rows || '<div class="dim">пусто</div>'}</div>
-      <button id="takeAll">Взять всё</button>
+      <button id="takeAll">Взять всё (Space)</button>
       <h3>Рюкзак</h3><div class="grid">${inv.slots.map(slotHtml).join("")}</div>
-      <div class="hint">клик по предмету — действия · E / Esc — закрыть</div></div>`;
+      <div class="hint">клик по предмету — действия · E — верхняя вещь · Space — всё · Esc — закрыть</div></div>`;
   }
 
   function craftPanel() {
@@ -305,7 +310,7 @@ export function createUI({
       <div class="menu-controls" style="display:block">
         WASD — движение / руль · Shift — бег (стамина) · ЛКМ — лук / ближний удар<br>
         E — обыск / сесть / лестница / диалог / сюжетное действие · у спутника — следовать / ждать<br>
-        В диалоге E / Enter — дальше, 1/2/3 — ответ · в окне лута E — взять верхнюю вещь<br>
+        В диалоге E / Space / Enter или клик — дальше, 1/2/3 — ответ · в окне лута E — взять верхнюю вещь<br>
         Space — взять всё (в окне лута) · I — рюкзак · C — крафт · P — персонаж<br>
         TAB — панель с вкладками · M — карта · J — журнал · Q — еда · H — бинт (снимает инфекцию)<br>
         T — багажник · F — заправить · Y — ремонт машины деталью · V — база · G — спутник следует / ждёт<br>
