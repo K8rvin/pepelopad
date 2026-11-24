@@ -1115,21 +1115,76 @@ export function renderWorld({
       ctx.stroke();
       R.drawCalls += 2;
     }
-    // замах ближнего боя: дуга перед игроком по курсу удара
+    // замах ближнего боя: оружие в руке проходит дугу со следом (вариант
+    // weapon) либо дуга-индикатор (вариант arc); переключение F7
     if (combat.swingT > 0) {
       const pp = w2s(player.x, player.y);
-      const px = toX(pp.x),
-        py = toY(pp.y) - 40 * zoom;
-      const k = combat.swingT / 0.22;
+      const t = 1 - combat.swingT / 0.22;
+      const amt = Math.sin(Math.PI * Math.min(1, t * 1.15)) * 0.3;
+      const ox = Math.cos(combat.swingAng) * amt,
+        oy = Math.sin(combat.swingAng) * amt;
+      const px = toX(pp.x) + (ox - oy) * 32 * zoom,
+        py = toY(pp.y) - 40 * zoom + (ox + oy) * 16 * zoom;
       const ca = Math.cos(combat.swingAng),
         sa = Math.sin(combat.swingAng);
       const sang = Math.atan2((ca + sa) * 16, (ca - sa) * 32);
-      ctx.strokeStyle = `rgba(236,229,208,${0.75 * k})`;
-      ctx.lineWidth = 3 * zoom;
-      ctx.beginPath();
-      ctx.arc(px, py, 26 * zoom, sang - 0.9, sang + 0.9);
-      ctx.stroke();
-      R.drawCalls++;
+      if (meleeStyle === "arc") {
+        const k = combat.swingT / 0.22;
+        ctx.strokeStyle = `rgba(236,229,208,${0.75 * k})`;
+        ctx.lineWidth = 3 * zoom;
+        ctx.beginPath();
+        ctx.arc(px, py, 26 * zoom, sang - 0.9, sang + 0.9);
+        ctx.stroke();
+        R.drawCalls++;
+      } else {
+        const bat = combat.swingWeapon === "bat";
+        const len = (bat ? 30 : 18) * zoom;
+        const sweep = -1.2 + 2.0 * t * t;
+        // след: две призрачные позиции оружия чуть раньше по дуге
+        for (const [back, al] of [
+          [0.12, 0.16],
+          [0.06, 0.28],
+        ]) {
+          const s2 = -1.2 + 2.0 * Math.max(0, t - back) ** 2;
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(sang + s2);
+          ctx.strokeStyle = `rgba(236,229,208,${al})`;
+          ctx.lineWidth = (bat ? 5 : 3) * zoom;
+          ctx.beginPath();
+          ctx.moveTo(6 * zoom, 0);
+          ctx.lineTo(len, 0);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(sang + sweep);
+        if (bat) {
+          ctx.fillStyle = "#8a6a42";
+          ctx.beginPath();
+          ctx.moveTo(4 * zoom, -2 * zoom);
+          ctx.lineTo(len, -4 * zoom);
+          ctx.lineTo(len, 4 * zoom);
+          ctx.lineTo(4 * zoom, 2 * zoom);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#5a4228";
+          ctx.fillRect(0, -1.5 * zoom, 6 * zoom, 3 * zoom);
+        } else {
+          ctx.fillStyle = "#c8ccd0";
+          ctx.beginPath();
+          ctx.moveTo(5 * zoom, -1.5 * zoom);
+          ctx.lineTo(len, 0);
+          ctx.lineTo(5 * zoom, 1.5 * zoom);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#3a2c1c";
+          ctx.fillRect(0, -1.5 * zoom, 5 * zoom, 3 * zoom);
+        }
+        ctx.restore();
+        R.drawCalls += 3;
+      }
     }
   }
   // вспышка урона
@@ -2026,6 +2081,17 @@ function tintedZombie(img, tint) {
   return c;
 }
 
+// лаборатория анимации удара (F7): weapon — оружие в руке + след + выпад,
+// arc — прежняя дуга-индикатор + выпад; выбор — playtest-ом пользователя
+let meleeStyle = "weapon";
+export function getMeleeStyle() {
+  return meleeStyle;
+}
+export function setMeleeStyle(s) {
+  meleeStyle = s === "arc" ? "arc" : "weapon";
+  return meleeStyle;
+}
+
 function drawActor(
   ctx,
   a,
@@ -2103,8 +2169,19 @@ function drawActor(
       : null;
     // походка: фаза от дистанции (walkPh), стоя — спрайт ровно;
     // при натяжении/отпускании лука походка не проигрывается — только поза
+    // выпад корпуса при ударе ближнего боя (анимация удара, этап 53)
+    let lx = 0,
+      ly = 0;
+    if (isPlayer && combat?.swingT > 0) {
+      const t = 1 - combat.swingT / 0.22;
+      const amt = Math.sin(Math.PI * Math.min(1, t * 1.15)) * 0.3;
+      const ox = Math.cos(combat.swingAng) * amt,
+        oy = Math.sin(combat.swingAng) * amt;
+      lx = (ox - oy) * 32 * zoom;
+      ly = (ox + oy) * 16 * zoom;
+    }
     ctx.save();
-    ctx.translate(toX(p.x), toY(p.y));
+    ctx.translate(toX(p.x) + lx, toY(p.y) + ly);
     if (flip) ctx.scale(-1, 1);
     let bob = 0;
     if (isBow) ctx.drawImage(img, -w / 2, -h, w, h);

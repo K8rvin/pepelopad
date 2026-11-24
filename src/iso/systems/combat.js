@@ -403,6 +403,7 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
   if (C.dead || C.meleeCd > 0) return 0;
   C.meleeCd = weapon.cd;
   C.swingT = 0.22;
+  C.swingWeapon = weapon.id;
   const ang = Math.atan2(aim.y - player.y, aim.x - player.x);
   C.swingAng = ang;
   const lvl = player.level || 0;

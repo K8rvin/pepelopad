@@ -31,6 +31,8 @@ import {
   createRenderer,
   bakeVignette,
   renderWorld,
+  getMeleeStyle,
+  setMeleeStyle,
 } from "./render/renderer.js";
 import { createLighting, fitLighting } from "./render/lighting.js";
 import { litQueueSize, buildingLitCanvas } from "./render/buildings.js";
@@ -842,6 +844,13 @@ export async function boot() {
       hlLab.toggle();
       e.preventDefault();
     }
+    if (e.code === "F7") {
+      const s = setMeleeStyle(getMeleeStyle() === "weapon" ? "arc" : "weapon");
+      toast(
+        `Анимация удара: ${s === "weapon" ? "оружие в руке + след" : "дуга-индикатор"}`,
+      );
+      e.preventDefault();
+    }
     if (e.code === "Digit1") equipWeapon("bow");
     if (e.code === "Digit2") equipWeapon("bat");
     if (e.code === "Digit3") equipWeapon("knife");
@@ -1211,9 +1220,13 @@ export async function boot() {
     setTod: (v) => (survival.tod = v),
     setHighlight,
     getHighlight: () => highlightVariant,
+    getMeleeStyle,
+    setMeleeStyle,
     skills,
     veh,
     gainXp: skillXp,
+    give: (id, n = 1) => addItem(inv, id, n),
+    combat,
     spawn: (x, y, type) => spawnZombie(city, x, y, type),
     alertNear: (x, y, r) => alertNear(city, x, y, r),
     search: () => search,
