@@ -113,9 +113,9 @@ test("обучение на АЗС: лут, крафт, пауза, портре
     .poll(() => page.evaluate(() => window.__city.quests.stages.m00))
     .toBe(3);
   // цель этапа разговора — заваленная дверь (голос за ней), а не NPC внутри
-  expect(
-    await page.evaluate(() => window.__city.campaign.target()?.door),
-  ).toBe(true);
+  expect(await page.evaluate(() => window.__city.campaign.target()?.door)).toBe(
+    true,
+  );
   await page.keyboard.press("KeyC");
 
   await page.evaluate(() => {
