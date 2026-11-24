@@ -140,6 +140,7 @@ export function renderWorld({
   comic,
   questLootId,
   questSearchIds,
+  highlight,
   car,
 }) {
   R.drawCalls = 0;
@@ -1134,72 +1135,27 @@ export function renderWorld({
     ctx.textAlign = "left";
     R.drawCalls++;
   }
-  // маркер цели квеста: пульс над зданием или стрелка у края
+  // маркер цели квеста и ящиков обыска: вариант подсветки из лаборатории F6
   if (questTarget) {
-    const bcx = questTarget.x + questTarget.w / 2,
-      bcy = questTarget.y + questTarget.h / 2;
-    const dist = Math.hypot(player.x - bcx, player.y - bcy);
-    const label = `${questTarget.poi || "Цель"} · ${Math.round(dist)} м`;
-    // подсветка здания, в которое нужно войти: пульс по контуру footprint
-    const pulse = 1 + Math.sin(now * 4) * 0.15;
-    const c1 = w2s(questTarget.x, questTarget.y),
-      c2 = w2s(questTarget.x + questTarget.w, questTarget.y),
-      c3 = w2s(questTarget.x + questTarget.w, questTarget.y + questTarget.h),
-      c4 = w2s(questTarget.x, questTarget.y + questTarget.h);
-    ctx.strokeStyle = `rgba(255,178,62,${0.5 + 0.3 * Math.sin(now * 4)})`;
-    ctx.lineWidth = 2.5 * zoom;
-    ctx.beginPath();
-    ctx.moveTo(toX(c1.x), toY(c1.y));
-    ctx.lineTo(toX(c2.x), toY(c2.y));
-    ctx.lineTo(toX(c3.x), toY(c3.y));
-    ctx.lineTo(toX(c4.x), toY(c4.y));
-    ctx.closePath();
-    ctx.stroke();
-    const p = w2s(bcx, bcy, questTarget.floors * 3);
-    let dx = toX(p.x),
-      dy = toY(p.y);
-    const off = dx < 20 || dx > W - 20 || dy < 20 || dy > H - 20;
-    if (off) {
-      // стрелка к цели от центра экрана + подпись куда и сколько метров
-      const cx = W / 2,
-        cy = H / 2;
-      const ang = Math.atan2(dy - cy, dx - cx);
-      dx = cx + Math.cos(ang) * (Math.min(W, H) / 2 - 60);
-      dy = cy + Math.sin(ang) * (Math.min(W, H) / 2 - 60);
-      ctx.save();
-      ctx.translate(dx, dy);
-      ctx.rotate(ang);
-      ctx.fillStyle = "#ffb23e";
-      ctx.beginPath();
-      ctx.moveTo(16, 0);
-      ctx.lineTo(-7, -9);
-      ctx.lineTo(-7, 9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-      ctx.font = `bold ${12 * zoom}px monospace`;
-      ctx.textAlign = "center";
-      const tw = ctx.measureText(label).width;
-      ctx.fillStyle = "rgba(10,12,9,0.8)";
-      ctx.fillRect(dx - tw / 2 - 5, dy + 14, tw + 10, 18 * zoom);
-      ctx.fillStyle = "#ffb23e";
-      ctx.fillText(label, dx, dy + 27 * zoom);
-      ctx.textAlign = "left";
-    } else {
-      ctx.strokeStyle = "#ffb23e";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(dx, dy, 14 * pulse * zoom, 7 * pulse * zoom, 0, 0, 7);
-      ctx.stroke();
-      ctx.font = `bold ${12 * zoom}px monospace`;
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#ffb23e";
-      ctx.fillText(label, dx, dy - 16 * zoom);
-      ctx.textAlign = "left";
-    }
+    const small = questTarget.w <= 2 && questTarget.h <= 2;
+    drawQuestMark(
+      ctx,
+      {
+        ...questTarget,
+        sprite: small ? SPRTEX.crate_wood : null,
+      },
+      highlight,
+      now,
+      zoom,
+      toX,
+      toY,
+      W,
+      H,
+      player,
+      true,
+    );
     R.drawCalls += 3;
   }
-  // ящики под цель обыска: пульс над ещё не обысканными (уличные учебные)
   if (questSearchIds?.length && loot) {
     for (const c of loot.containers) {
       if (
@@ -1208,15 +1164,26 @@ export function renderWorld({
         c.src?.dead
       )
         continue;
-      const p = w2s(c.x, c.y);
-      const dx = toX(p.x),
-        dy = toY(p.y);
-      const pr = 1 + Math.sin(now * 5) * 0.25;
-      ctx.strokeStyle = "rgba(255,178,62,0.85)";
-      ctx.lineWidth = 2 * zoom;
-      ctx.beginPath();
-      ctx.ellipse(dx, dy - 20 * zoom, 12 * pr * zoom, 6 * pr * zoom, 0, 0, 7);
-      ctx.stroke();
+      drawQuestMark(
+        ctx,
+        {
+          x: c.x - 0.5,
+          y: c.y - 0.5,
+          w: 1,
+          h: 1,
+          floors: 1,
+          sprite: SPRTEX.crate_wood,
+        },
+        highlight,
+        now,
+        zoom,
+        toX,
+        toY,
+        W,
+        H,
+        player,
+        false,
+      );
       R.drawCalls++;
     }
   }
@@ -2088,6 +2055,194 @@ function drawActor(
       64 * zoom,
       96 * zoom,
     );
+  }
+}
+
+// Лаборатория подсветки цели (F6): float — кольцо над целью (старое),
+// ground — кольцо у основания, outline — свечение силуэта, frame — уголки
+// рамки, beam — столб света. Подпись у вариантов кроме float — сбоку у земли.
+function drawQuestMark(
+  ctx,
+  m,
+  variant,
+  now,
+  zoom,
+  toX,
+  toY,
+  W,
+  H,
+  player,
+  withLabel,
+) {
+  const bcx = m.x + m.w / 2,
+    bcy = m.y + m.h / 2;
+  const dist = Math.hypot(player.x - bcx, player.y - bcy);
+  const label = `${m.poi || "Цель"} · ${Math.round(dist)} м`;
+  const pulse = 1 + Math.sin(now * 4) * 0.15;
+  const alpha = 0.55 + 0.3 * Math.sin(now * 4);
+  const pg = w2s(bcx, bcy, 0);
+  let dx = toX(pg.x),
+    dy = toY(pg.y);
+  const off = dx < 20 || dx > W - 20 || dy < 20 || dy > H - 20;
+  if (off) {
+    // стрелка к цели от центра экрана + подпись куда и сколько метров
+    const cx = W / 2,
+      cy = H / 2;
+    const ang = Math.atan2(dy - cy, dx - cx);
+    dx = cx + Math.cos(ang) * (Math.min(W, H) / 2 - 60);
+    dy = cy + Math.sin(ang) * (Math.min(W, H) / 2 - 60);
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.rotate(ang);
+    ctx.fillStyle = "#ffb23e";
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(-7, -9);
+    ctx.lineTo(-7, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    if (withLabel) {
+      ctx.font = `bold ${12 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(10,12,9,0.8)";
+      ctx.fillRect(dx - tw / 2 - 5, dy + 14, tw + 10, 18 * zoom);
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(label, dx, dy + 27 * zoom);
+      ctx.textAlign = "left";
+    }
+    return;
+  }
+  // здание: пульс по контуру footprint у земли (во всех вариантах)
+  if (m.w > 2 || m.h > 2) {
+    const c1 = w2s(m.x, m.y),
+      c2 = w2s(m.x + m.w, m.y),
+      c3 = w2s(m.x + m.w, m.y + m.h),
+      c4 = w2s(m.x, m.y + m.h);
+    ctx.strokeStyle = `rgba(255,178,62,${alpha})`;
+    ctx.lineWidth = 2.5 * zoom;
+    ctx.beginPath();
+    ctx.moveTo(toX(c1.x), toY(c1.y));
+    ctx.lineTo(toX(c2.x), toY(c2.y));
+    ctx.lineTo(toX(c3.x), toY(c3.y));
+    ctx.lineTo(toX(c4.x), toY(c4.y));
+    ctx.closePath();
+    ctx.stroke();
+  }
+  const sideLabel = () => {
+    if (!withLabel) return;
+    ctx.font = `bold ${11 * zoom}px monospace`;
+    ctx.textAlign = "left";
+    const tw = ctx.measureText(label).width;
+    const lx = dx + 24 * zoom,
+      ly = dy - 4 * zoom;
+    ctx.fillStyle = "rgba(10,12,9,0.75)";
+    ctx.fillRect(lx - 4, ly - 11 * zoom, tw + 8, 15 * zoom);
+    ctx.fillStyle = "#ffb23e";
+    ctx.fillText(label, lx, ly);
+  };
+  const groundRing = (k = 0.55) => {
+    const rx = ((m.w + m.h) / 2) * 32 * k * zoom * pulse;
+    ctx.strokeStyle = `rgba(255,178,62,${alpha + 0.2})`;
+    ctx.lineWidth = 2 * zoom;
+    ctx.beginPath();
+    ctx.ellipse(dx, dy, rx, rx / 2, 0, 0, 7);
+    ctx.stroke();
+  };
+  const spriteRect = () => {
+    const w = 52 * zoom;
+    const h = m.sprite ? w * (m.sprite.height / m.sprite.width) : 40 * zoom;
+    return { w, h, x0: dx - w / 2, y0: dy - h };
+  };
+  if (variant === "ground") {
+    groundRing();
+    sideLabel();
+  } else if (variant === "outline") {
+    if (m.sprite) {
+      const r = spriteRect();
+      ctx.save();
+      ctx.filter = `drop-shadow(0 0 ${5 * zoom}px rgba(255,178,62,${alpha + 0.25}))`;
+      ctx.drawImage(m.sprite, r.x0, r.y0, r.w, r.h);
+      ctx.restore();
+    } else groundRing();
+    sideLabel();
+  } else if (variant === "frame") {
+    let x0, y0, x1, y1;
+    if (m.sprite) {
+      const r = spriteRect();
+      x0 = r.x0;
+      y0 = r.y0;
+      x1 = r.x0 + r.w;
+      y1 = dy;
+    } else {
+      const cs = [
+        w2s(m.x, m.y),
+        w2s(m.x + m.w, m.y),
+        w2s(m.x + m.w, m.y + m.h),
+        w2s(m.x, m.y + m.h),
+      ].map((c) => [toX(c.x), toY(c.y)]);
+      x0 = Math.min(...cs.map((c) => c[0]));
+      x1 = Math.max(...cs.map((c) => c[0]));
+      y1 = Math.max(...cs.map((c) => c[1]));
+      y0 = toY(w2s(bcx, bcy, m.floors * 3).y);
+    }
+    const L = 9 * zoom;
+    ctx.strokeStyle = `rgba(255,178,62,${alpha + 0.25})`;
+    ctx.lineWidth = 2 * zoom;
+    ctx.beginPath();
+    for (const [cx, cy, sx, sy] of [
+      [x0, y0, 1, 1],
+      [x1, y0, -1, 1],
+      [x0, y1, 1, -1],
+      [x1, y1, -1, -1],
+    ]) {
+      ctx.moveTo(cx + sx * L, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + sy * L);
+    }
+    ctx.stroke();
+    if (withLabel) {
+      ctx.font = `bold ${11 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(10,12,9,0.75)";
+      ctx.fillRect(
+        (x0 + x1) / 2 - tw / 2 - 4,
+        y0 - 16 * zoom,
+        tw + 8,
+        14 * zoom,
+      );
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(label, (x0 + x1) / 2, y0 - 5 * zoom);
+      ctx.textAlign = "left";
+    }
+  } else if (variant === "beam") {
+    const bh = 74 * zoom;
+    const grad = ctx.createLinearGradient(0, dy - bh, 0, dy);
+    grad.addColorStop(0, "rgba(255,178,62,0)");
+    grad.addColorStop(1, `rgba(255,178,62,${0.22 * pulse})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(dx - 13 * zoom, dy - bh, 26 * zoom, bh);
+    groundRing(0.45);
+    sideLabel();
+  } else {
+    // float: прежнее кольцо над целью и подпись над ним
+    const p = w2s(bcx, bcy, m.floors * 3);
+    const fx = toX(p.x),
+      fy = toY(p.y);
+    ctx.strokeStyle = "#ffb23e";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 14 * pulse * zoom, 7 * pulse * zoom, 0, 0, 7);
+    ctx.stroke();
+    if (withLabel) {
+      ctx.font = `bold ${12 * zoom}px monospace`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffb23e";
+      ctx.fillText(label, fx, fy - 16 * zoom);
+      ctx.textAlign = "left";
+    }
   }
 }
 

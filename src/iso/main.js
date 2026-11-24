@@ -154,6 +154,7 @@ import { createSiege } from "./systems/siege.js";
 import { createCampaignRuntime } from "./systems/campaignRuntime.js";
 import { createDialogueUI } from "./ui/dialogue.js";
 import { createLoading } from "./ui/loading.js";
+import { createHighlightLab, HIGHLIGHT_VARIANTS } from "./ui/highlightlab.js";
 import { showEpilogueScreen } from "./ui/epilogue.js";
 import { storyPoint } from "./world/storyLocations.js";
 import { createStats, deathPenalty, applyPenalty } from "./systems/stats.js";
@@ -184,6 +185,16 @@ export async function boot() {
     loading.set(frac, label);
     await new Promise((r) => setTimeout(r, 0));
   };
+
+  // лаборатория подсветки цели (F6): выбор варианта — playtest-ом
+  let highlightVariant = "float";
+  const hlLab = createHighlightLab({ onPick: (id) => setHighlight(id) });
+  function setHighlight(id) {
+    if (!HIGHLIGHT_VARIANTS.some(([v]) => v === id)) return;
+    highlightVariant = id;
+    hlLab.mark(id);
+  }
+  hlLab.mark(highlightVariant);
 
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
@@ -821,6 +832,10 @@ export async function boot() {
     if (e.code === "KeyR" && combat.dead) doRespawn();
     if (e.code === "KeyQ") useItem("can");
     if (e.code === "KeyH") useItem("meds");
+    if (e.code === "F6") {
+      hlLab.toggle();
+      e.preventDefault();
+    }
     if (e.code === "Digit1") equipWeapon("bow");
     if (e.code === "Digit2") equipWeapon("bat");
     if (e.code === "Digit3") equipWeapon("knife");
@@ -1188,6 +1203,8 @@ export async function boot() {
       cam.y = y;
     },
     setTod: (v) => (survival.tod = v),
+    setHighlight,
+    getHighlight: () => highlightVariant,
     skills,
     veh,
     gainXp: skillXp,
@@ -1438,6 +1455,7 @@ export async function boot() {
           .filter((g) => g.type === "search" && g.target && !goalDone(g, prog))
           .map((g) => g.target);
       })(),
+      highlight: highlightVariant,
     };
   }
 
