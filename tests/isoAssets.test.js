@@ -15,6 +15,24 @@ const GPT_KEYS = [
   "runner_hurt",
   "runner_fall",
   "runner_attack",
+  "brute",
+  "brute_walk",
+  "brute_hurt",
+  "brute_fall",
+  "brute_attack",
+  "matka",
+  "matka_walk",
+  "matka_hurt",
+  "matka_fall",
+  "matka_attack",
+  "matka_walk_0",
+  "matka_walk_1",
+  "matka_walk_2",
+  "matka_walk_3",
+  "matka_walk_4",
+  "matka_walk_5",
+  "matka_walk_6",
+  "matka_walk_7",
   "tree_birch",
   "win_intact",
   "win_broken",
@@ -98,6 +116,7 @@ describe("GPT-ассеты и ссылки загрузчика", () => {
     expect(existsSync(file("scripts/process_portraits.mjs"))).toBe(true);
     expect(existsSync(file("scripts/process_gpt_assets.py"))).toBe(true);
     expect(existsSync(file("scripts/process_props.mjs"))).toBe(true);
+    expect(existsSync(file("scripts/process_enemy_frames.mjs"))).toBe(true);
     for (const [key, path] of Object.entries({
       ...SPRITE_FILES,
       ...PORTRAIT_FILES,

@@ -1,0 +1,25 @@
+{
+  "id": "matka_walk_animation",
+  "source": "GPT",
+  "prompt": "Матка, экспериментальный GIF цикла ходьбы, 8 кадров.",
+  "originalImport": "tmp/matka_walk_animation.gif",
+  "createdAt": "2026-11-24T21:24:42.534Z",
+  "sha256": "7202452f38f6e169e054956292ed22f0cefb161ecb8641368d864c1f5dc9fd3f",
+  "originalSize": [
+    384,
+    512
+  ],
+  "frames": 8,
+  "duration": 2.4,
+  "fps": "10/3",
+  "runtimeFrames": [
+    "public/assets/gen/matka_walk_0.png",
+    "public/assets/gen/matka_walk_1.png",
+    "public/assets/gen/matka_walk_2.png",
+    "public/assets/gen/matka_walk_3.png",
+    "public/assets/gen/matka_walk_4.png",
+    "public/assets/gen/matka_walk_5.png",
+    "public/assets/gen/matka_walk_6.png",
+    "public/assets/gen/matka_walk_7.png"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "brute_hurt",
+  "source": "GPT",
+  "prompt": "Громила, отклонение корпуса от удара, RGBA.",
+  "originalImport": "tmp/brute_hurt.png",
+  "createdAt": "2026-11-24T21:18:53.697Z",
+  "sha256": "e6aefc8daf1a7f77bcefa6f86d8cac242fa0dc4452ae4ee9b3c993fe8868bbd8",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/brute_hurt.png",
+  "runtimeSize": [
+    405,
+    400
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 0.8866,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 400
+  }
+}

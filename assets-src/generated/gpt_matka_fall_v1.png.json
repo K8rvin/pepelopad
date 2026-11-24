@@ -1,0 +1,24 @@
+{
+  "id": "matka_fall",
+  "source": "GPT",
+  "prompt": "Матка, падение набок, RGBA.",
+  "originalImport": "tmp/matka_fall.png",
+  "createdAt": "2026-11-24T21:39:40.493Z",
+  "sha256": "3c6b3e4f79e5c0abcfdef841b3b36853762664195b40b82fddd5bdb9e798d9df",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/matka_fall.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1.0034,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}

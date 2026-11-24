@@ -1,0 +1,24 @@
+{
+  "id": "matka_hurt",
+  "source": "GPT",
+  "prompt": "Матка, отклонение и поднятые руки от удара, RGBA.",
+  "originalImport": "tmp/matka_hurt.png",
+  "createdAt": "2026-11-24T21:37:14.702Z",
+  "sha256": "a44dd48e94532ab0648278a8ff7dba2170ae2e0961d78816f20a3909ecf656c8",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/matka_hurt.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1.0034,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}

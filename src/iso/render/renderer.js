@@ -8,7 +8,7 @@ import {
   drainLitQueue,
 } from "./buildings.js";
 import { renderNight } from "./lighting.js";
-import { SPRTEX } from "./assets.js";
+import { SPRTEX, MATKA_WALK_FRAMES } from "./assets.js";
 import { reconcileStreetDepths } from "./streetDepth.js";
 import { GAITS } from "./gait.js";
 import { drawMeleeSwing } from "./melee.js";
@@ -2001,8 +2001,9 @@ function drawCorpse(ctx, c, SPR, toX, toY, zoom) {
   const alpha = c.t > 3 ? Math.max(0, 1 - (c.t - 3) / 3) : 1;
   ctx.save();
   ctx.globalAlpha = alpha;
-  const fall =
-    (c.type === "runner" ? SPRTEX.runner_fall : null) || SPRTEX.zombie_fall;
+  const kind =
+    c.type === "boss" ? "matka" : c.type === "brute" ? "brute" : c.type;
+  const fall = SPRTEX[`${kind}_fall`] || SPRTEX.zombie_fall;
   if (fall) {
     // в рост живого кадра (78) и зеркало по курсу зомби на момент смерти
     const h = 78 * zoom * (c.scale || 1),
@@ -2070,9 +2071,14 @@ function drawActor(
     isPlayer &&
     ((combat?.releaseT > 0 && SPRTEX.survivor_bow_release) ||
       (combat?.bowDrawing && SPRTEX.survivor_bow_draw));
-  // покадровая анимация: у бегуна собственный набор, остальные используют ходока
+  // покадровые наборы по типам врагов; без уникального набора — ходок
+  const enemyKind = a.type === "boss" ? "matka" : a.type;
   const zKind =
-    !isPlayer && a.type === "runner" && SPRTEX.runner ? "runner" : "zombie";
+    !isPlayer &&
+    ["runner", "brute", "matka"].includes(enemyKind) &&
+    SPRTEX[enemyKind]
+      ? enemyKind
+      : "zombie";
   const zState = !isPlayer
     ? a.hurtT > 0
       ? "hurt"
@@ -2082,9 +2088,17 @@ function drawActor(
           ? "walk"
           : null
     : null;
-  const zSprite = zState
-    ? SPRTEX[zKind + "_" + zState] || SPRTEX["zombie_" + zState]
-    : null;
+  const matkaWalkFrame =
+    zKind === "matka" && zState === "walk" && SPRTEX.matka_walk_0
+      ? SPRTEX[
+          `matka_walk_${Math.floor((a.animT || 0) * 0.833) % MATKA_WALK_FRAMES}`
+        ]
+      : null;
+  const zSprite =
+    matkaWalkFrame ||
+    (zState
+      ? SPRTEX[zKind + "_" + zState] || SPRTEX["zombie_" + zState]
+      : null);
   const base =
     bowSprite ||
     zSprite ||

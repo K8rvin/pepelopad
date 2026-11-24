@@ -36,6 +36,8 @@ export const PORTRAIT_FILES = {
   portrait_gg: "assets/gen/portrait_gg.png",
 };
 
+export const MATKA_WALK_FRAMES = 8;
+
 export const SPRITE_FILES = {
   tree: "assets/gen/tree_poplar.png", // GPT-замена Gemini-тополя (без белых карманов)
   tree_dead: "assets/gen/tree_dead.png",
@@ -50,6 +52,24 @@ export const SPRITE_FILES = {
   runner_hurt: "assets/gen/runner_hurt.png",
   runner_fall: "assets/gen/runner_fall.png",
   runner_attack: "assets/gen/runner_attack.png",
+  brute: "assets/gen/brute.png",
+  brute_walk: "assets/gen/brute_walk.png",
+  brute_hurt: "assets/gen/brute_hurt.png",
+  brute_fall: "assets/gen/brute_fall.png",
+  brute_attack: "assets/gen/brute_attack.png",
+  matka: "assets/gen/matka.png",
+  matka_walk: "assets/gen/matka_walk.png",
+  matka_hurt: "assets/gen/matka_hurt.png",
+  matka_fall: "assets/gen/matka_fall.png",
+  matka_attack: "assets/gen/matka_attack.png",
+  matka_walk_0: "assets/gen/matka_walk_0.png",
+  matka_walk_1: "assets/gen/matka_walk_1.png",
+  matka_walk_2: "assets/gen/matka_walk_2.png",
+  matka_walk_3: "assets/gen/matka_walk_3.png",
+  matka_walk_4: "assets/gen/matka_walk_4.png",
+  matka_walk_5: "assets/gen/matka_walk_5.png",
+  matka_walk_6: "assets/gen/matka_walk_6.png",
+  matka_walk_7: "assets/gen/matka_walk_7.png",
   survivor: "assets/gen/survivor.png",
   bench: "assets/gen/bench.png",
   dumpster: "assets/gen/dumpster.png",

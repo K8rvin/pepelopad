@@ -1,0 +1,24 @@
+{
+  "id": "matka_attack",
+  "source": "GPT",
+  "prompt": "Матка, выпад с двумя руками вправо, RGBA.",
+  "originalImport": "tmp/matka_attack.png",
+  "createdAt": "2026-11-24T21:29:16.447Z",
+  "sha256": "8b1bccc3cdfbefbac1e56d1b21b64e483fb7842b597641ea59eb0e2247761943",
+  "originalSize": [
+    1199,
+    1312
+  ],
+  "runtime": "public/assets/gen/matka_attack.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1.0034,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}

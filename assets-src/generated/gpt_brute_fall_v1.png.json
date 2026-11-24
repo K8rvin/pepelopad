@@ -1,0 +1,24 @@
+{
+  "id": "brute_fall",
+  "source": "GPT",
+  "prompt": "Громила, падение набок, RGBA.",
+  "originalImport": "tmp/brute_fall.png",
+  "createdAt": "2026-11-24T21:19:51.455Z",
+  "sha256": "77e88cbb1c7bc234aa7aba572b9785f0a5932f29ce1f3bdf24d2960f849c4ad9",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/brute_fall.png",
+  "runtimeSize": [
+    405,
+    400
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 0.8866,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 400
+  }
+}

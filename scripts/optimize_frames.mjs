@@ -37,6 +37,21 @@ const GROUPS = {
     ],
     targetH: 320,
   },
+  brute: {
+    frames: ["brute", "brute_walk", "brute_hurt", "brute_fall", "brute_attack"],
+    targetH: 400,
+  },
+  matka: {
+    frames: [
+      "matka",
+      "matka_walk",
+      "matka_hurt",
+      "matka_fall",
+      "matka_attack",
+      ...Array.from({ length: 8 }, (_, i) => `matka_walk_${i}`),
+    ],
+    targetH: 500,
+  },
 };
 
 const dims = (file) => {

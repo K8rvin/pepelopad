@@ -1,0 +1,29 @@
+{
+  "id": "matka_walk_7",
+  "source": "GPT",
+  "prompt": "Матка, кадр 8 из 8 цикла ходьбы из GIF.",
+  "originalImport": "tmp/matka_walk_animation.gif",
+  "createdAt": "2026-11-24T21:24:42.534Z",
+  "sha256": "5b7b0e2e12e6febdf9c13d559d09f5e21e520a0797ba83b094258377d18a3e62",
+  "originalSize": [
+    384,
+    512
+  ],
+  "runtime": "public/assets/gen/matka_walk_7.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs + ffmpeg",
+    "sourceGif": "tmp/matka_walk_animation.gif",
+    "frame": 8,
+    "frames": 8,
+    "duration": 2.4,
+    "fps": "10/3",
+    "commonScale": 3.1111,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}

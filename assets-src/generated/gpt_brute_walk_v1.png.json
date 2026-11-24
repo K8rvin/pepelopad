@@ -1,0 +1,24 @@
+{
+  "id": "brute_walk",
+  "source": "GPT",
+  "prompt": "Громила, тяжёлый шаг вправо, RGBA.",
+  "originalImport": "tmp/brute_walk.png",
+  "createdAt": "2026-11-24T21:17:49.952Z",
+  "sha256": "4211d01eabddc3061ff785a1900960c04eb9c748251443cdde8460525490c90c",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/brute_walk.png",
+  "runtimeSize": [
+    405,
+    400
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 0.8866,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 400
+  }
+}

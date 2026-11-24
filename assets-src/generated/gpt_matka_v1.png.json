@@ -1,0 +1,24 @@
+{
+  "id": "matka",
+  "source": "GPT",
+  "prompt": "Матка, стойка с поднятой головой, RGBA.",
+  "originalImport": "tmp/matka_base.png",
+  "createdAt": "2026-11-24T21:23:22.489Z",
+  "sha256": "0389868375427dc43e11543d32f3ecb4d6301b542aa1a5672ae2eee0bf1284ca",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/matka.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}

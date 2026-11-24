@@ -56,6 +56,25 @@
 Интеграция: `SPRTEX.fire_0..2`, цикл в `drawFire` (ширина 40 px при zoom 1);
 до ассетов — процедурное пламя с мерцанием.
 
+### brute / matka — уникальные противники (интегрированы)
+
+Для обоих врагов получены стойка, шаг, урон, падение и атака. Обработка выполнена
+с общим масштабом и якорем ступней; runtime оптимизирован до 405×400 для громилы
+и 401×500 для Матки. `matka_attack_forward.png` не подключён и оставлен в `tmp/`
+как запасной вариант атаки вперёд.
+
+Повторная обработка:
+
+```bash
+node scripts/process_enemy_frames.mjs brute tmp/brute_base.png tmp/brute_walk.png tmp/brute_hurt.png tmp/brute_fall.png tmp/brute_attack.png
+node scripts/process_enemy_frames.mjs matka tmp/matka_base.png tmp/matka_walk.png tmp/matka_hurt.png tmp/matka_fall.png tmp/matka_attack.png tmp/matka_walk_animation.gif
+node scripts/optimize_frames.mjs
+```
+
+`matka_walk_animation.gif` распаковывается в восемь PNG-кадров и используется как
+цикл ходьбы длительностью 2,4 с. Исходный GIF и каждый извлечённый кадр сохранены
+в `assets-src/generated/` с метаданными; статичный `matka_walk.png` остаётся fallback.
+
 ## Уже интегрировано (справочно)
 
 - `tent_olive`, `tent_tan` — палатки лагерей и жильё базы (`drawTent`);

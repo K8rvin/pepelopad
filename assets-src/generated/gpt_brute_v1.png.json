@@ -1,0 +1,24 @@
+{
+  "id": "brute",
+  "source": "GPT",
+  "prompt": "Громила, тяжёлая стойка, RGBA.",
+  "originalImport": "tmp/brute_base.png",
+  "createdAt": "2026-11-24T21:16:25.754Z",
+  "sha256": "1e58e6548ef2c5c25eb791e624d21cdcb4ec3681ea97d5e8753a348b42981a54",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/brute.png",
+  "runtimeSize": [
+    405,
+    400
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 400
+  }
+}

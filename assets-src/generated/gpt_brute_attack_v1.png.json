@@ -1,0 +1,24 @@
+{
+  "id": "brute_attack",
+  "source": "GPT",
+  "prompt": "Громила, двуручный удар вправо, RGBA.",
+  "originalImport": "tmp/brute_attack.png",
+  "createdAt": "2026-11-24T21:20:55.506Z",
+  "sha256": "d88afeed4ca7f46f4635a46980107562330a54dd3694970a76a48597eb0f8845",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/brute_attack.png",
+  "runtimeSize": [
+    405,
+    400
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 0.8866,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 400
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "matka_walk",
+  "source": "GPT",
+  "prompt": "Матка, медленный шаг вправо, RGBA.",
+  "originalImport": "tmp/matka_walk.png",
+  "createdAt": "2026-11-24T21:26:06.731Z",
+  "sha256": "63fc13a30235d6140bb46b1267b3ea50596c2996fc55eb7fb37645391db857a2",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/matka_walk.png",
+  "runtimeSize": [
+    401,
+    500
+  ],
+  "processing": {
+    "pipeline": "scripts/process_enemy_frames.mjs",
+    "commonScale": 1.0034,
+    "anchor": "feet baseline + horizontal center",
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
+  }
+}
