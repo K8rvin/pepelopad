@@ -434,7 +434,7 @@ export async function boot() {
     questEvent("kill", { group: z?.questGroup, zombieType: z?.type });
     if (source === "ram") skillXp("driving", 10);
     else if (source === "melee") skillXp("melee", 15);
-    else skillXp("archery", 15);
+    else if (source !== "npc") skillXp("archery", 15);
     audio.play("kill");
     if (z?.type === "boss") {
       addItem(inv, "meds", 3);
@@ -1645,6 +1645,7 @@ export async function boot() {
       night ? 1.35 : 1,
       !!veh.inCar,
       survivors,
+      npcs,
     );
     if (frameState.insideB && !loot.interior.has(frameState.insideB.id))
       registerInterior(
@@ -1711,6 +1712,7 @@ export async function boot() {
       !!veh.inCar || player.level > 0,
       mods,
       survivors,
+      npcs,
     );
     frameState.insideB = playerInside(city, player);
     frameState.stairsNear = false;

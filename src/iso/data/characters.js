@@ -5,6 +5,7 @@ export const CHARACTERS = [
     sprite: "oleg",
     position: { site: "gas", x: 4, y: 3 },
     camp: "park",
+    weapon: "crowbar",
   },
   {
     id: "vera",
@@ -12,6 +13,7 @@ export const CHARACTERS = [
     sprite: "vera",
     position: { camp: "school" },
     camp: "school",
+    weapon: "hammer",
   },
   {
     id: "sanych",
@@ -19,12 +21,14 @@ export const CHARACTERS = [
     sprite: "sanych",
     position: { camp: "police" },
     camp: "police",
+    weapon: "axe",
   },
   {
     id: "raya",
     name: "Рая",
     sprite: "raya",
     position: { site: "hospital", x: 18, y: 20 },
+    weapon: "knife",
   },
   {
     id: "irina",
@@ -32,6 +36,7 @@ export const CHARACTERS = [
     sprite: "vera",
     position: { site: "motel", x: 9, y: 3 },
     camp: "motel",
+    weapon: "knife",
   },
   {
     id: "victor",
@@ -39,6 +44,7 @@ export const CHARACTERS = [
     sprite: "oleg",
     position: { site: "motel", x: 20, y: 12 },
     camp: "motel",
+    weapon: "crowbar",
   },
   {
     id: "gromov",
@@ -46,6 +52,7 @@ export const CHARACTERS = [
     sprite: "sanych",
     position: { site: "motel", x: 17, y: 19 },
     camp: "motel",
+    weapon: "baton",
   },
   {
     id: "lena",
@@ -53,12 +60,14 @@ export const CHARACTERS = [
     sprite: "masha",
     position: { site: "motel", x: 27, y: 12 },
     camp: "motel",
+    weapon: null,
   },
   {
     id: "mark",
     name: "Марк",
     sprite: "survivor",
     position: { site: "workshop", x: 15, y: 8 },
+    weapon: "axe",
   },
   {
     id: "pavel",
@@ -66,6 +75,7 @@ export const CHARACTERS = [
     sprite: "survivor",
     position: { site: "school", x: 20, y: 25 },
     camp: "school",
+    weapon: "hammer",
   },
   {
     id: "nina",
@@ -73,5 +83,6 @@ export const CHARACTERS = [
     sprite: "raya",
     position: { site: "motel", x: 15, y: 3 },
     camp: "motel",
+    weapon: "knife",
   },
 ];

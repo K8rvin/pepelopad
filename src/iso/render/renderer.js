@@ -11,6 +11,7 @@ import { renderNight } from "./lighting.js";
 import { SPRTEX } from "./assets.js";
 import { reconcileStreetDepths } from "./streetDepth.js";
 import { GAITS } from "./gait.js";
+import { drawMeleeSwing } from "./melee.js";
 import {
   getInterior,
   wallWithGaps,
@@ -637,7 +638,21 @@ export function renderWorld({
         if (img) {
           const h = 78 * zoom,
             w = h * (img.width / img.height);
-          ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+          ctx.save();
+          ctx.translate(toX(p.x), toY(p.y));
+          if ((n.face || 1) < 0) ctx.scale(-1, 1);
+          GAITS.standstep(ctx, img, w, h, zoom, n.walkPh || 0, n.moving, null);
+          ctx.restore();
+        }
+        if (n.swingT > 0)
+          R.drawCalls += drawMeleeSwing(ctx, n, n, toX, toY, zoom);
+        if (n.hurtT > 0) {
+          ctx.strokeStyle = `rgba(224,67,56,${n.hurtT / 0.3})`;
+          ctx.lineWidth = 2 * zoom;
+          ctx.beginPath();
+          ctx.ellipse(toX(p.x), toY(p.y), 17 * zoom, 7 * zoom, 0, 0, 7);
+          ctx.stroke();
+          R.drawCalls++;
         }
         if (Math.hypot(player.x - n.x, player.y - n.y) < 6) {
           ctx.font = `${11 * zoom}px monospace`;
@@ -706,7 +721,7 @@ export function renderWorld({
         push(
           actorDepth(city, s),
           2,
-          () => drawSurvivor(ctx, s, player, toX, toY, zoom),
+          () => drawSurvivor(ctx, s, player, toX, toY, zoom, R),
           s.x + s.y,
         );
       }
@@ -729,7 +744,7 @@ export function renderWorld({
       push(
         actorDepth(city, survivor),
         2,
-        () => drawSurvivor(ctx, survivor, player, toX, toY, zoom),
+        () => drawSurvivor(ctx, survivor, player, toX, toY, zoom, R),
         survivor.x + survivor.y,
       );
     }
@@ -1115,77 +1130,16 @@ export function renderWorld({
       ctx.stroke();
       R.drawCalls += 2;
     }
-    // замах ближнего боя: оружие в руке проходит дугу со следом (вариант
-    // weapon) либо дуга-индикатор (вариант arc); переключение F7
-    if (combat.swingT > 0) {
-      const pp = w2s(player.x, player.y);
-      const t = 1 - combat.swingT / 0.22;
-      const amt = Math.sin(Math.PI * Math.min(1, t * 1.15)) * 0.3;
-      const ox = Math.cos(combat.swingAng) * amt,
-        oy = Math.sin(combat.swingAng) * amt;
-      const px = toX(pp.x) + (ox - oy) * 32 * zoom,
-        py = toY(pp.y) - 40 * zoom + (ox + oy) * 16 * zoom;
-      const ca = Math.cos(combat.swingAng),
-        sa = Math.sin(combat.swingAng);
-      const sang = Math.atan2((ca + sa) * 16, (ca - sa) * 32);
-      if (meleeStyle === "arc") {
-        const k = combat.swingT / 0.22;
-        ctx.strokeStyle = `rgba(236,229,208,${0.75 * k})`;
-        ctx.lineWidth = 3 * zoom;
-        ctx.beginPath();
-        ctx.arc(px, py, 26 * zoom, sang - 0.9, sang + 0.9);
-        ctx.stroke();
-        R.drawCalls++;
-      } else {
-        const bat = combat.swingWeapon === "bat";
-        const len = (bat ? 30 : 18) * zoom;
-        const sweep = -1.2 + 2.0 * t * t;
-        // след: две призрачные позиции оружия чуть раньше по дуге
-        for (const [back, al] of [
-          [0.12, 0.16],
-          [0.06, 0.28],
-        ]) {
-          const s2 = -1.2 + 2.0 * Math.max(0, t - back) ** 2;
-          ctx.save();
-          ctx.translate(px, py);
-          ctx.rotate(sang + s2);
-          ctx.strokeStyle = `rgba(236,229,208,${al})`;
-          ctx.lineWidth = (bat ? 5 : 3) * zoom;
-          ctx.beginPath();
-          ctx.moveTo(6 * zoom, 0);
-          ctx.lineTo(len, 0);
-          ctx.stroke();
-          ctx.restore();
-        }
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(sang + sweep);
-        if (bat) {
-          ctx.fillStyle = "#8a6a42";
-          ctx.beginPath();
-          ctx.moveTo(4 * zoom, -2 * zoom);
-          ctx.lineTo(len, -4 * zoom);
-          ctx.lineTo(len, 4 * zoom);
-          ctx.lineTo(4 * zoom, 2 * zoom);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "#5a4228";
-          ctx.fillRect(0, -1.5 * zoom, 6 * zoom, 3 * zoom);
-        } else {
-          ctx.fillStyle = "#c8ccd0";
-          ctx.beginPath();
-          ctx.moveTo(5 * zoom, -1.5 * zoom);
-          ctx.lineTo(len, 0);
-          ctx.lineTo(5 * zoom, 1.5 * zoom);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "#3a2c1c";
-          ctx.fillRect(0, -1.5 * zoom, 5 * zoom, 3 * zoom);
-        }
-        ctx.restore();
-        R.drawCalls += 3;
-      }
-    }
+    if (combat.swingT > 0)
+      R.drawCalls += drawMeleeSwing(
+        ctx,
+        player,
+        combat,
+        toX,
+        toY,
+        zoom,
+        meleeStyle,
+      );
   }
   // вспышка урона
   if (combat && combat.hurtFlash > 0) {
@@ -2493,7 +2447,7 @@ function drawGarden(ctx, x, y, toX, toY, zoom) {
   }
 }
 
-function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
+function drawSurvivor(ctx, survivor, player, toX, toY, zoom, R) {
   const p = w2s(survivor.x, survivor.y);
   const dx = toX(p.x);
   const dy = toY(p.y);
@@ -2525,6 +2479,16 @@ function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
       null,
     );
     ctx.restore();
+  }
+  if (survivor.swingT > 0)
+    R.drawCalls += drawMeleeSwing(ctx, survivor, survivor, toX, toY, zoom);
+  if (survivor.hurtT > 0) {
+    ctx.strokeStyle = `rgba(224,67,56,${survivor.hurtT / 0.3})`;
+    ctx.lineWidth = 2 * zoom;
+    ctx.beginPath();
+    ctx.ellipse(dx, dy, 17 * zoom, 7 * zoom, 0, 0, 7);
+    ctx.stroke();
+    R.drawCalls++;
   }
   const near = Math.hypot(player.x - survivor.x, player.y - survivor.y) < 6;
   if (near || survivor.hp < survivor.maxHp) {

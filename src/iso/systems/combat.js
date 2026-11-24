@@ -1,7 +1,7 @@
 // Бой (спроектирован заново для изометрии, не порт старой игры).
 // Лук: ЛКМ удерживать — натяжение (0→1 за 0.8 с), отпустить — выстрел.
 // Стрела летит в мировых координатах, тихая; шум слышат зомби в 8 м.
-// Зомби: кусают в контакте с кулдауном; урон игроку; кровь; смерть.
+// Зомби: кусают в контакте с кулдауном; урон игроку, спутникам и NPC; кровь; смерть.
 import { mulberry32 } from "../core/rng.js";
 import { countItem, removeItem } from "./inventory.js";
 import { ZTYPES } from "../data/zombies.js";
@@ -62,6 +62,7 @@ export function updateCombat(
   protectedFlag = false,
   mods = null,
   survivors = [],
+  npcs = [],
 ) {
   if (C.dead) {
     C.deadT += dt;
@@ -174,6 +175,7 @@ export function updateCombat(
     let victim = null;
     let victimKey = null;
     let victimIsPlayer = false;
+    let victimIsNpc = false;
     let distance = Infinity;
     if (!protectedFlag && (z.level || 0) === (player.level || 0)) {
       victim = player;
@@ -190,6 +192,18 @@ export function updateCombat(
         victim = survivor;
         victimKey = survivor.id;
         victimIsPlayer = false;
+        victimIsNpc = false;
+        distance = d;
+      }
+    }
+    for (const n of npcs) {
+      if (n.hidden || (z.level || 0) !== (n.level || 0)) continue;
+      const d = Math.hypot(z.x - n.x, z.y - n.y);
+      if (d < distance) {
+        victim = n;
+        victimKey = `npc:${n.id}`;
+        victimIsPlayer = false;
+        victimIsNpc = true;
         distance = d;
       }
     }
@@ -202,12 +216,13 @@ export function updateCombat(
         z.attackTarget = victimKey;
       }
       const push = 0.4 * dt;
-      moveActor(
-        city,
-        victim,
-        ((victim.x - z.x) / Math.max(distance, 0.01)) * push,
-        ((victim.y - z.y) / Math.max(distance, 0.01)) * push,
-      );
+      if (!victimIsNpc)
+        moveActor(
+          city,
+          victim,
+          ((victim.x - z.x) / Math.max(distance, 0.01)) * push,
+          ((victim.y - z.y) / Math.max(distance, 0.01)) * push,
+        );
     }
     if (z.winding) {
       z.hitDelay -= dt;
@@ -216,6 +231,7 @@ export function updateCombat(
         z.attackCd = ZOMBIE_ATTACK_CD;
         let current = null;
         let currentIsPlayer = false;
+        let currentIsNpc = false;
         if (
           z.attackTarget === "player" &&
           !protectedFlag &&
@@ -223,6 +239,15 @@ export function updateCombat(
         ) {
           current = player;
           currentIsPlayer = true;
+        } else if (z.attackTarget?.startsWith("npc:")) {
+          current =
+            npcs.find(
+              (n) =>
+                `npc:${n.id}` === z.attackTarget &&
+                !n.hidden &&
+                (n.level || 0) === (z.level || 0),
+            ) || null;
+          currentIsNpc = !!current;
         } else {
           current =
             survivors.find(
@@ -252,7 +277,10 @@ export function updateCombat(
                 C.dead = true;
                 C.deadT = 0;
               }
+            } else if (currentIsNpc) {
+              current.hurtT = 0.3;
             } else {
+              current.hurtT = 0.3;
               current.hp = Math.max(
                 current.id === "nina" ? 1 : 0,
                 current.hp - damage,
@@ -397,6 +425,45 @@ export function releaseBow(C, player, aim, inv, city, mods = null) {
   return true;
 }
 
+export function hitZombieMelee(
+  C,
+  attacker,
+  z,
+  weapon,
+  source,
+  damage = weapon.dmg,
+) {
+  const dx = z.x - attacker.x,
+    dy = z.y - attacker.y;
+  const d = Math.hypot(dx, dy);
+  z.hp = (z.hp ?? ZOMBIE_HP) - damage;
+  z.hurtT = 0.3;
+  const knock = weapon.knock * ZTYPES[z.type || "walker"].knock;
+  z.x += (dx / Math.max(d, 0.01)) * knock;
+  z.y += (dy / Math.max(d, 0.01)) * knock;
+  z.tx = attacker.x;
+  z.ty = attacker.y;
+  z.retarget = 0;
+  z.alertT = 6;
+  z.propagated = false;
+  C.blood.push({ x: z.x, y: z.y, r: 0.5 + rng() * 0.5, t: 0 });
+  if (z.hp > 0) return false;
+  z.dead = true;
+  C.kills++;
+  C.corpses.push({
+    x: z.x,
+    y: z.y,
+    t: 0,
+    pose: rng() < 0.5 ? 0 : 1,
+    type: z.type || "walker",
+    face: z.face || 1,
+    scale: ZTYPES[z.type || "walker"].scale,
+  });
+  C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
+  C.onKill?.(source, z);
+  return true;
+}
+
 // ближний удар дугой перед игроком (кулаки/бита/нож). Возвращает число задетых.
 // Шум привлекает зомби в радиусе weapon.noise; отброс зависит от типа зомби.
 export function meleeAttack(C, player, aim, city, weapon, mods = null) {
@@ -418,33 +485,8 @@ export function meleeAttack(C, player, aim, city, weapon, mods = null) {
     if (da > Math.PI) da = 2 * Math.PI - da;
     if (da > 0.9) continue; // дуга ~±50°
     const dmg = Math.round(weapon.dmg * (mods?.meleeDmgK ?? 1));
-    z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
-    z.hurtT = 0.3;
-    const knock = weapon.knock * ZTYPES[z.type || "walker"].knock;
-    z.x += (dx / Math.max(d, 0.01)) * knock;
-    z.y += (dy / Math.max(d, 0.01)) * knock;
-    z.tx = player.x;
-    z.ty = player.y;
-    z.retarget = 0;
-    z.alertT = 6;
-    z.propagated = false;
-    C.blood.push({ x: z.x, y: z.y, r: 0.5 + rng() * 0.5, t: 0 });
+    hitZombieMelee(C, player, z, weapon, "melee", dmg);
     hits++;
-    if (z.hp <= 0) {
-      z.dead = true;
-      C.kills++;
-      C.corpses.push({
-        x: z.x,
-        y: z.y,
-        t: 0,
-        pose: rng() < 0.5 ? 0 : 1,
-        type: z.type || "walker",
-        face: z.face || 1,
-        scale: ZTYPES[z.type || "walker"].scale,
-      });
-      C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
-      C.onKill?.("melee", z);
-    }
   }
   for (const target of city.trainingTargets || []) {
     const dx = target.x - player.x;

@@ -35,14 +35,16 @@ test("типы зомби, стадность и Матка: спавн, тре�
   const boss = await page.evaluate(() => {
     const c = window.__city;
     const b = c.spawn(c.player.x + 12, c.player.y + 12, "boss");
-    return { hp: b.hp, n0: c.city.zombies.length };
+    window.__boss = b;
+    return { hp: b.hp };
   });
   expect(boss.hp).toBe(900);
-  await page.waitForFunction(
-    (n0) => window.__city.city.zombies.length > n0,
-    boss.n0,
-    { timeout: 30000 },
-  );
+  await page.waitForFunction(() => window.__boss.summonCd < 1, undefined, {
+    timeout: 25000,
+  });
+  await page.waitForFunction(() => window.__boss.summonCd > 10, undefined, {
+    timeout: 5000,
+  });
 
   // сейв сохраняет типы зомби
   await page.evaluate(() => window.__city.save());

@@ -9,7 +9,7 @@ test("постоянная панель цели: этап, прогресс, п
   await page.waitForFunction(() => window.__city?.quests);
   await expect(page.locator("#objective")).toBeVisible();
   await expect(page.locator("#objective .obj-quest")).toHaveText(
-    "ПЕРВЫЕ ПРАВИЛА",
+    "ПРОВЕРКА ОЛЕГА",
   );
   // этап крафта: крупное описание + подсказка C
   await page.evaluate(() => {

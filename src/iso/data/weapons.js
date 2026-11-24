@@ -43,5 +43,62 @@ export function weaponDef(id) {
   return WEAPONS[id] || FISTS;
 }
 
+export const NPC_WEAPONS = {
+  baton: {
+    id: "baton",
+    name: "Дубинка",
+    kind: "melee",
+    dmg: 12,
+    range: 1.6,
+    cd: 0.9,
+    noise: 4,
+    knock: 0.35,
+  },
+  axe: {
+    id: "axe",
+    name: "Топор",
+    kind: "melee",
+    dmg: 16,
+    range: 1.55,
+    cd: 1.1,
+    noise: 5,
+    knock: 0.4,
+  },
+  crowbar: {
+    id: "crowbar",
+    name: "Лом",
+    kind: "melee",
+    dmg: 11,
+    range: 1.6,
+    cd: 0.85,
+    noise: 4,
+    knock: 0.3,
+  },
+  hammer: {
+    id: "hammer",
+    name: "Молоток",
+    kind: "melee",
+    dmg: 10,
+    range: 1.4,
+    cd: 0.95,
+    noise: 3,
+    knock: 0.25,
+  },
+  knife: {
+    id: "knife",
+    name: "Нож",
+    kind: "melee",
+    dmg: 7,
+    range: 1.25,
+    cd: 0.65,
+    noise: 2,
+    knock: 0.15,
+  },
+};
+
+export function npcWeaponDef(id) {
+  return NPC_WEAPONS[id] || null;
+}
+
 // ближнее оружие, которым можно владеть через предмет инвентаря
 export const MELEE_ITEMS = ["bat", "knife"];

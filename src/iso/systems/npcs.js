@@ -102,6 +102,7 @@ export function updateNpcs(npcs, city, dt) {
       n.moving = false;
       continue;
     }
+    if (n.defending) continue;
     const dx = n.tx - n.x,
       dy = n.ty - n.y;
     const d = Math.hypot(dx, dy);

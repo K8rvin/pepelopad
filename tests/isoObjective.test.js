@@ -7,7 +7,7 @@ describe("панель «что делать сейчас»", () => {
   it("текущий этап и цели главной миссии", () => {
     const q = createQuests();
     const s = objectiveState(q, ALL_QUESTS, "E — обыскать: ящик");
-    expect(s.name).toBe("Первые правила");
+    expect(s.name).toBe("Проверка Олега");
     expect(s.desc).toBeTruthy();
     expect(s.goals.length).toBeGreaterThan(0);
     expect(s.goals.every((g) => g.done === false)).toBe(true);

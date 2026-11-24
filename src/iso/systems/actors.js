@@ -1,5 +1,5 @@
 // Движение и простейшее поведение: WASD от экрана (в изометрии экранная ось =
-// диагональ мира), зомби бродят и идут к игроку вблизи. Коллизии через solidGrid.
+// диагональ мира), зомби бродят и идут к игроку или людям вблизи. Коллизии через solidGrid.
 // Случайность поведения — seeded RNG (не глобальный Math.random).
 import { clamp, mulberry32 } from "../core/rng.js";
 import { solidRectAt } from "../world/cityGen.js";
@@ -143,6 +143,7 @@ export function updateZombies(
   speedK = 1,
   inCar = false,
   survivors = [],
+  npcs = [],
 ) {
   const night = speedK > 1;
   for (const z of zombies) {
@@ -174,6 +175,14 @@ export function updateZombies(
       if (sd < dp && sd < 18) {
         target = survivor;
         dp = sd;
+      }
+    }
+    for (const n of npcs) {
+      if (n.hidden || (n.level || 0) !== (z.level || 0)) continue;
+      const nd = Math.hypot(n.x - z.x, n.y - z.y);
+      if (nd < dp && nd < 18) {
+        target = n;
+        dp = nd;
       }
     }
     const gate = city.siegeGate;

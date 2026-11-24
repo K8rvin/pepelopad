@@ -21,7 +21,7 @@ function ctx(over = {}) {
 describe("журнал кампании", () => {
   it("показывает основную цель, этапы, выживших и улики", () => {
     const html = journalHtml(ctx());
-    expect(html).toContain("Стук на заправке");
+    expect(html).toContain("Голос на заправке");
     expect(html).toContain("Текущая основная цель");
     expect(html).toContain("Выжившие и поручения");
     expect(html).toContain("Улики");

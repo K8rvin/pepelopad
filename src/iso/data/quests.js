@@ -3,18 +3,18 @@ export const MAIN_QUESTS = [
     id: "m00",
     kind: "main",
     chapter: "I. Возвращение",
-    name: "Первые правила",
-    desc: "Из подсобки заправки отзывается Олег. Прежде чем он откроет дверь, собери снаряжение и проверь руку.",
+    name: "Проверка Олега",
+    desc: "Из-за двери заправки доносится голос Олега. Он впустит тебя только после того, как ты найдёшь снаряжение и покажешь, что умеешь с ним обращаться.",
     next: "m01",
     target: { site: "gas" },
     stages: [
       {
-        desc: "Доберись до заправки.",
+        desc: "Подойди к старой заправке.",
         goals: [{ type: "visit", target: "gas", label: "Старая заправка" }],
         target: { site: "gas" },
       },
       {
-        desc: "Обыщи три помеченных ящика во дворе.",
+        desc: "Обыщи во дворе три ящика, отмеченные маркерами.",
         goals: [
           {
             type: "search",
@@ -35,7 +35,7 @@ export const MAIN_QUESTS = [
         target: { site: "gas" },
       },
       {
-        desc: "Открой крафт (C) и сделай стрелы, нож и аптечку.",
+        desc: "Нажми C, открой крафт и сделай стрелы, нож и аптечку.",
         goals: [
           { type: "craft", target: "arrows", label: "Стрелы" },
           { type: "craft", target: "knife", label: "Нож" },
@@ -44,12 +44,12 @@ export const MAIN_QUESTS = [
         target: { site: "gas" },
       },
       {
-        desc: "Поговори с Олегом через дверь.",
+        desc: "Переговори с Олегом через закрытую дверь.",
         goals: [{ type: "talk", target: "oleg", label: "Правила боя" }],
         target: { npc: "oleg" },
       },
       {
-        desc: "Попади по мишени из лука, затем ударь её ножом.",
+        desc: "Сначала попади в мишень из лука, потом подойди и ударь её ножом.",
         goals: [
           { type: "practice", target: "bow", label: "Попадание из лука" },
           { type: "practice", target: "knife", label: "Удар ножом" },
@@ -62,26 +62,26 @@ export const MAIN_QUESTS = [
     id: "m01",
     kind: "main",
     chapter: "I. Возвращение",
-    name: "Стук на заправке",
-    desc: "Адрес Марка пуст. На старой заправке кто-то стучит по закрытой двери.",
+    name: "Голос на заправке",
+    desc: "По адресу Марка никого не оказалось. Зато на старой заправке кто-то заперт в подсобке и стучит в дверь.",
     next: "m02",
     target: { site: "gas" },
     reward: [["arrow", 6]],
     stages: [
       {
-        desc: "Доберись до старой заправки.",
+        desc: "Вернись к старой заправке.",
         goals: [{ type: "visit", target: "gas", label: "Старая заправка" }],
         target: { site: "gas" },
       },
       {
-        desc: "Освободи человека из подсобки.",
+        desc: "Разбери завал и выпусти человека из подсобки.",
         goals: [
           { type: "interact", target: "gas_door", label: "Разобрать завал" },
         ],
         target: { object: "gas_door" },
       },
       {
-        desc: "Шум привлёк заражённых. Защити Олега.",
+        desc: "На шум пришли заражённые. Не дай им добраться до Олега.",
         goals: [
           {
             type: "kill",
@@ -93,12 +93,12 @@ export const MAIN_QUESTS = [
         target: { site: "gas" },
       },
       {
-        desc: "Поговори с Олегом.",
+        desc: "Поговори с вызволенным Олегом.",
         goals: [{ type: "talk", target: "oleg", label: "Олег" }],
         target: { npc: "oleg" },
       },
       {
-        desc: "Найди батарею и настрой старую рацию.",
+        desc: "Найди батарею, вставь её в старую рацию и настрой связь.",
         goals: [
           { type: "collect", id: "battery", n: 1, label: "Батарея" },
           { type: "interact", target: "gas_radio", label: "Настроить рацию" },
@@ -111,18 +111,18 @@ export const MAIN_QUESTS = [
     id: "m02",
     kind: "main",
     chapter: "I. Возвращение",
-    name: "Женщина с лекарствами",
-    desc: "Нина знает дорогу к мотелю. В её сумке — лекарства для раненых.",
+    name: "Дорога к мотелю",
+    desc: "Нина согласна показать дорогу к мотелю. В её сумке лекарства, которые там нужны раненым.",
     next: "m03",
     target: { npc: "nina" },
     stages: [
       {
-        desc: "Поговори с Ниной у заправки.",
+        desc: "Поговори с Ниной возле заправки.",
         goals: [{ type: "talk", target: "nina", label: "Нина" }],
         target: { npc: "nina" },
       },
       {
-        desc: "Доведи Нину до мотеля. G — следовать или ждать.",
+        desc: "Проводи Нину до мотеля. Клавиша G велит ей идти следом или ждать на месте.",
         goals: [
           {
             type: "rescue",
@@ -134,7 +134,7 @@ export const MAIN_QUESTS = [
         target: { site: "motel" },
       },
       {
-        desc: "Пройди проверку у ворот.",
+        desc: "Вместе с Ниной пройди проверку у ворот.",
         goals: [{ type: "talk", target: "gromov", label: "Громов" }],
         target: { npc: "gromov" },
       },
@@ -144,14 +144,14 @@ export const MAIN_QUESTS = [
     id: "m03",
     kind: "main",
     chapter: "I. Возвращение",
-    name: "Право на ночлег",
-    desc: "Громов разрешит остаться, если поможешь с укреплениями и светом.",
+    name: "Ключ от номера",
+    desc: "Громов готов оставить тебя в мотеле, если ты поможешь укрепить двор и снова запустить генератор.",
     next: "m04",
     target: { npc: "victor" },
     effects: { home: true },
     stages: [
       {
-        desc: "Передай Виктору материалы в разговоре.",
+        desc: "Принеси Виктору материалы и передай их ему в разговоре.",
         goals: [
           { type: "deliver", id: "wood", n: 4, npc: "victor", label: "Дерево" },
           {
@@ -165,7 +165,7 @@ export const MAIN_QUESTS = [
         target: { npc: "victor" },
       },
       {
-        desc: "Укрепи проём у внутреннего двора.",
+        desc: "Укрепи проём, который выходит во внутренний двор.",
         goals: [
           {
             type: "interact",
@@ -176,7 +176,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_barricade" },
       },
       {
-        desc: "Добудь деталь и литр бензина. В кладовой есть аварийный тайник.",
+        desc: "Найди деталь и литр бензина. В кладовой припрятан аварийный запас.",
         goals: [
           { type: "collect", id: "part", n: 1, label: "Деталь" },
           { type: "collect", id: "fuel", n: 1, label: "Бензин" },
@@ -184,14 +184,14 @@ export const MAIN_QUESTS = [
         target: { object: "motel_emergency_cache" },
       },
       {
-        desc: "Почини генератор.",
+        desc: "Поставь деталь, залей бензин и почини генератор.",
         goals: [
           { type: "repair", target: "motel_generator", label: "Генератор" },
         ],
         target: { object: "motel_generator" },
       },
       {
-        desc: "Покажись Ирине — она даст ключ от номера.",
+        desc: "Зайди к Ирине за осмотром и ключом от своего номера.",
         goals: [{ type: "talk", target: "irina", label: "Ирина" }],
         target: { npc: "irina" },
       },
@@ -201,27 +201,27 @@ export const MAIN_QUESTS = [
     id: "m04",
     kind: "main",
     chapter: "II. Дом",
-    name: "Общий стол",
-    desc: "Мотель живёт не только стенами. Помоги кухне и лазарету.",
+    name: "За одним столом",
+    desc: "В мотеле решают не только, как закрыть ворота. Нине нужна еда на общий ужин, Ирине — перевязка для раненых.",
     next: "m05",
     reward: [["meal", 2]],
     stages: [
       {
-        desc: "Передай Нине три банки еды.",
+        desc: "Найди и отдай Нине три банки еды.",
         goals: [
           { type: "deliver", id: "can", n: 3, npc: "nina", label: "Тушёнка" },
         ],
         target: { npc: "nina" },
       },
       {
-        desc: "Передай Ирине два бинта.",
+        desc: "Передай Ирине два бинта для лазарета.",
         goals: [
           { type: "deliver", id: "meds", n: 2, npc: "irina", label: "Бинты" },
         ],
         target: { npc: "irina" },
       },
       {
-        desc: "Познакомься с Леной и Виктором.",
+        desc: "Познакомься с Леной и поговори с Виктором.",
         goals: [
           { type: "talk", target: "lena", label: "Лена" },
           { type: "talk", target: "victor", label: "Виктор" },
@@ -235,18 +235,18 @@ export const MAIN_QUESTS = [
     kind: "main",
     chapter: "II. Дом",
     name: "Список допуска",
-    desc: "В ресепшене лежит папка первых дней. Марк есть среди этих записей.",
+    desc: "В ресепшене сохранилась папка с записями первых дней. Среди фамилий встречается Марк.",
     next: "m06",
     stages: [
       {
-        desc: "Осмотри папку в ресепшене.",
+        desc: "Найди и просмотри папку в ресепшене.",
         goals: [
           { type: "interact", target: "motel_list", label: "Список допуска" },
         ],
         target: { object: "motel_list" },
       },
       {
-        desc: "Спроси Громова и Ирину о списке.",
+        desc: "Расспроси Громова и Ирину, кто составлял этот список и как он менялся.",
         goals: [
           { type: "talk", target: "gromov", label: "Версия охраны" },
           { type: "talk", target: "irina", label: "Версия медиков" },
@@ -259,22 +259,22 @@ export const MAIN_QUESTS = [
     id: "m06",
     kind: "main",
     chapter: "II. Дом",
-    name: "Номер девять",
-    desc: "Слишком много отказов для дома, где до сих пор заперта пустая комната.",
+    name: "Девятый номер",
+    desc: "Людям отказывали из-за нехватки мест, но девятый номер всё это время стоял запертым и пустым.",
     next: "m07",
     stages: [
       {
-        desc: "Поговори с Ниной о закрытом номере.",
+        desc: "Спроси Нину, почему закрыт девятый номер.",
         goals: [{ type: "talk", target: "nina", label: "Ключ или вскрытие" }],
         target: { npc: "nina" },
       },
       {
-        desc: "Открой номер девять.",
+        desc: "Получи ключ или вскрой дверь девятого номера.",
         goals: [{ type: "interact", target: "motel_room9", label: "Дверь №9" }],
         target: { object: "motel_room9" },
       },
       {
-        desc: "Сопоставь комнату с регистрационной книгой.",
+        desc: "Осмотри комнату и сравни увиденное с регистрационной книгой.",
         goals: [
           {
             type: "interact",
@@ -285,7 +285,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_registry" },
       },
       {
-        desc: "Поговори с Виктором о свободных местах.",
+        desc: "Потребуй у Виктора объяснений насчёт свободных мест.",
         goals: [{ type: "talk", target: "victor", label: "Виктор" }],
         target: { npc: "victor" },
       },
@@ -295,12 +295,12 @@ export const MAIN_QUESTS = [
     id: "m07",
     kind: "main",
     chapter: "III. Имена",
-    name: "Вырванная смена",
-    desc: "Полиция и больница вели собственные записи. Они помогут восстановить первые дни.",
+    name: "Недостающая смена",
+    desc: "В участке и больнице вели свои журналы. По ним можно восстановить то, что исчезло из записей мотеля.",
     next: "m08",
     stages: [
       {
-        desc: "Найди журнал в участке и медицинскую карту в больнице.",
+        desc: "Забери журнал дежурств в участке и медицинскую карту в больнице.",
         goals: [
           { type: "interact", target: "police_log", label: "Журнал дежурств" },
           {
@@ -312,7 +312,7 @@ export const MAIN_QUESTS = [
         target: { object: "police_log" },
       },
       {
-        desc: "Покажи находки Ирине.",
+        desc: "Принеси обе находки Ирине и сверь записи.",
         goals: [{ type: "talk", target: "irina", label: "Сопоставить записи" }],
         target: { npc: "irina" },
       },
@@ -322,12 +322,12 @@ export const MAIN_QUESTS = [
     id: "m08",
     kind: "main",
     chapter: "III. Имена",
-    name: "Живые имена",
-    desc: "Артём и Софья из списка могли выжить. Найди их и выведи в безопасное место.",
+    name: "Люди за фамилиями",
+    desc: "Артём и Софья из списка могли остаться в живых. Разыщи их и помоги добраться до поселения.",
     next: "m09",
     stages: [
       {
-        desc: "Освободи Артёма из складской комнаты супермаркета.",
+        desc: "Открой складскую комнату супермаркета и выпусти Артёма.",
         goals: [
           {
             type: "interact",
@@ -338,7 +338,7 @@ export const MAIN_QUESTS = [
         target: { object: "market_store_room" },
       },
       {
-        desc: "Выведи Артёма в любое открытое поселение. Если он погибнет, найди его записку.",
+        desc: "Проводи Артёма в любое открытое поселение. Если он погибнет, отыщи его записку.",
         goals: [
           {
             type: "rescue",
@@ -350,7 +350,7 @@ export const MAIN_QUESTS = [
         target: { npc: "artem" },
       },
       {
-        desc: "Освободи Софью из дома у больницы.",
+        desc: "Открой заклинившую дверь дома у больницы и выпусти Софью.",
         goals: [
           {
             type: "interact",
@@ -361,7 +361,7 @@ export const MAIN_QUESTS = [
         target: { object: "house_sofya_door" },
       },
       {
-        desc: "Выведи Софью в безопасное поселение или найди её записи.",
+        desc: "Доведи Софью до безопасного поселения. Если не удастся, найди оставленные ею записи.",
         goals: [
           {
             type: "rescue",
@@ -373,7 +373,7 @@ export const MAIN_QUESTS = [
         target: { npc: "sofya" },
       },
       {
-        desc: "Расскажи Нине, кого удалось найти.",
+        desc: "Расскажи Нине, что стало с Артёмом и Софьей.",
         goals: [{ type: "talk", target: "nina", label: "Вернуться к Нине" }],
         target: { npc: "nina" },
       },
@@ -383,17 +383,17 @@ export const MAIN_QUESTS = [
     id: "m09",
     kind: "main",
     chapter: "III. Имена",
-    name: "След к школе",
-    desc: "Спасённые называют одно место: школа, где Вера собрала тех, кого не впустили.",
+    name: "Дорога к школе",
+    desc: "Спасённые говорят про школьный лагерь. Вера собрала там людей, которым не нашлось места за воротами мотеля.",
     next: "m10",
     stages: [
       {
-        desc: "Доберись до школьного лагеря.",
+        desc: "Найди дорогу к школьному лагерю.",
         goals: [{ type: "visit", target: "school", label: "Школа" }],
         target: { site: "school" },
       },
       {
-        desc: "Поговори с Верой о списке и Марке.",
+        desc: "Расспроси Веру о списке и о том, куда ушёл Марк.",
         goals: [{ type: "talk", target: "vera", label: "Вера" }],
         target: { npc: "vera" },
       },
@@ -403,12 +403,12 @@ export const MAIN_QUESTS = [
     id: "m10",
     kind: "main",
     chapter: "IV. Другая сторона",
-    name: "Те, кого не пустили",
-    desc: "У школы тоже есть список отказов. Удобной чёрно-белой истории в нём нет.",
+    name: "По обе стороны ворот",
+    desc: "В школе тоже вели список отказов. Записи не дают простого ответа, кто был прав, а кто виноват.",
     next: "m11",
     stages: [
       {
-        desc: "Осмотри школьный журнал приёма.",
+        desc: "Прочитай школьный журнал приёма.",
         goals: [
           {
             type: "interact",
@@ -419,12 +419,12 @@ export const MAIN_QUESTS = [
         target: { object: "school_refusals" },
       },
       {
-        desc: "Поговори с Павлом, которому отказали обе общины.",
+        desc: "Поговори с Павлом: его не пустили ни в мотель, ни в школу.",
         goals: [{ type: "talk", target: "pavel", label: "Павел" }],
         target: { npc: "pavel" },
       },
       {
-        desc: "Вернись к Вере.",
+        desc: "Вернись к Вере и выслушай её объяснение.",
         goals: [{ type: "talk", target: "vera", label: "Ответ Веры" }],
         target: { npc: "vera" },
       },
@@ -434,19 +434,19 @@ export const MAIN_QUESTS = [
     id: "m11",
     kind: "main",
     chapter: "IV. Другая сторона",
-    name: "Копия первой смены",
-    desc: "Черновик школы и записи мотеля расходятся. Нужны личные пометки Нины.",
+    name: "Разные копии",
+    desc: "Школьный черновик не совпадает с бумагами мотеля. Личные записи Нины могут показать, где начались правки.",
     next: "m12",
     stages: [
       {
-        desc: "Найди копию первой смены в школе.",
+        desc: "Отыщи в школе копию списка первой смены.",
         goals: [
           { type: "interact", target: "school_copy", label: "Копия списка" },
         ],
         target: { object: "school_copy" },
       },
       {
-        desc: "Попроси у Нины её записи и сопоставь документы.",
+        desc: "Попроси у Нины её записи, затем сопоставь обе версии документа.",
         goals: [
           { type: "talk", target: "nina", label: "Записи Нины" },
           {
@@ -458,7 +458,7 @@ export const MAIN_QUESTS = [
         target: { npc: "nina" },
       },
       {
-        desc: "Спроси Виктора о поздних правках и мастерской.",
+        desc: "Расспроси Виктора о поздних правках и о грузе, который Марк повёз в мастерскую.",
         goals: [{ type: "talk", target: "victor", label: "След Марка" }],
         target: { npc: "victor" },
       },
@@ -468,8 +468,8 @@ export const MAIN_QUESTS = [
     id: "m12",
     kind: "main",
     chapter: "V. Марк",
-    name: "Прерванный маршрут",
-    desc: "Марк жив и держится в автомастерской. Дорога к нему завалена и небезопасна.",
+    name: "Мастерская Марка",
+    desc: "Марк жив и удерживает автомастерскую. Дорога туда завалена, а рядом слишком много заражённых.",
     next: "m13",
     effects: { flag: "route_cleared" },
     stages: [
@@ -479,7 +479,7 @@ export const MAIN_QUESTS = [
         target: { site: "workshop" },
       },
       {
-        desc: "Верни груз и почини фургон. Нужна одна деталь.",
+        desc: "Верни пропавший груз и почини фургон. На ремонт нужна одна деталь.",
         goals: [
           {
             type: "interact",
@@ -491,7 +491,7 @@ export const MAIN_QUESTS = [
         target: { object: "workshop_crate" },
       },
       {
-        desc: "Расчисть подход к мастерской.",
+        desc: "Уничтожь заражённых, которые перекрыли подход к мастерской.",
         goals: [
           {
             type: "kill",
@@ -509,16 +509,16 @@ export const MAIN_QUESTS = [
     kind: "main",
     chapter: "V. Марк",
     name: "Старый спор",
-    desc: "Марк не просит прощения и не спешит возвращаться. Сначала ему нужна помощь.",
+    desc: "После долгой разлуки Марк не спешит ни извиняться, ни возвращаться. Сначала мастерскую надо отбить у заражённых.",
     next: "m14",
     stages: [
       {
-        desc: "Поговори с Марком.",
+        desc: "Найди Марка и поговори с ним.",
         goals: [{ type: "talk", target: "mark", label: "Встреча" }],
         target: { npc: "mark" },
       },
       {
-        desc: "Отбей атаку на мастерскую.",
+        desc: "Отбей атаку заражённых на мастерскую.",
         goals: [
           {
             type: "kill",
@@ -530,7 +530,7 @@ export const MAIN_QUESTS = [
         target: { site: "workshop" },
       },
       {
-        desc: "Закончи разговор с Марком.",
+        desc: "Когда двор будет безопасен, закончи разговор с Марком.",
         goals: [{ type: "talk", target: "mark", label: "Старый спор" }],
         target: { npc: "mark" },
       },
@@ -540,19 +540,19 @@ export const MAIN_QUESTS = [
     id: "m14",
     kind: "main",
     chapter: "V. Марк",
-    name: "Первоначальная версия",
-    desc: "У Марка есть копия. Последняя часть осталась в служебном хранилище мотеля.",
+    name: "Без слова «временно»",
+    desc: "Марк отдал тебе свою копию. Недостающая часть документов лежит в служебном хранилище мотеля.",
     next: "m15",
     stages: [
       {
-        desc: "Открой служебное хранилище.",
+        desc: "Открой служебное хранилище мотеля.",
         goals: [
           { type: "interact", target: "motel_storage", label: "Хранилище" },
         ],
         target: { object: "motel_storage" },
       },
       {
-        desc: "Предъяви находки Громову, Виктору и Ирине.",
+        desc: "Покажи собранные документы Громову, Виктору и Ирине.",
         goals: [
           { type: "talk", target: "gromov", label: "Громов" },
           { type: "talk", target: "victor", label: "Виктор" },
@@ -561,7 +561,7 @@ export const MAIN_QUESTS = [
         target: { npc: "gromov" },
       },
       {
-        desc: "Восстанови первоначальный список.",
+        desc: "Сложи находки вместе и восстанови первоначальный список.",
         goals: [
           {
             type: "interact",
@@ -578,11 +578,11 @@ export const MAIN_QUESTS = [
     kind: "main",
     chapter: "VI. Последний список",
     name: "Ночь перед решением",
-    desc: "Обе общины должны услышать правду. Но сначала нужно пережить приближающуюся стаю.",
+    desc: "Правду должны услышать в мотеле и в школе. Но до общего разговора нужно пережить стаю, которая уже идёт к воротам.",
     next: "m16",
     stages: [
       {
-        desc: "Настрой рацию мотеля и свяжись со школой.",
+        desc: "Настрой мотельную рацию и вызови школу.",
         goals: [
           {
             type: "interact",
@@ -593,7 +593,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_final_radio" },
       },
       {
-        desc: "Подготовь ворота и обсуди оборону с Громовым.",
+        desc: "Подготовь ворота к осаде и обсуди с Громовым, как встретить стаю.",
         goals: [
           { type: "build", target: "motel_gate", label: "Подготовить ворота" },
           { type: "talk", target: "gromov", label: "План обороны" },
@@ -601,7 +601,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_gate" },
       },
       {
-        desc: "Начни оборону у рации, когда будешь готов.",
+        desc: "Когда будешь готов, начни оборону у рации.",
         goals: [
           {
             type: "interact",
@@ -612,7 +612,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_siege_start" },
       },
       {
-        desc: "Переживи три волны. Между ними можно лечиться и ремонтировать ворота.",
+        desc: "Продержись три волны. В перерывах можно лечиться и чинить ворота.",
         goals: [
           { type: "defend", target: "motel_siege", label: "Оборона мотеля" },
         ],
@@ -624,11 +624,11 @@ export const MAIN_QUESTS = [
     id: "m16",
     kind: "main",
     chapter: "VI. Последний список",
-    name: "Последний список",
-    desc: "Теперь все знают достаточно. Осталось решить, как жить дальше.",
+    name: "Как жить дальше",
+    desc: "Восстановленный список увидели все. Теперь жителям предстоит решить, что делать с воротами и друг с другом.",
     stages: [
       {
-        desc: "Собери жителей у восстановленного списка.",
+        desc: "Позови жителей к восстановленному списку.",
         goals: [
           {
             type: "interact",
@@ -639,7 +639,7 @@ export const MAIN_QUESTS = [
         target: { object: "motel_final_list" },
       },
       {
-        desc: "Поговори с Громовым и прими решение.",
+        desc: "Поговори с Громовым и выбери будущее мотеля.",
         goals: [{ type: "ending", target: "any", label: "Выбор будущего" }],
         target: { npc: "gromov" },
       },
@@ -653,7 +653,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Доски для ворот",
-    desc: "Виктор укрепит ворота мотеля.",
+    desc: "Виктор просит шесть досок и два лома, чтобы укрепить ворота мотеля.",
     unlock: { main: "m03" },
     giver: "victor",
     effects: { project: "gate", trust: { camp: "motel", n: 8 } },
@@ -676,8 +676,8 @@ export const SIDE_QUESTS = [
     id: "s_irina",
     kind: "side",
     group: "survivors",
-    name: "Полка Ирины",
-    desc: "Два бинта для постоянного лазарета.",
+    name: "Чистая полка",
+    desc: "Ирине нужны два отдельных бинта, чтобы в лазарете оставался запас для раненых.",
     unlock: { main: "m03" },
     giver: "irina",
     effects: { project: "infirmary", trust: { camp: "motel", n: 8 } },
@@ -694,7 +694,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Ужин для всех",
-    desc: "Нина приготовит общий ужин и оставит запас.",
+    desc: "Принеси Нине три банки тушёнки: она соберёт жителей за одним столом и отложит часть еды про запас.",
     unlock: { main: "m03" },
     giver: "nina",
     reward: [["meal", 2]],
@@ -712,7 +712,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Человек в прачечной",
-    desc: "Толя заперт в прачечной супермаркета. Выведи его в поселение.",
+    desc: "Толя не может выбраться из прачечной супермаркета. Открой дверь и проводи его в любое открытое поселение.",
     unlock: { main: "m04" },
     giver: "victor",
     stages: [
@@ -732,8 +732,8 @@ export const SIDE_QUESTS = [
     id: "s_school_meds",
     kind: "side",
     group: "survivors",
-    name: "Аптечка для школы",
-    desc: "Вере нужны бинты, антибиотик и инсулин.",
+    name: "Школьная аптечка",
+    desc: "Собери для Веры два бинта, антибиотик и инсулин.",
     unlock: { main: "m04" },
     giver: "vera",
     effects: {
@@ -773,8 +773,8 @@ export const SIDE_QUESTS = [
     id: "s_oleg_bag",
     kind: "side",
     group: "survivors",
-    name: "Сумка Олега",
-    desc: "На заправке осталась сумка его жены.",
+    name: "Её сумка",
+    desc: "В подсобке заправки осталась сумка жены Олега. Среди лекарств лежит дорогая ему фотография.",
     unlock: { main: "m02" },
     giver: "oleg",
     stages: [
@@ -789,7 +789,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Две дозы",
-    desc: "Антибиотик нужен Лене и пациенту школы. Можно ограничиться одной дозой, а можно поискать вторую.",
+    desc: "Антибиотик нужен Лене и больному в школе. Можно отдать единственную дозу или вернуться в больницу и поискать вторую.",
     unlock: { main: "m04" },
     giver: "irina",
     stages: [
@@ -831,7 +831,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Последний рейс",
-    desc: "Почини фургон, загрузи припасы и пригони его в мотель или школу.",
+    desc: "Почини фургон Марка, загрузи припасы и отгони его в мотель или школу.",
     unlock: { main: "m12" },
     giver: "mark",
     effects: { flag: "supply_route_ready" },
@@ -866,8 +866,8 @@ export const SIDE_QUESTS = [
     id: "s_night_guest",
     kind: "side",
     group: "survivors",
-    name: "Ночной приём",
-    desc: "У ворот мотеля стучится незнакомец. Открой и защити его либо проводи к школе.",
+    name: "Стук после темноты",
+    desc: "Ночью к воротам мотеля стучится незнакомец. Впусти и защити его или проводи до школы.",
     unlock: { main: "m05" },
     giver: "gromov",
     stages: [
@@ -892,7 +892,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Чужая смена",
-    desc: "Саныч хранит копию приказа Громова.",
+    desc: "Саныч сохранил копию приказа Громова. Найди её в архиве участка и реши, кому её показать.",
     unlock: { main: "m06" },
     giver: "sanych",
     stages: [
@@ -918,7 +918,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Тихая больница",
-    desc: "Рая слышит, как по ночам Матка зовёт из двора. Убей её — и больница снова откроет медицинский склад.",
+    desc: "По ночам Рая слышит вой Матки из больничного двора. Убей её, чтобы Рая снова открыла медицинский склад.",
     unlock: { main: "m04" },
     giver: "raya",
     effects: {
@@ -948,7 +948,7 @@ export const SIDE_QUESTS = [
     kind: "side",
     group: "survivors",
     name: "Имена без пометок",
-    desc: "Найди четыре личные вещи людей из списка и расскажи Нине их истории.",
+    desc: "Найди фотографию, игрушку, шарф и письмо людей из списка. Нина расскажет, кому они принадлежали.",
     unlock: { main: "m05" },
     giver: "nina",
     stages: [

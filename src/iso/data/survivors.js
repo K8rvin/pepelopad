@@ -10,6 +10,7 @@ export const SURVIVORS = [
     destinations: ["motel"],
     role: "Кухня",
     hp: 80,
+    weapon: "knife",
   },
   {
     id: "artem",
@@ -20,6 +21,7 @@ export const SURVIVORS = [
     y: 4,
     when: { main: "m08", stage: 1 },
     role: "Мастерская",
+    weapon: "crowbar",
   },
   {
     id: "sofya",
@@ -30,6 +32,7 @@ export const SURVIVORS = [
     y: 4,
     when: { main: "m08", stage: 3 },
     role: "Поиск",
+    weapon: "knife",
   },
   {
     id: "tolya",
@@ -40,6 +43,7 @@ export const SURVIVORS = [
     y: 4,
     when: { side: "s_tolya", stage: 1 },
     role: "Мастерская",
+    weapon: "hammer",
   },
   {
     id: "night_guest",
@@ -50,5 +54,6 @@ export const SURVIVORS = [
     y: 23,
     when: { side: "s_night_guest", stage: 1, night: true },
     role: "Охрана",
+    weapon: "baton",
   },
 ];

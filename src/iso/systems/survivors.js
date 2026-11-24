@@ -89,6 +89,7 @@ export function updateSurvivors(
   const events = [];
   for (const survivor of survivors) {
     if (survivor.hidden) continue;
+    if (survivor.defending) continue;
     if (survivor.state === "rescued") {
       const camp = camps.find((c) => c.id === survivor.campId);
       if (camp) {

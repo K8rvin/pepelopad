@@ -159,7 +159,17 @@ test("обучение на АЗС: лут, крафт, пауза, портре
     ),
   ).toBe(frozenTalk.x);
   await page.screenshot({ path: ".cache/tutorial_dialogue.png" });
-  for (let i = 0; i < 3; i++) await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg .dlg-line")).toContainText(
+    "левую кнопку мыши",
+  );
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg .dlg-line")).toContainText(
+    "1 - лук, 2 - бита, 3 - нож",
+  );
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg .dlg-line")).toContainText("Нажми 1");
+  await expect(page.locator("#dlg .dlg-line")).toContainText("нажми 3");
+  await page.keyboard.press("KeyE");
   await expect
     .poll(() => page.evaluate(() => window.__city.quests.stages.m00))
     .toBe(4);
@@ -282,5 +292,10 @@ test("портреты: загрузка файлов, Лена→Маша и р
   const dan = page.locator('#dlg img[data-portrait="dan"]');
   await expect(dan).toBeVisible();
   expect(await dan.getAttribute("src")).toContain("portrait_gg.png");
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#dlg .dlg-line")).toContainText(
+    "Мы столько лет не виделись",
+  );
+  await expect(page.locator("#dlg .dlg-choices button")).toHaveCount(3);
   expect(errors).toEqual([]);
 });
