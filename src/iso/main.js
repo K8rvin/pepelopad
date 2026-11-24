@@ -66,6 +66,7 @@ import {
   takeFrom,
   takeAll,
   registerInterior,
+  CONTAINER_NAMES,
 } from "./systems/loot.js";
 import { createUI } from "./ui/panels.js";
 import {
@@ -155,6 +156,7 @@ import { createCampaignRuntime } from "./systems/campaignRuntime.js";
 import { createDialogueUI } from "./ui/dialogue.js";
 import { createLoading } from "./ui/loading.js";
 import { createHighlightLab, HIGHLIGHT_VARIANTS } from "./ui/highlightlab.js";
+import { createObjective, objectiveState } from "./ui/objective.js";
 import { showEpilogueScreen } from "./ui/epilogue.js";
 import { storyPoint } from "./world/storyLocations.js";
 import { createStats, deathPenalty, applyPenalty } from "./systems/stats.js";
@@ -195,6 +197,12 @@ export async function boot() {
     hlLab.mark(id);
   }
   hlLab.mark(highlightVariant);
+
+  // постоянная панель «что делать сейчас» (крупно, для всех квестов)
+  const objectiveRoot = document.createElement("div");
+  objectiveRoot.id = "objective";
+  document.body.appendChild(objectiveRoot);
+  const objectiveUI = createObjective({ root: objectiveRoot });
 
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
@@ -1259,6 +1267,35 @@ export async function boot() {
     return `◆ ${q.name}: ${(stage?.goals || []).map((g) => goalText(g, questProgress(quests, q.id))).join(" · ")}`;
   }
 
+  // контекстная подсказка действия для первой незавершённой цели этапа
+  function objectiveHint() {
+    const q = mainQuest(quests, ALL_QUESTS);
+    if (!q) return "";
+    const stage = currentStage(quests, q);
+    const prog = questProgress(quests, q.id);
+    const g = (stage?.goals || []).find((k) => !goalDone(k, prog));
+    if (!g) return "";
+    const label = g.label || goalText(g, prog);
+    if (g.type === "search")
+      return loot.nearest
+        ? `E — обыскать: ${CONTAINER_NAMES[loot.nearest.kind] || "ящик"}`
+        : `Обыщи: ${label} (маркер ведёт)`;
+    if (g.type === "craft")
+      return `C — крафт: ${g.label || ITEMS[g.target]?.name || g.target}`;
+    if (g.type === "talk") {
+      const n = npcNear(npcs, player.x, player.y);
+      return n ? `E — говорить: ${n.name}` : `Найди: ${label} (маркер ведёт)`;
+    }
+    if (g.type === "interact" || g.type === "repair")
+      return interactions.nearest
+        ? `E — ${interactions.nearest.name}`
+        : `Найди: ${label} (маркер ведёт)`;
+    if (g.type === "visit") return `Иди к маркеру: ${label}`;
+    if (g.type === "deliver")
+      return `Отнеси: ${label}${g.npc ? ` → ${g.npc}` : ""}`;
+    return label;
+  }
+
   function sideHudText() {
     const q = trackedQuest(quests, ALL_QUESTS);
     if (!q) return storyHud(story);
@@ -1487,6 +1524,7 @@ export async function boot() {
       const aim0 = screenToWorld(mouse.x, mouse.y, camS0, W, H, zoom);
       renderWorld(renderPayload(aim0, night, t));
       hud.update(hudState());
+      objectiveUI.update(objectiveState(quests, ALL_QUESTS, objectiveHint()));
       map.update(dt, mapState());
       return;
     }
@@ -1726,6 +1764,7 @@ export async function boot() {
       doSave();
     }
     hud.update(hudState());
+    objectiveUI.update(objectiveState(quests, ALL_QUESTS, objectiveHint()));
     map.update(dt, mapState());
     if (settings.debug)
       hud.updateDebug({

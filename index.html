@@ -912,6 +912,52 @@
       #hllab[hidden] {
         display: none;
       }
+      #objective {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 12px;
+        z-index: 40;
+        max-width: min(680px, 92vw);
+        background: rgba(12, 15, 10, 0.9);
+        border: 1px solid #596248;
+        padding: 10px 18px 12px;
+        text-align: center;
+      }
+      #objective[hidden] {
+        display: none;
+      }
+      #objective .obj-quest {
+        color: #9a9478;
+        font-size: 10px;
+        letter-spacing: 3px;
+      }
+      #objective .obj-desc {
+        color: #ece5d0;
+        font-size: 17px;
+        font-weight: bold;
+        margin-top: 4px;
+      }
+      #objective .obj-goals {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        justify-content: center;
+      }
+      #objective .obj-goal {
+        color: #cfc8b4;
+        font-size: 12px;
+      }
+      #objective .obj-goal.done {
+        color: #7ac06a;
+      }
+      #objective .obj-hint {
+        margin-top: 7px;
+        color: #ffb23e;
+        font-size: 14px;
+        font-weight: bold;
+      }
       #hllab .hl-title {
         color: #9a9478;
         font-size: 11px;
