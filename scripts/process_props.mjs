@@ -46,6 +46,12 @@ const PROPS = {
     prompt:
       "Isometric portable diesel generator: faded orange-red fuel tank, blackened steel frame, recoil starter, control panel with sockets and knife switch, coiled cable at base, transparent RGBA.",
   },
+  door_entry: {
+    file: "Изометрическая дверь с облупившейся краской.webp",
+    width: 176,
+    prompt:
+      "Isometric dimetric 2:1 wooden door LEAF ONLY — no frame, no jamb, no wall, no step. Weathered vertical-plank door with two recessed panels, faded grey-brown paint, rusted iron handle on the right. Same 32×16 px/m camera as the game props. Painterly worn post-apocalyptic style, muted palette, soft overcast light from upper-left. Single object centered, fully transparent RGBA background, no ground, no cast shadow, no text. Canvas ~512×512, door fills ~80%.",
+  },
   fire_0: {
     file: "Изометрический костёр в каменном кольце.webp",
     width: 160,

@@ -43,6 +43,7 @@ const GPT_KEYS = [
   "barricade",
   "barricade_gate",
   "generator",
+  "door_entry",
   "fire_0",
   "fire_1",
   "fire_2",

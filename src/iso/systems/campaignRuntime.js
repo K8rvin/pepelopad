@@ -320,6 +320,7 @@ export function createCampaignRuntime(state, callbacks = {}) {
             h: 1,
             floors: 1,
             poi: object.name,
+            id: object.id,
           }
         : null;
     }
@@ -329,17 +330,36 @@ export function createCampaignRuntime(state, callbacks = {}) {
         (s) => s.id === descriptor.npc && !s.hidden,
       );
       const target = npc || survivor;
-      return target
-        ? {
-            x: target.x - 0.5,
-            y: target.y - 0.5,
+      if (!target) return null;
+      // голос за заваленной дверью: цель — сама дверь как интерактивный объект
+      for (const lock of city.storyLocks || []) {
+        const object = interactions.objects.find((o) => o.id === lock.id);
+        if (!object || object.unlocked) continue;
+        const b = city.buildings.find((k) => k.id === lock.buildingId);
+        if (!b) continue;
+        const wx = b.x + (lock.x1 + lock.x2) / 2,
+          wy = b.y + (lock.y1 + lock.y2) / 2;
+        if (Math.hypot(target.x - wx, target.y - wy) < 2)
+          return {
+            x: wx - 0.5,
+            y: wy - 0.5,
             w: 1,
             h: 1,
             floors: 1,
-            poi: target.name,
-            npc: descriptor.npc,
-          }
-        : null;
+            poi: object.name,
+            id: lock.id,
+            door: true,
+          };
+      }
+      return {
+        x: target.x - 0.5,
+        y: target.y - 0.5,
+        w: 1,
+        h: 1,
+        floors: 1,
+        poi: target.name,
+        npc: descriptor.npc,
+      };
     }
     if (descriptor.site) return storySite(city, descriptor.site);
     return null;

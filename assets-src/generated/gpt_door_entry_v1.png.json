@@ -1,0 +1,24 @@
+{
+  "id": "door_entry",
+  "source": "GPT",
+  "prompt": "Isometric dimetric 2:1 wooden door LEAF ONLY — no frame, no jamb, no wall, no step. Weathered vertical-plank door with two recessed panels, faded grey-brown paint, rusted iron handle on the right. Same 32×16 px/m camera as the game props. Painterly worn post-apocalyptic style, muted palette, soft overcast light from upper-left. Single object centered, fully transparent RGBA background, no ground, no cast shadow, no text. Canvas ~512×512, door fills ~80%.",
+  "originalImport": "tmp/Изометрическая дверь с облупившейся краской.webp",
+  "createdAt": "2026-11-24T12:32:58.045Z",
+  "sha256": "6eff96ad51e12417114030e85c7762e1c6c7d1284cb2d777e9cefe589b892a35",
+  "originalSize": [
+    1224,
+    1285
+  ],
+  "runtime": "public/assets/gen/door_entry.png",
+  "runtimeSize": [
+    176,
+    465
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha250PlusPromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8,
+    "groupBox": null
+  }
+}

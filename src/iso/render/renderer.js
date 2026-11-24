@@ -760,6 +760,41 @@ export function renderWorld({
     const wx = b.x + (lock.x1 + lock.x2) / 2,
       wy = b.y + (lock.y1 + lock.y2) / 2;
     if (!vis(wx, wy, 55, 55)) continue;
+    // подсветка двери как интерактивной цели: свечение полотна на глубине
+    // фасада (как у ящиков-целей), доски завала рисуются поверх
+    // дверь доступна через E (голос за проёмом) пока замок не снят —
+    // подсветка как у интерактивных ящиков: цель квеста или игрок у двери
+    const highlighted =
+      !!object &&
+      !object.unlocked &&
+      ((questTarget?.door && questTarget.id === lock.id) ||
+        Math.hypot(player.x - wx, player.y - wy) < 2.2);
+    if (highlighted && highlight === "outline" && SPRTEX.door_entry)
+      push(
+        b.x + b.w + b.y + b.h + 0.01,
+        1,
+        () => {
+          const img = SPRTEX.door_entry;
+          const p = w2s(wx, wy);
+          const lh = 70,
+            lw = Math.min(30, lh * (img.width / img.height));
+          ctx.save();
+          ctx.filter = `drop-shadow(0 0 ${5 * zoom}px rgba(255,178,62,${
+            0.6 + 0.25 * Math.sin(now * 4)
+          }))`;
+          ctx.setTransform(
+            zoom,
+            0.5 * zoom,
+            0,
+            zoom,
+            toX(p.x) - 18 * zoom,
+            toY(p.y) + 4 * zoom,
+          );
+          ctx.drawImage(img, 3 + (30 - lw) / 2, -73, lw, lh);
+          ctx.restore();
+        },
+        wx + wy,
+      );
     // доски лежат НА фасаде: глубина здания + epsilon, иначе стена их закроет
     push(
       b.x + b.w + b.y + b.h + 0.02,
@@ -1198,7 +1233,7 @@ export function renderWorld({
       ctx,
       {
         ...questTarget,
-        sprite: small ? SPRTEX.crate_wood : null,
+        sprite: small && !questTarget.door ? SPRTEX.crate_wood : null,
       },
       highlight,
       now,
