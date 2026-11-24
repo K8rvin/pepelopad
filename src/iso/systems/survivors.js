@@ -1,7 +1,7 @@
 import { SURVIVORS } from "../data/survivors.js";
 import { storyPoint } from "../world/storyLocations.js";
 import { conditionMatches } from "./story.js";
-import { moveActor } from "./actors.js";
+import { moveActor, faceDir } from "./actors.js";
 import { buildingAtPoint, getInterior } from "../world/interiors.js";
 
 export function createSurvivors(city, saved = null) {
@@ -141,6 +141,16 @@ export function updateSurvivors(
       const moved = Math.hypot(survivor.x - ox, survivor.y - oy);
       survivor.moving = moved > 0.0001;
       survivor.walkPh += Math.min(moved, 0.1) * Math.PI;
+      if (survivor.moving) {
+        const f = faceDir(
+          (dx - dy) * 32,
+          (dx + dy) * 16,
+          survivor.face,
+          survivor.dir,
+        );
+        survivor.face = f.face;
+        survivor.dir = f.dir;
+      }
       if (moved < 0.005 && sb) {
         survivor.stuck = (survivor.stuck || 0) + dt;
         if (survivor.stuck > 0.5) {

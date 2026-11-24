@@ -998,9 +998,11 @@ README устарел: строка E приписывает спутника (�
 
 Спутники имеют moving/walkPh (survivors.js), но рисуются статичным спрайтом с bob 2 px (drawSurvivor); NPC телепортируются при смене этапа/фазы суток (syncNpcs). Задача: живое движение.
 
-- [ ] **Спутники.** drawSurvivor использует GAITS standstep + faceDir + walkPh как игрок/зомби; стоя — ровно.
-- [ ] **NPC-переходы.** Смена позиции по миссии/фазе — плавный collision-aware переход (как survivors) с анимацией шага и разворотом по курсу; idle-NPC статичны.
-- [ ] **Регрессии.** isoSurvivors/isoInteriorAI, e2e cityCampaign (спасение Толи/Нины), визуальный скрин идущего спутника.
+- [x] **Спутники.** drawSurvivor рисует через GAITS.standstep с walkPh/moving и зеркалит по face; survivors.js обновляет face/dir через faceDir при движении; стоя — спрайт ровно.
+- [x] **NPC-переходы.** syncNpcs ставит цель (`setNpcTarget`) вместо Object.assign-телепорта; `updateNpcs` (тик campaignRuntime) ведёт NPC пешком с коллизиями, walkPh и разворотом; скрытый NPC снапится в цель при появлении, а не идёт через карту; idle-NPC статичны.
+- [x] **Регрессии.** unit `isoNpcWalk` (цель без телепорта, пешеходный переход с походкой, снап скрытого, покой у цели); isoSurvivors/isoInteriorAI и e2e cityCampaign (спасение Толи/Нины) зелёные; визуальный контроль `.cache/npc_companion_walk.png`, `npc_phase_walk.png`.
+
+Итог этапа: 210 unit-тестов в 37 файлах, 32 браузерных сценария, `format:check` и production build зелёные.
 
 
 ### 55. Оборона NPC: оружие по лору (24.11.2026)

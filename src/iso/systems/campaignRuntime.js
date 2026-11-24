@@ -29,7 +29,7 @@ import {
   syncSurvivors,
   updateSurvivors,
 } from "./survivors.js";
-import { syncNpcs } from "./npcs.js";
+import { syncNpcs, updateNpcs } from "./npcs.js";
 import { spawnZombie } from "./actors.js";
 import { createSiege, retrySiege, startSiege, updateSiege } from "./siege.js";
 import { storySite, storySiteContains } from "../world/storyLocations.js";
@@ -379,6 +379,7 @@ export function createCampaignRuntime(state, callbacks = {}) {
       sync();
     }
     const events = updateSurvivors(survivors, city, player, camps, dt, inCar);
+    updateNpcs(npcs, city, dt);
     for (const item of events) {
       if (item.type === "rescue") {
         callbacks.notify?.(

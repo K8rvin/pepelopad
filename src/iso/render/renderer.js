@@ -2510,8 +2510,21 @@ function drawSurvivor(ctx, survivor, player, toX, toY, zoom) {
   if (img) {
     const h = 78 * zoom;
     const w = h * (img.width / img.height);
-    const bob = survivor.moving ? Math.sin(survivor.walkPh || 0) * 2 * zoom : 0;
-    ctx.drawImage(img, dx - w / 2, dy - h + bob, w, h);
+    // походка как у игрока/зомби: standstep, курс зеркалится; стоя — ровно
+    ctx.save();
+    ctx.translate(dx, dy);
+    if ((survivor.face || 1) < 0) ctx.scale(-1, 1);
+    GAITS.standstep(
+      ctx,
+      img,
+      w,
+      h,
+      zoom,
+      survivor.walkPh || 0,
+      survivor.moving,
+      null,
+    );
+    ctx.restore();
   }
   const near = Math.hypot(player.x - survivor.x, player.y - survivor.y) < 6;
   if (near || survivor.hp < survivor.maxHp) {
