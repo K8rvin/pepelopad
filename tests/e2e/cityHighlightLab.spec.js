@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("лаборатория подсветки: F6, пять вариантов, живое переключение", async ({
+test("подсветка цели: F6, два варианта, живое переключение", async ({
   page,
 }) => {
   const errors = [];
@@ -18,8 +18,11 @@ test("лаборатория подсветки: F6, пять вариантов
   await expect(page.locator("#hllab")).toBeHidden();
   await page.keyboard.press("F6");
   await expect(page.locator("#hllab")).toBeVisible();
-  await expect(page.locator("#hllab button")).toHaveCount(5);
-  for (const id of ["float", "ground", "outline", "frame", "beam"]) {
+  await expect(page.locator("#hllab button")).toHaveCount(2);
+  expect(await page.evaluate(() => window.__city.getHighlight())).toBe(
+    "outline",
+  );
+  for (const id of ["outline", "frame"]) {
     await page.locator(`#hllab button[data-hl="${id}"]`).click();
     await page.waitForTimeout(200);
     expect(await page.evaluate(() => window.__city.getHighlight())).toBe(id);

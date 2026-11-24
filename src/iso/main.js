@@ -186,8 +186,8 @@ export async function boot() {
     await new Promise((r) => setTimeout(r, 0));
   };
 
-  // лаборатория подсветки цели (F6): выбор варианта — playtest-ом
-  let highlightVariant = "float";
+  // подсветка цели (F6): свечение силуэта — дефолт, уголки рамки — альтернатива
+  let highlightVariant = "outline";
   const hlLab = createHighlightLab({ onPick: (id) => setHighlight(id) });
   function setHighlight(id) {
     if (!HIGHLIGHT_VARIANTS.some(([v]) => v === id)) return;

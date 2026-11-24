@@ -490,6 +490,37 @@ export function renderWorld({
       R.drawCalls++;
     });
   }
+  // outline: свечение силуэта ящика-цели на глубине самого ящика,
+  // а не в оверлее — иначе светящийся спрайт лезет поверх персонажа
+  if (highlight === "outline" && questSearchIds?.length && loot)
+    for (const c of loot.containers) {
+      if (
+        !questSearchIds.includes(c.id) ||
+        loot.opened.has(c.id) ||
+        c.src?.dead ||
+        !vis(c.x, c.y, 40, 35)
+      )
+        continue;
+      push(
+        actorDepth(city, c) + 0.001,
+        1,
+        () => {
+          const img = SPRTEX.crate_wood;
+          if (!img) return;
+          const p = w2s(c.x, c.y);
+          const w = 52 * zoom,
+            h = w * (img.height / img.width);
+          ctx.save();
+          ctx.filter = `drop-shadow(0 0 ${5 * zoom}px rgba(255,178,62,${
+            0.6 + 0.25 * Math.sin(now * 4)
+          }))`;
+          ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+          ctx.restore();
+          R.drawCalls++;
+        },
+        c.x + c.y,
+      );
+    }
   for (const t of city.tires) {
     if (t.dead || !vis(t.x, t.y, 32, 25)) continue;
     push(actorDepth(city, t), 1, () => {
@@ -2058,9 +2089,8 @@ function drawActor(
   }
 }
 
-// Лаборатория подсветки цели (F6): float — кольцо над целью (старое),
-// ground — кольцо у основания, outline — свечение силуэта, frame — уголки
-// рамки, beam — столб света. Подпись у вариантов кроме float — сбоку у земли.
+// Подсветка цели (F6): outline — свечение силуэта (дефолт, свечение в
+// depth-проходе), frame — уголки рамки. Подпись — над объектом.
 function drawQuestMark(
   ctx,
   m,
@@ -2078,7 +2108,6 @@ function drawQuestMark(
     bcy = m.y + m.h / 2;
   const dist = Math.hypot(player.x - bcx, player.y - bcy);
   const label = `${m.poi || "Цель"} · ${Math.round(dist)} м`;
-  const pulse = 1 + Math.sin(now * 4) * 0.15;
   const alpha = 0.55 + 0.3 * Math.sin(now * 4);
   const pg = w2s(bcx, bcy, 0);
   let dx = toX(pg.x),
@@ -2130,44 +2159,12 @@ function drawQuestMark(
     ctx.closePath();
     ctx.stroke();
   }
-  const sideLabel = () => {
-    if (!withLabel) return;
-    ctx.font = `bold ${11 * zoom}px monospace`;
-    ctx.textAlign = "left";
-    const tw = ctx.measureText(label).width;
-    const lx = dx + 24 * zoom,
-      ly = dy - 4 * zoom;
-    ctx.fillStyle = "rgba(10,12,9,0.75)";
-    ctx.fillRect(lx - 4, ly - 11 * zoom, tw + 8, 15 * zoom);
-    ctx.fillStyle = "#ffb23e";
-    ctx.fillText(label, lx, ly);
-  };
-  const groundRing = (k = 0.55) => {
-    const rx = ((m.w + m.h) / 2) * 32 * k * zoom * pulse;
-    ctx.strokeStyle = `rgba(255,178,62,${alpha + 0.2})`;
-    ctx.lineWidth = 2 * zoom;
-    ctx.beginPath();
-    ctx.ellipse(dx, dy, rx, rx / 2, 0, 0, 7);
-    ctx.stroke();
-  };
   const spriteRect = () => {
     const w = 52 * zoom;
     const h = m.sprite ? w * (m.sprite.height / m.sprite.width) : 40 * zoom;
     return { w, h, x0: dx - w / 2, y0: dy - h };
   };
-  if (variant === "ground") {
-    groundRing();
-    sideLabel();
-  } else if (variant === "outline") {
-    if (m.sprite) {
-      const r = spriteRect();
-      ctx.save();
-      ctx.filter = `drop-shadow(0 0 ${5 * zoom}px rgba(255,178,62,${alpha + 0.25}))`;
-      ctx.drawImage(m.sprite, r.x0, r.y0, r.w, r.h);
-      ctx.restore();
-    } else groundRing();
-    sideLabel();
-  } else if (variant === "frame") {
+  if (variant === "frame") {
     let x0, y0, x1, y1;
     if (m.sprite) {
       const r = spriteRect();
@@ -2217,32 +2214,21 @@ function drawQuestMark(
       ctx.fillText(label, (x0 + x1) / 2, y0 - 5 * zoom);
       ctx.textAlign = "left";
     }
-  } else if (variant === "beam") {
-    const bh = 74 * zoom;
-    const grad = ctx.createLinearGradient(0, dy - bh, 0, dy);
-    grad.addColorStop(0, "rgba(255,178,62,0)");
-    grad.addColorStop(1, `rgba(255,178,62,${0.22 * pulse})`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(dx - 13 * zoom, dy - bh, 26 * zoom, bh);
-    groundRing(0.45);
-    sideLabel();
   } else {
-    // float: прежнее кольцо над целью и подпись над ним
-    const p = w2s(bcx, bcy, m.floors * 3);
-    const fx = toX(p.x),
-      fy = toY(p.y);
-    ctx.strokeStyle = "#ffb23e";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(fx, fy, 14 * pulse * zoom, 7 * pulse * zoom, 0, 0, 7);
-    ctx.stroke();
-    if (withLabel) {
-      ctx.font = `bold ${12 * zoom}px monospace`;
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#ffb23e";
-      ctx.fillText(label, fx, fy - 16 * zoom);
-      ctx.textAlign = "left";
-    }
+    // outline: свечение силуэта рисуется в depth-проходе на глубине объекта;
+    // здесь только подпись над объектом (не сбоку и не высоко над ним)
+    if (!withLabel) return;
+    const y0 =
+      (m.sprite ? spriteRect().y0 : toY(w2s(bcx, bcy, m.floors * 3).y)) -
+      14 * zoom; // зазор над подсказкой «E — обыскать»
+    ctx.font = `bold ${11 * zoom}px monospace`;
+    ctx.textAlign = "center";
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = "rgba(10,12,9,0.75)";
+    ctx.fillRect(dx - tw / 2 - 4, y0 - 16 * zoom, tw + 8, 14 * zoom);
+    ctx.fillStyle = "#ffb23e";
+    ctx.fillText(label, dx, y0 - 5 * zoom);
+    ctx.textAlign = "left";
   }
 }
 
