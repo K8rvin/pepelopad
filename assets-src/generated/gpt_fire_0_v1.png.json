@@ -1,0 +1,24 @@
+{
+  "id": "fire_0",
+  "source": "GPT",
+  "prompt": "Campfire frame 0 of 3: crossed charred logs on grey stone ring, low broad flame leaning left, two embers, thin smoke, transparent RGBA.",
+  "originalImport": "tmp/Изометрический костёр в каменном кольце.webp",
+  "createdAt": "2026-11-24T08:31:16.811Z",
+  "sha256": "1ecc645e624dd8d5acbfd45d4a196e2178b2a264ae6c64ed278a3c8ea7a1b17f",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/fire_0.png",
+  "runtimeSize": [
+    160,
+    203
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha250PlusPromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8,
+    "groupBox": "fire"
+  }
+}

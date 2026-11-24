@@ -1,0 +1,24 @@
+{
+  "id": "generator",
+  "source": "GPT",
+  "prompt": "Isometric portable diesel generator: faded orange-red fuel tank, blackened steel frame, recoil starter, control panel with sockets and knife switch, coiled cable at base, transparent RGBA.",
+  "originalImport": "tmp/Винтажный дизельный генератор с кабелем.webp",
+  "createdAt": "2026-11-24T08:31:16.740Z",
+  "sha256": "60132775c38bd4db9eacf26ac6fd75ebd1513cab0d9610c1c91e9ebd3cadb2c2",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/generator.png",
+  "runtimeSize": [
+    256,
+    254
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha250PlusPromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8,
+    "groupBox": null
+  }
+}

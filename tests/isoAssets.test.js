@@ -42,6 +42,10 @@ const GPT_KEYS = [
   "crate_wood",
   "barricade",
   "barricade_gate",
+  "generator",
+  "fire_0",
+  "fire_1",
+  "fire_2",
 ];
 
 const file = (path) => new URL(`../${path}`, import.meta.url);

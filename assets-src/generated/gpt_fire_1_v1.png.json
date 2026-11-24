@@ -1,0 +1,24 @@
+{
+  "id": "fire_1",
+  "source": "GPT",
+  "prompt": "Campfire frame 1 of 3: same logs and stones, tall narrow flame tongue, one ember, same camera, transparent RGBA.",
+  "originalImport": "tmp/Высокий костёр с одним искрящимся угольком.webp",
+  "createdAt": "2026-11-24T08:31:16.867Z",
+  "sha256": "f138950f03a484392767f06fde7e75289f83b8e1242494a477604045761616c3",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/fire_1.png",
+  "runtimeSize": [
+    160,
+    203
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha250PlusPromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 8,
+    "groupBox": "fire"
+  }
+}
