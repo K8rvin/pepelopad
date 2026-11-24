@@ -5,5 +5,12 @@
   "mode": "Создание изображений",
   "aspectRatio": "default UI setting (not changed)",
   "output": "G:\\Work\\YandexGames\\pepelopad\\assets-src\\generated\\zombie_v1.png",
-  "createdAt": "2026-11-17T02:46:23.875Z"
+  "createdAt": "2026-11-17T02:46:23.875Z",
+  "runtimeSize": [
+    331,
+    500
+  ],
+  "processing": {
+    "optimizedForScreen": 500
+  }
 }

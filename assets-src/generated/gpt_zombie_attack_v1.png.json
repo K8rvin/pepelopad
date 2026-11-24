@@ -11,14 +11,15 @@
   ],
   "runtime": "public/assets/gen/zombie_attack.png",
   "runtimeSize": [
-    834,
-    1259
+    331,
+    500
   ],
   "processing": {
     "pipeline": "scripts/process_zombie_frames.mjs",
     "commonScale": 0.8447,
     "anchor": "feet baseline + center of zombie.png",
-    "alphaBelow4Removed": true
+    "alphaBelow4Removed": true,
+    "optimizedForScreen": 500
   },
   "notes": "Кадр анимации ходока; единый масштаб набора из шага, якорь ступней по zombie.png."
 }

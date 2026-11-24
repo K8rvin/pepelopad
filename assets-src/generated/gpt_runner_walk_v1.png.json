@@ -11,8 +11,8 @@
   ],
   "runtime": "public/assets/gen/runner_walk.png",
   "runtimeSize": [
-    1696,
-    1551
+    350,
+    320
   ],
   "processing": {
     "pipeline": "scripts/process_runner_frames.mjs",
@@ -20,7 +20,8 @@
     "anchor": "feet baseline + horizontal center of runner.png",
     "alphaBelow4Removed": true,
     "normalizedToStandContent": true,
-    "normalizeK": 1.5664
+    "normalizeK": 1.5664,
+    "optimizedForScreen": 320
   },
   "notes": "Кадр бегуна №13; общий масштаб по вертикальному кадру урона, широкие позы не растянуты."
 }
