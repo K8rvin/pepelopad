@@ -29,6 +29,7 @@ export function createRenderer() {
   return {
     chunkCache: new Map(),
     drawCalls: 0,
+    interiorSkipped: 0,
     vignette: null,
     bFade: new Map(), // buildingId → текущая альфа фейда (состояние рендера, не игры)
     bakeQueue: new Set(), // ключи чанков, ждущих полной запечки по бюджету
@@ -140,6 +141,7 @@ export function renderWorld({
   comic,
   questLootId,
   questSearchIds,
+  questNpcId,
   highlight,
   car,
 }) {
@@ -588,6 +590,11 @@ export function renderWorld({
     if ((z.level || 0) !== (player.level || 0)) continue;
     if (!vis(z.x, z.y, 40, 55)) continue;
     z._insideB = inside || buildingAtPoint(city, z.x, z.y);
+    // актёр внутри чужого/закрытого здания при игроке снаружи не виден
+    if (z._insideB && z._insideB !== inside) {
+      R.interiorSkipped++;
+      continue;
+    }
     push(
       actorDepth(city, z),
       2,
@@ -609,7 +616,16 @@ export function renderWorld({
   if (npcs)
     for (const n of npcs) {
       if (n.hidden || !vis(n.x, n.y, 45, 60)) continue;
+      const nb = inside || buildingAtPoint(city, n.x, n.y);
+      // внутри здания при игроке снаружи NPC не рисуем (голос за дверью — да,
+      // силуэт сквозь стену — нет); E у двери работает по координатам
+      if (nb && nb !== inside) {
+        R.interiorSkipped++;
+        n._drawn = false;
+        continue;
+      }
       push(actorDepth(city, n), 2, () => {
+        n._drawn = true;
         const p = w2s(n.x, n.y);
         ctx.fillStyle = "rgba(16,20,26,0.35)";
         ctx.beginPath();
@@ -626,10 +642,13 @@ export function renderWorld({
         if (Math.hypot(player.x - n.x, player.y - n.y) < 6) {
           ctx.font = `${11 * zoom}px monospace`;
           ctx.textAlign = "center";
-          ctx.fillStyle = "#0a0c09";
-          ctx.fillText(n.name, toX(p.x) + 1, toY(p.y) - 84 * zoom + 1);
-          ctx.fillStyle = "#a6e83c";
-          ctx.fillText(n.name, toX(p.x), toY(p.y) - 84 * zoom);
+          // имя не дублируем, если над NPC уже висит квестовая подпись
+          if (n.id !== questNpcId) {
+            ctx.fillStyle = "#0a0c09";
+            ctx.fillText(n.name, toX(p.x) + 1, toY(p.y) - 84 * zoom + 1);
+            ctx.fillStyle = "#a6e83c";
+            ctx.fillText(n.name, toX(p.x), toY(p.y) - 84 * zoom);
+          }
           ctx.fillStyle = "#9a9478";
           ctx.fillText("E — говорить", toX(p.x), toY(p.y) - 70 * zoom);
           ctx.textAlign = "left";
@@ -702,6 +721,11 @@ export function renderWorld({
         !vis(survivor.x, survivor.y, 50, 65)
       )
         continue;
+      const sb = inside || buildingAtPoint(city, survivor.x, survivor.y);
+      if (sb && sb !== inside) {
+        R.interiorSkipped++;
+        continue;
+      }
       push(
         actorDepth(city, survivor),
         2,
@@ -736,8 +760,9 @@ export function renderWorld({
     const wx = b.x + (lock.x1 + lock.x2) / 2,
       wy = b.y + (lock.y1 + lock.y2) / 2;
     if (!vis(wx, wy, 55, 55)) continue;
+    // доски лежат НА фасаде: глубина здания + epsilon, иначе стена их закроет
     push(
-      wx + wy,
+      b.x + b.w + b.y + b.h + 0.02,
       1,
       () => drawDoorBarricade(ctx, wx, wy, toX, toY, zoom),
       wx + wy,
@@ -1168,7 +1193,7 @@ export function renderWorld({
   }
   // маркер цели квеста и ящиков обыска: вариант подсветки из лаборатории F6
   if (questTarget) {
-    const small = questTarget.w <= 2 && questTarget.h <= 2;
+    const small = !questTarget.npc && questTarget.w <= 2 && questTarget.h <= 2;
     drawQuestMark(
       ctx,
       {
@@ -2166,7 +2191,12 @@ function drawQuestMark(
   };
   if (variant === "frame") {
     let x0, y0, x1, y1;
-    if (m.sprite) {
+    if (m.npc) {
+      x0 = dx - 20 * zoom;
+      x1 = dx + 20 * zoom;
+      y0 = dy - 78 * zoom;
+      y1 = dy;
+    } else if (m.sprite) {
       const r = spriteRect();
       x0 = r.x0;
       y0 = r.y0;
@@ -2219,8 +2249,12 @@ function drawQuestMark(
     // здесь только подпись над объектом (не сбоку и не высоко над ним)
     if (!withLabel) return;
     const y0 =
-      (m.sprite ? spriteRect().y0 : toY(w2s(bcx, bcy, m.floors * 3).y)) -
-      14 * zoom; // зазор над подсказкой «E — обыскать»
+      (m.npc
+        ? dy - 78 * zoom
+        : m.sprite
+          ? spriteRect().y0
+          : toY(w2s(bcx, bcy, m.floors * 3).y)) -
+      14 * zoom; // зазор над подсказкой E
     ctx.font = `bold ${11 * zoom}px monospace`;
     ctx.textAlign = "center";
     const tw = ctx.measureText(label).width;

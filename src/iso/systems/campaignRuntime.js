@@ -337,6 +337,7 @@ export function createCampaignRuntime(state, callbacks = {}) {
             h: 1,
             floors: 1,
             poi: target.name,
+            npc: descriptor.npc,
           }
         : null;
     }

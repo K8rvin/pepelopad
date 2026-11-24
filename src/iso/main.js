@@ -1423,6 +1423,7 @@ export async function boot() {
       uiOpen: ui.isOpen(),
       questTarget: campaign.target(),
       sideQuestTarget: campaign.target(true),
+      questNpcId: campaign.target()?.npc || null,
       inCar: !!veh.inCar,
       npcs,
       survivors,
