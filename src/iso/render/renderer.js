@@ -25,6 +25,7 @@ import { ZTYPES } from "../data/zombies.js";
 import { campDef } from "../systems/camps.js";
 import { containerHasLoot } from "../systems/loot.js";
 import { FLIGHT_H } from "../systems/combat.js";
+import { noiseProfile } from "../systems/stealth.js";
 
 export function createRenderer() {
   return {
@@ -607,8 +608,10 @@ export function renderWorld({
     push(
       actorDepth(city, player) + 0.01,
       2,
-      () =>
-        drawActor(ctx, player, SPR, toX, toY, zoom, true, combat, aim, R.gait),
+      () => {
+        drawActor(ctx, player, SPR, toX, toY, zoom, true, combat, aim, R.gait);
+        R.drawCalls += drawStealthNoise(ctx, player, toX, toY, zoom);
+      },
       player.x + player.y,
     );
 
@@ -2047,6 +2050,33 @@ export function setMeleeStyle(s) {
   return meleeStyle;
 }
 
+function drawStealthNoise(ctx, player, toX, toY, zoom) {
+  const stealth = noiseProfile(player);
+  if (!stealth.crouched && !stealth.moving) return 0;
+  const p = w2s(player.x, player.y);
+  ctx.save();
+  ctx.setLineDash([5 * zoom, 4 * zoom]);
+  ctx.strokeStyle = stealth.sprinting
+    ? "rgba(255,98,66,0.45)"
+    : stealth.crouched
+      ? "rgba(166,232,60,0.35)"
+      : "rgba(236,229,208,0.22)";
+  ctx.lineWidth = zoom;
+  ctx.beginPath();
+  ctx.ellipse(
+    toX(p.x),
+    toY(p.y),
+    stealth.noiseRadius * 32 * zoom,
+    stealth.noiseRadius * 16 * zoom,
+    0,
+    0,
+    7,
+  );
+  ctx.stroke();
+  ctx.restore();
+  return 1;
+}
+
 function drawActor(
   ctx,
   a,
@@ -2150,6 +2180,10 @@ function drawActor(
     }
     ctx.save();
     ctx.translate(toX(p.x) + lx, toY(p.y) + ly);
+    if (isPlayer && a.crouched) {
+      ctx.translate(0, 8 * zoom);
+      ctx.scale(1, 0.88);
+    }
     if (flip) ctx.scale(-1, 1);
     let bob = 0;
     if (isBow) ctx.drawImage(img, -w / 2, -h, w, h);

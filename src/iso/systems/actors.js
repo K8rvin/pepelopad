@@ -5,6 +5,7 @@ import { clamp, mulberry32 } from "../core/rng.js";
 import { solidRectAt } from "../world/cityGen.js";
 import { buildingAtPoint, getInterior } from "../world/interiors.js";
 import { ZTYPES, ZOMBIE_CAP } from "../data/zombies.js";
+import { hasLineOfSight, noiseProfile } from "./stealth.js";
 
 let rng = mulberry32(1);
 export function initActors(seed) {
@@ -50,14 +51,22 @@ export function updatePlayer(
   if (ix || iy) {
     // спринт тратит стамину; на нуле — истощение, пока не восстановится >30
     const run =
-      !!keys.ShiftLeft && !player.exhausted && (player.stamina ?? 100) > 0;
+      !!keys.ShiftLeft &&
+      !player.crouched &&
+      !player.exhausted &&
+      (player.stamina ?? 100) > 0;
+    player.sprinting = run;
     player.stamina = Math.max(
       0,
       Math.min(100, (player.stamina ?? 100) + (run ? -22 : 9) * dt),
     );
     if (player.stamina <= 0) player.exhausted = true;
     if (player.exhausted && player.stamina > 30) player.exhausted = false;
-    const sp = (run ? 5.4 : 3.2) * (mods?.speedK ?? 1) * dt;
+    const sp =
+      (run ? 5.4 : 3.2) *
+      (mods?.speedK ?? 1) *
+      (player.crouched ? 0.55 : 1) *
+      dt;
     const wx = ix + iy,
       wy = iy - ix;
     const n = Math.hypot(wx, wy);
@@ -83,6 +92,7 @@ export function updatePlayer(
     player.pose = Math.floor(player.animT) % 2;
     onMove?.(sp, run);
   } else {
+    player.sprinting = false;
     player.stamina = Math.min(100, (player.stamina ?? 100) + 14 * dt);
     if (player.exhausted && player.stamina > 30) player.exhausted = false;
   }
@@ -146,6 +156,7 @@ export function updateZombies(
   npcs = [],
 ) {
   const night = speedK > 1;
+  const stealth = noiseProfile(player);
   for (const z of zombies) {
     if (z.dead) continue;
     z.hurtT = Math.max(0, (z.hurtT || 0) - dt);
@@ -189,14 +200,23 @@ export function updateZombies(
     const gateDistance = gate
       ? Math.hypot(gate.x + gate.w / 2 - z.x, gate.y - z.y)
       : Infinity;
-    if (z.siege && gate?.active && gate.hp > 0 && gateDistance > 1.0) {
+    const gateForced =
+      z.siege && gate?.active && gate.hp > 0 && gateDistance > 1.0;
+    if (gateForced) {
       z.tx = gate.x + gate.w / 2;
       z.ty = gate.y;
       target = { x: z.tx, y: z.ty, level: 0 };
       dp = 0;
     }
     const chaseR = night ? t.chaseNight : t.chaseDay;
-    if (dp < chaseR) {
+    const hearing =
+      target === player &&
+      (z.level || 0) === (player.level || 0) &&
+      dp < stealth.noiseRadius;
+    const seen =
+      dp < chaseR * (target === player ? stealth.visionK : 1) &&
+      hasLineOfSight(city, z, target);
+    if (gateForced || hearing || seen) {
       // цель ведём постоянно, но тревогу (и её распространение) запускаем один раз
       if (z.alertT <= 0) alertZombie(z, target.x, target.y, 6);
       else {

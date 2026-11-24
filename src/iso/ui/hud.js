@@ -9,7 +9,7 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
       <div class="hudbar hp"><i></i><span></span></div>
       <div class="hudbar food"><i></i><span></span></div>
       <div class="hudbar stam"><i></i><span></span></div>
-      <div id="hudMeta"><span id="hudClock"></span><span id="hudArrows"></span><span id="hudFloor"></span><span id="hudInf"></span></div>
+      <div id="hudMeta"><span id="hudClock"></span><span id="hudArrows"></span><span id="hudFloor"></span><span id="hudInf"></span><span id="hudStealth"></span></div>
     </div>
     <div id="objective"></div>
     <div id="hudStory"></div>
@@ -25,6 +25,7 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
   const stamFill = stamBar.querySelector("i");
   const stamText = stamBar.querySelector("span");
   const infEl = hudRoot.querySelector("#hudInf");
+  const stealthEl = hudRoot.querySelector("#hudStealth");
   const clockEl = hudRoot.querySelector("#hudClock");
   const arrowsEl = hudRoot.querySelector("#hudArrows");
   const floorEl = hudRoot.querySelector("#hudFloor");
@@ -54,6 +55,20 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
     stamBar.classList.toggle("low", s.exhausted || stamPct < 25);
     infEl.textContent = s.infected ? "☣ инфекция" : "";
     infEl.classList.toggle("inf", !!s.infected);
+    const stealth = s.stealth || {};
+    stealthEl.textContent = stealth.crouched
+      ? stealth.moving
+        ? "R присед · тихо"
+        : "R присед"
+      : stealth.sprinting
+        ? "ШУМ"
+        : "";
+    stealthEl.title = `Шум ${stealth.noiseRadius ?? 0} м`;
+    stealthEl.className = stealth.crouched
+      ? "quiet"
+      : stealth.sprinting
+        ? "loud"
+        : "";
     clockEl.textContent = s.clock;
     arrowsEl.innerHTML = `${iconHtml("arrow", 14)} ${s.arrows}`;
     floorEl.textContent = s.level > 0 ? `этаж ${s.level + 1}` : "";

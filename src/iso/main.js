@@ -149,6 +149,7 @@ import {
   followingSurvivor,
 } from "./systems/survivors.js";
 import { isSimulationPaused, isTutorialCraft } from "./systems/pause.js";
+import { noiseProfile } from "./systems/stealth.js";
 import {
   createInteractions,
   nearestInteraction,
@@ -266,6 +267,7 @@ export async function boot() {
     stamina: 100,
     exhausted: false,
     infected: false,
+    crouched: false,
   };
   const spawn = { x: player.x, y: player.y };
   // стартовая зона спокойна: зомби ближе 10 м отодвигаем вместе с якорем
@@ -808,6 +810,10 @@ export async function boot() {
         dialogueUI?.chooseByNumber(Number(e.code.slice(-1)) - 1);
       } else if (e.code === "Escape") campaign.close();
       return;
+    }
+    if (e.code === "KeyR" && !combat.dead && !veh.inCar) {
+      player.crouched = !player.crouched;
+      audio.play("uiClick");
     }
     if (e.code === "KeyG" && !combat.dead) {
       const active = followingSurvivor(survivors);
@@ -1457,6 +1463,7 @@ export async function boot() {
       stamina: player.stamina ?? 100,
       exhausted: player.exhausted,
       infected: player.infected,
+      stealth: noiseProfile(player),
       companion,
     };
   }
