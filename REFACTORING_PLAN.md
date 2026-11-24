@@ -992,14 +992,16 @@ F «Платформа Yandex Games» (отдельное решение).
 
 Аудит после ревизии стека (24.11.2026): единственный загрузчик — `src/iso/render/assets.js` (TEX_FILES/SPRITE_FILES/PORTRAIT_FILES); файлы ниже не грузятся рантаймом и не упоминаются в `src/`, `index.html`, тестах, скриптах и CI. Живые ассеты (`textures/`, `gen/*.png`, `.nojekyll`) не затрагиваются.
 
-- [ ] **Удалить `public/assets/maps/`** — `volgograd-center.json` (34.0 МиБ), OSM-данные удалённой старой игры (этап 19).
-- [ ] **Удалить `public/assets/effects/`** — 4 файла pixelfx (4.4 МиБ): `campfire.gif` (3.4 МиБ; костёр теперь на кадрах `fire_0..2`), `small-explosion.png` + `.json`, `arrow.gif`.
-- [ ] **Удалить `public/assets/sprites/`** — 34 спрайта pixel-art-atlas старой игры (29 КБ), заменены процедурными моделями и `gen/`.
-- [ ] **Удалить осиротевшие лицензии** `public/assets/licenses/pixel-art-atlas/` и `pixelfx/` (2 КБ) — коллекции больше не используются.
-- [ ] **Удалить 18 sidecar-копий `public/assets/gen/*.png.json`** — тесты и скрипты читают метаданные из `assets-src/generated/`, копии в public никто не читает.
-- [ ] **Проверки.** `npm run format:check`, `npm test`, `npm run build`, `npm run test:e2e`; размер `dist/` ~26 МиБ вместо ~65 МиБ; e2e `cityLoading` подтверждает загрузку живых ассетов без ошибок.
+- [x] **Удалить `public/assets/maps/`** — `volgograd-center.json` (34.0 МиБ), OSM-данные удалённой старой игры (этап 19).
+- [x] **Удалить `public/assets/effects/`** — 4 файла pixelfx (4.4 МиБ): `campfire.gif` (3.4 МиБ; костёр теперь на кадрах `fire_0..2`), `small-explosion.png` + `.json`, `arrow.gif`.
+- [x] **Удалить `public/assets/sprites/`** — 34 спрайта pixel-art-atlas старой игры (29 КБ), заменены процедурными моделями и `gen/`.
+- [x] **Удалить осиротевшие лицензии** `public/assets/licenses/pixel-art-atlas/` и `pixelfx/` (2 КБ) — коллекции больше не используются.
+- [x] **Удалить 18 sidecar-копий `public/assets/gen/*.png.json`** — тесты и скрипты читают метаданные из `assets-src/generated/`, копии в public никто не читает.
+- [x] **Проверки.** `npm run format:check`, `npm test`, `npm run build`, `npm run test:e2e`; размер `dist/` ~26 МиБ вместо ~65 МиБ; e2e `cityLoading` подтверждает загрузку живых ассетов без ошибок.
 
-Ожидаемый результат: деплой легче на ~38.4 МиБ (59% веса public/), ни один работающий ассет не задет. Удаление через git — файлы восстанавливаемы из истории; исходники gen-ассетов остаются в `assets-src/`.
+Результат: удалено 60 файлов через `git rm`, деплой 65.1 → 26.7 МиБ (−38.4 МиБ, 59% веса public/); ни один работающий ассет не задет, файлы восстанавливаемы из истории, исходники gen-ассетов остались в `assets-src/`.
+
+Итог этапа: 208 unit-тестов в 36 файлах, 31 браузерный сценарий (включая `cityLoading`), `format:check` и production build зелёные; `dist/` 26.69 МиБ (было 65.13).
 
 
 ### 46. Сжатие кадров персонажей (24.11.2026)
