@@ -64,6 +64,11 @@ test("окно обыска: имя контейнера и хоткеи в на
   await expect(page.locator("#ui .loot-row button").first()).toContainText(
     "(E)",
   );
+  // E забирает верхний предмет: метка (E) переезжает на следующий оставшийся
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#ui .loot-row button").first()).toContainText(
+    "(E)",
+  );
   await expect(page.locator("#ui .hint").last()).toContainText("Space — всё");
   expect(errors).toEqual([]);
 });

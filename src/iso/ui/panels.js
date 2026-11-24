@@ -118,11 +118,13 @@ export function createUI({
   function lootPanel() {
     const inv = getInventory();
     const items = getLootState(lootTarget) || [];
+    // взятые слоты остаются null: метка (E) — на первом оставшемся предмете
+    const firstLeft = items.findIndex((s) => s);
     const rows = items
       .map((s, i) =>
         s
           ? `<div class="loot-row" data-i="${i}">${iconHtml(s.id, 18)} ${ITEMS[s.id].name} ×${s.n} <button data-i="${i}">${
-              i === 0 ? "взять (E)" : "взять"
+              i === firstLeft ? "взять (E)" : "взять"
             }</button></div>`
           : "",
       )
