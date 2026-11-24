@@ -26,17 +26,17 @@ test("анимация удара: оружие в руке по дуге, ла�
   await page.mouse.move(900, 300);
   await page.mouse.down();
   await page.waitForTimeout(70);
-  expect(
-    await page.evaluate(() => window.__city.combat.swingWeapon),
-  ).toBe("knife");
+  expect(await page.evaluate(() => window.__city.combat.swingWeapon)).toBe(
+    "knife",
+  );
   await page.screenshot({ path: ".cache/melee_knife.png" });
   await page.mouse.up();
   await page.waitForTimeout(350);
   await page.keyboard.press("Digit2");
   await swingShot(".cache/melee_bat.png");
-  expect(
-    await page.evaluate(() => window.__city.combat.swingWeapon),
-  ).toBe("bat");
+  expect(await page.evaluate(() => window.__city.combat.swingWeapon)).toBe(
+    "bat",
+  );
   await page.keyboard.press("F7");
   expect(await page.evaluate(() => window.__city.getMeleeStyle())).toBe("arc");
   await swingShot(".cache/melee_arc.png");
