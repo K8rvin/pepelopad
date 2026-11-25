@@ -78,9 +78,9 @@ test("SDK: ready/gameplay, облачный сейв и лидерборды", a
     .poll(() => page.evaluate(() => window.__yandexCalls.stop))
     .toBeGreaterThan(0);
   await page.locator("#pContinue").click();
-  expect(await page.evaluate(() => window.__yandexCalls.start)).toBeGreaterThan(
-    1,
-  );
+  await expect
+    .poll(() => page.evaluate(() => window.__yandexCalls.start))
+    .toBeGreaterThan(1);
 
   await page.evaluate(() => {
     const c = window.__city;
