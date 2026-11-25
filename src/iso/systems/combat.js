@@ -1,12 +1,14 @@
 // Бой (спроектирован заново для изометрии, не порт старой игры).
 // Лук: ЛКМ удерживать — натяжение (0→1 за 0.8 с), отпустить — выстрел.
 // Стрела летит в мировых координатах, тихая; шум слышат зомби в 8 м.
+// Молотов: бросок по дуге, разрыв о препятствия и огненная зона с уроном по тикам.
 // Зомби: кусают в контакте с кулдауном; урон игроку, спутникам и NPC; кровь; смерть.
 import { mulberry32 } from "../core/rng.js";
 import { countItem, removeItem } from "./inventory.js";
 import { ZTYPES } from "../data/zombies.js";
 import { solidInteriorAt } from "../world/interiors.js";
 import { moveActor } from "./actors.js";
+import { WEAPONS } from "../data/weapons.js";
 
 let rng = mulberry32(7);
 export function initCombat(seed) {
@@ -18,6 +20,8 @@ export function createCombat() {
     playerHp: 100,
     playerMaxHp: 100,
     arrows: [], // {x, y, dx, dy, dist, alive}
+    throwables: [], // {x, y, h, sx, sy, tx, ty, t, duration, level}
+    fires: [], // {x, y, level, radius, t, duration, nextTick}
     blood: [], // {x, y, r, t}
     corpses: [], // {x, y, t, pose, type, face, scale}
     debris: [], // {x, y, vx, vy, t, col} — обломки снесённых объектов
@@ -26,6 +30,7 @@ export function createCombat() {
     releaseT: 0, // кадр отпускания тетивы после выстрела
     stuck: [], // {x, y, dx, dy, t, ttl} — воткнутые в мир стрелы
     meleeCd: 0, // кулдаун ближнего удара
+    throwCd: 0, // кулдаун метательного оружия
     swingT: 0, // анимация замаха
     swingAng: 0, // курсор удара (мировой угол)
     hurtFlash: 0,
@@ -49,6 +54,13 @@ const ZOMBIE_ATTACK_CD = 1.2;
 export function screenToWorld(mx, my, camS, W, H, zoom) {
   const sx = (mx - W / 2) / zoom + camS.x;
   const sy = (my - H / 2) / zoom + camS.y + FLIGHT_H * 32;
+  return { x: sx / 64 + sy / 32, y: sy / 32 - sx / 64 };
+}
+
+// земля под курсором: точка броска не смещена на высоту тела, как прицел лука
+export function screenToGround(mx, my, camS, W, H, zoom) {
+  const sx = (mx - W / 2) / zoom + camS.x;
+  const sy = (my - H / 2) / zoom + camS.y;
   return { x: sx / 64 + sy / 32, y: sy / 32 - sx / 64 };
 }
 
@@ -159,6 +171,7 @@ export function updateCombat(
     }
   }
   C.arrows = C.arrows.filter((a) => a.alive);
+  updateThrowables(C, city, player, dt);
   // Без временных массивов: полный городской список проходится каждый кадр.
   for (const z of city.zombies) {
     if (z.dead) continue;
@@ -303,14 +316,17 @@ export function updateCombat(
   C.noArrowsT = Math.max(0, (C.noArrowsT || 0) - dt);
   C.releaseT = Math.max(0, (C.releaseT || 0) - dt);
   C.meleeCd = Math.max(0, (C.meleeCd || 0) - dt);
+  C.throwCd = Math.max(0, (C.throwCd || 0) - dt);
   C.swingT = Math.max(0, (C.swingT || 0) - dt);
   for (const s of C.stuck) s.t += dt;
   C.stuck = C.stuck.filter((s) => s.t < s.ttl);
-  for (const z of city.zombies)
+  for (const z of city.zombies) {
+    z.burnT = Math.max(0, (z.burnT || 0) - dt);
     if (z.arrows) {
       for (const s of z.arrows) s.t += dt;
       z.arrows = z.arrows.filter((s) => s.t < s.ttl);
     }
+  }
   // кровь и трупы
   for (const b of C.blood) b.t += dt;
   C.blood = C.blood.filter((b) => b.t < 60);
@@ -326,6 +342,23 @@ export function updateCombat(
   C.debris = C.debris.filter((d) => d.t < 0.8);
 }
 
+function killZombie(C, z, source, withBlood = true) {
+  if (z.dead) return;
+  z.dead = true;
+  C.kills++;
+  C.corpses.push({
+    x: z.x,
+    y: z.y,
+    t: 0,
+    pose: rng() < 0.5 ? 0 : 1,
+    type: z.type || "walker",
+    face: z.face || 1,
+    scale: ZTYPES[z.type || "walker"].scale,
+  });
+  if (withBlood) C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
+  C.onKill?.(source, z);
+}
+
 function hurtZombie(C, z, dmg, arrow) {
   z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
   z.hurtT = 0.3; // кадр получения урона
@@ -338,21 +371,7 @@ function hurtZombie(C, z, dmg, arrow) {
   z.ty = arrow.y - arrow.dy * 2;
   z.retarget = 0;
   C.blood.push({ x: z.x, y: z.y, r: 0.5 + rng() * 0.5, t: 0 });
-  if (z.hp <= 0) {
-    z.dead = true;
-    C.kills++;
-    C.corpses.push({
-      x: z.x,
-      y: z.y,
-      t: 0,
-      pose: rng() < 0.5 ? 0 : 1,
-      type: z.type || "walker",
-      face: z.face || 1,
-      scale: ZTYPES[z.type || "walker"].scale,
-    });
-    C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
-    C.onKill?.("arrow", z);
-  }
+  if (z.hp <= 0) killZombie(C, z, "arrow");
 }
 
 // отрезок против AABB (Liang-Barsky): экранный силуэт зомби
@@ -378,6 +397,139 @@ function segHitsRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
     }
   }
   return true;
+}
+
+// Бросок в точку на земле; слишком дальняя цель ограничивается дальностью оружия.
+export function throwTarget(player, aim, range = WEAPONS.molotov.range) {
+  const dx = aim.x - player.x,
+    dy = aim.y - player.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 0.001) return { x: player.x + 0.75, y: player.y, distance: 0.75 };
+  const distance = Math.max(0.75, Math.min(range, d));
+  return {
+    x: player.x + (dx / d) * distance,
+    y: player.y + (dy / d) * distance,
+    distance,
+  };
+}
+
+export function throwMolotov(C, player, aim, inv, city) {
+  const weapon = WEAPONS.molotov;
+  if (C.dead || C.throwCd > 0 || countItem(inv, "molotov") < 1) return false;
+  const target = throwTarget(player, aim, weapon.range);
+  removeItem(inv, "molotov", 1);
+  C.throwCd = weapon.cd;
+  C.throwables.push({
+    id: "molotov",
+    x: player.x,
+    y: player.y,
+    h: 0.35,
+    sx: player.x,
+    sy: player.y,
+    tx: target.x,
+    ty: target.y,
+    distance: target.distance,
+    t: 0,
+    duration: Math.max(0.25, target.distance / weapon.speed),
+    level: player.level || 0,
+  });
+  C.onThrow?.("molotov");
+  return true;
+}
+
+function hurtZombieFire(C, z, dmg) {
+  if (z.dead) return;
+  z.hp = (z.hp ?? ZOMBIE_HP) - dmg;
+  z.hurtT = 0.3;
+  z.burnT = 0.8;
+  if (z.hp <= 0) killZombie(C, z, "fire", false);
+}
+
+function explodeMolotov(C, city, projectile, x, y) {
+  const weapon = WEAPONS.molotov;
+  const fire = {
+    x,
+    y,
+    level: projectile.level,
+    radius: weapon.radius,
+    t: 0,
+    duration: weapon.duration,
+    nextTick: weapon.tick,
+    seed: x * 0.7 + y * 1.3,
+  };
+  C.fires.push(fire);
+  for (const z of city.zombies) {
+    if (z.dead) continue;
+    const d = Math.hypot(z.x - x, z.y - y);
+    if ((z.level || 0) === projectile.level && d <= weapon.radius + 0.3)
+      hurtZombieFire(C, z, weapon.impactDmg);
+    if (!z.dead && d < weapon.noise) {
+      z.tx = x;
+      z.ty = y;
+      z.retarget = 0;
+      z.alertT = 6;
+      z.propagated = false;
+    }
+  }
+  C.onExplode?.(fire);
+}
+
+function hurtPlayerFire(C, player, dmg) {
+  C.playerHp = Math.max(0, C.playerHp - dmg);
+  C.hurtFlash = 1;
+  C.shake = 4;
+  C.onHurt?.();
+  if (C.playerHp <= 0) {
+    C.dead = true;
+    C.deadT = 0;
+  }
+}
+
+function updateThrowables(C, city, player, dt) {
+  const weapon = WEAPONS.molotov;
+  for (const p of C.throwables) {
+    const step = Math.min(dt, p.duration - p.t);
+    if (step <= 0) continue;
+    const n = Math.max(1, Math.ceil((p.distance * (step / p.duration)) / 0.2));
+    for (let i = 0; i < n && !p.spent; i++) {
+      p.t = Math.min(p.duration, p.t + step / n);
+      const k = p.t / p.duration;
+      const nx = p.sx + (p.tx - p.sx) * k;
+      const ny = p.sy + (p.ty - p.sy) * k;
+      if (solidInteriorAt(city, nx, ny, 0.05, p.level)) {
+        p.spent = true;
+        explodeMolotov(C, city, p, p.x, p.y);
+        break;
+      }
+      p.x = nx;
+      p.y = ny;
+      p.h =
+        0.35 * (1 - k) +
+        Math.sin(Math.PI * k) * Math.min(3, 0.8 + p.distance * 0.1);
+      if (k >= 1) {
+        p.spent = true;
+        explodeMolotov(C, city, p, p.tx, p.ty);
+      }
+    }
+  }
+  C.throwables = C.throwables.filter((p) => !p.spent);
+  for (const f of C.fires) {
+    f.t = Math.min(f.duration, f.t + dt);
+    while (f.nextTick <= f.t) {
+      for (const z of city.zombies) {
+        if (z.dead || (z.level || 0) !== f.level) continue;
+        if (Math.hypot(z.x - f.x, z.y - f.y) <= f.radius + 0.3)
+          hurtZombieFire(C, z, weapon.burnDmg);
+      }
+      if (
+        (player.level || 0) === f.level &&
+        Math.hypot(player.x - f.x, player.y - f.y) <= f.radius
+      )
+        hurtPlayerFire(C, player, weapon.burnDmg);
+      f.nextTick += weapon.tick;
+    }
+  }
+  C.fires = C.fires.filter((f) => f.t < f.duration);
 }
 
 // выстрел при отпускании ЛКМ; стрелы расходуются из инвентаря.
@@ -448,19 +600,7 @@ export function hitZombieMelee(
   z.propagated = false;
   C.blood.push({ x: z.x, y: z.y, r: 0.5 + rng() * 0.5, t: 0 });
   if (z.hp > 0) return false;
-  z.dead = true;
-  C.kills++;
-  C.corpses.push({
-    x: z.x,
-    y: z.y,
-    t: 0,
-    pose: rng() < 0.5 ? 0 : 1,
-    type: z.type || "walker",
-    face: z.face || 1,
-    scale: ZTYPES[z.type || "walker"].scale,
-  });
-  C.blood.push({ x: z.x, y: z.y, r: 1.1 + rng() * 0.5, t: 0 });
-  C.onKill?.(source, z);
+  killZombie(C, z, source);
   return true;
 }
 

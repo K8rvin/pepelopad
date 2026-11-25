@@ -13,6 +13,12 @@ import { reconcileStreetDepths } from "./streetDepth.js";
 import { GAITS } from "./gait.js";
 import { drawMeleeSwing } from "./melee.js";
 import {
+  drawThrowable,
+  drawFirePatch,
+  drawBurningActor,
+  drawThrowAim,
+} from "./throwables.js";
+import {
   getInterior,
   wallWithGaps,
   buildingAtPoint,
@@ -314,6 +320,12 @@ export function renderWorld({
       dx + hw > -60 && dx - hw < W + 60 && dy + hh > -60 && dy - hh < H + 60
     );
   };
+  if (combat)
+    for (const fire of combat.fires) {
+      if ((fire.level || 0) !== (player.level || 0)) continue;
+      if (!vis(fire.x, fire.y, fire.radius * 40, fire.radius * 25)) continue;
+      R.drawCalls += drawFirePatch(ctx, fire, toX, toY, zoom, now);
+    }
   // base — вторичный ключ сортировки: при общем бусте от здания порядок
   // актёров между собой решает их собственная глубина, а не глубина здания
   const push = (depth, layer, f, base = depth) =>
@@ -600,7 +612,11 @@ export function renderWorld({
     push(
       actorDepth(city, z),
       2,
-      () => drawActor(ctx, z, SPR, toX, toY, zoom, false, null, null, R.gait),
+      () => {
+        drawActor(ctx, z, SPR, toX, toY, zoom, false, null, null, R.gait);
+        if (z.burnT > 0)
+          R.drawCalls += drawBurningActor(ctx, z, toX, toY, zoom, now);
+      },
       z.x + z.y,
     );
   }
@@ -990,6 +1006,11 @@ export function renderWorld({
         R.drawCalls += 3;
       });
     }
+    for (const p of combat.throwables) {
+      push(p.x + p.y + 0.04, 2, () => {
+        R.drawCalls += drawThrowable(ctx, p, toX, toY, zoom);
+      });
+    }
     // воткнутые стрелы: в мире (стены/предметы) и в телах зомби
     for (const s of combat.stuck) {
       push(s.x + s.y + 0.01, 2, () =>
@@ -1055,6 +1076,7 @@ export function renderWorld({
       W,
       H,
       camps,
+      fires: combat?.fires,
       aim,
       car,
     });
@@ -1105,8 +1127,11 @@ export function renderWorld({
   }
   // боевые оверлеи: прицел, дуга натяжения, вспышка урона, смерть
   if (combat && !combat.dead) {
-    // прицел в точке aim (на высоте полёта стрелы — совпадает с курсором)
-    const ap = w2s(aim.x, aim.y, FLIGHT_H);
+    // прицел в точке aim; для броска дополнительно показываем зону разрыва
+    const aimHeight = player.weapon === "molotov" ? 0 : FLIGHT_H;
+    const ap = w2s(aim.x, aim.y, aimHeight);
+    if (player.weapon === "molotov")
+      R.drawCalls += drawThrowAim(ctx, player, aim, toX, toY, zoom);
     const ax = toX(ap.x),
       ay = toY(ap.y);
     ctx.strokeStyle = "rgba(194,190,178,0.8)";

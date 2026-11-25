@@ -43,6 +43,7 @@ export function renderNight({
   W,
   H,
   camps,
+  fires,
   aim,
   car,
 }) {
@@ -147,6 +148,19 @@ export function renderNight({
         144 * zoom * s,
       );
     }
+  if (fires)
+    for (const f of fires) {
+      if ((f.level || 0) !== (player.level || 0)) continue;
+      const fp = w2s(f.x, f.y);
+      const k = f.radius / 2.5;
+      g.drawImage(
+        L.glowLamp,
+        (toX(fp.x) - 144 * k * zoom) * s,
+        (toY(fp.y) - 60 * k * zoom) * s,
+        288 * k * zoom * s,
+        144 * k * zoom * s,
+      );
+    }
 
   const wc = L.warmCtx;
   wc.globalCompositeOperation = "source-over";
@@ -186,6 +200,19 @@ export function renderNight({
       288 * zoom * s,
       144 * zoom * s,
     );
+  if (fires)
+    for (const f of fires) {
+      if ((f.level || 0) !== (player.level || 0)) continue;
+      const fp = w2s(f.x, f.y);
+      const k = f.radius / 2.5;
+      wc.drawImage(
+        L.glowWarmLamp,
+        (toX(fp.x) - 144 * k * zoom) * s,
+        (toY(fp.y) - 60 * k * zoom) * s,
+        288 * k * zoom * s,
+        144 * k * zoom * s,
+      );
+    }
 
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(L.lightCv, 0, 0, W, H);

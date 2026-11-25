@@ -176,6 +176,10 @@ export function createAudio() {
     },
     torch: () =>
       noise({ dur: 0.25, g: 0.2, type: "highpass", f: 900, f2: 2400 }),
+    fire: () => {
+      noise({ dur: 0.65, g: 0.35, type: "lowpass", f: 1800, f2: 350 });
+      noise({ dur: 0.35, g: 0.16, type: "highpass", f: 900, f2: 2600 });
+    },
     levelup: () => {
       tone({ f: 600, dur: 0.1, g: 0.16 });
       tone({ f: 800, dur: 0.1, g: 0.16, at: 0.09 });

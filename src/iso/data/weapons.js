@@ -1,8 +1,24 @@
 // Оружие (данные отдельно от механик). Лук — дальнее (натяжение ЛКМ),
 // ближние — удар по клику ЛКМ дугой перед игроком. Кулаки — без предмета.
+// Молотов — бросок по дуге и временная огненная зона в точке разрыва.
 // dmg — базовый урон, range — м, cd — с, noise — радиус шума м, knock — отброс м.
 export const WEAPONS = {
   bow: { id: "bow", name: "Лук", kind: "ranged", icon: "🏹" },
+  molotov: {
+    id: "molotov",
+    name: "Коктейль Молотова",
+    kind: "throwable",
+    icon: "🔥",
+    range: 12,
+    speed: 14,
+    cd: 0.8,
+    noise: 14,
+    impactDmg: 20,
+    radius: 2.5,
+    duration: 8,
+    tick: 0.5,
+    burnDmg: 8,
+  },
   bat: {
     id: "bat",
     name: "Бита",
@@ -99,6 +115,8 @@ export const NPC_WEAPONS = {
 export function npcWeaponDef(id) {
   return NPC_WEAPONS[id] || null;
 }
+
+export const THROWABLE_ITEMS = ["molotov"];
 
 // ближнее оружие, которым можно владеть через предмет инвентаря
 export const MELEE_ITEMS = ["bat", "knife"];

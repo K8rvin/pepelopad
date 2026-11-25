@@ -1,7 +1,7 @@
 // DOM-интерфейс: рюкзак (действия по клику на ячейку), обыск, крафт, персонаж.
 // Отделён от игрового цикла.
 import { ITEMS } from "../data/items.js";
-import { MELEE_ITEMS } from "../data/weapons.js";
+import { MELEE_ITEMS, THROWABLE_ITEMS } from "../data/weapons.js";
 import { RECIPES } from "../data/recipes.js";
 import { CONTAINER_NAMES } from "../systems/loot.js";
 import { iconHtml } from "../render/icons.js";
@@ -96,7 +96,7 @@ export function createUI({
       );
     if (s.id === "torch")
       btns.push(`<button data-act="use">Зажечь / погасить</button>`);
-    if (MELEE_ITEMS.includes(s.id))
+    if (MELEE_ITEMS.includes(s.id) || THROWABLE_ITEMS.includes(s.id))
       btns.push(`<button data-act="equip">Взять в руки</button>`);
     if (!def.unique) btns.push(`<button data-act="drop">Выбросить</button>`);
     return `<div class="ctxmenu" data-slot="${i}">${btns.join("")}</div>`;
@@ -310,13 +310,13 @@ export function createUI({
   function helpPanel() {
     return `<div class="panel wide"><h3>Справка</h3>
       <div class="menu-controls" style="display:block">
-        WASD — движение / руль · Shift — бег (стамина) · ЛКМ — лук / ближний удар<br>
+        WASD — движение / руль · Shift — бег (стамина) · ЛКМ — лук / ближний удар / бросок<br>
         E — обыск / сесть / лестница / диалог / сюжетное действие · у спутника — следовать / ждать<br>
         В диалоге E / Space / Enter или клик — дальше, 1/2/3 — ответ · в окне лута E — взять верхнюю вещь<br>
         Space — взять всё (в окне лута) · I — рюкзак · C — крафт · P — персонаж<br>
         TAB — панель с вкладками · M — карта · J — журнал · Q — еда · H — бинт (снимает инфекцию)<br>
         T — багажник · F — заправить · Y — ремонт машины деталью · V — база · G — спутник следует / ждёт<br>
-        B — разбить окно · X — спуск с этажа · 1/2/3 — лук/бита/нож · R — возрождение · Esc — пауза
+        B — разбить окно · X — спуск с этажа · 1/2/3/4 — лук/бита/нож/Молотов · R — возрождение · Esc — пауза
       </div>
       <div class="hint">Ставки: голод на нуле и инфекция точат HP; спринт тратит стамину; укус может заразить.</div>
     </div>`;

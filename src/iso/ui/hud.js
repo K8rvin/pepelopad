@@ -80,7 +80,9 @@ export function createHud({ hudRoot, toastsRoot, debugRoot, deathRoot }) {
             w.owned
               ? w.kind === "ranged"
                 ? "ЛКМ выстрел"
-                : "ЛКМ удар"
+                : w.kind === "throwable"
+                  ? `ЛКМ бросок · ${w.count}`
+                  : "ЛКМ удар"
               : "нет предмета"
           }</span>`,
       )

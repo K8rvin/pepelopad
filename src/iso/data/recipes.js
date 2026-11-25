@@ -25,6 +25,12 @@ export const RECIPES = [
     inputs: { wood: 1, cloth: 1 },
   },
   {
+    id: "molotov",
+    name: "Коктейль Молотова",
+    out: { id: "molotov", n: 1 },
+    inputs: { fuel: 1, cloth: 1 },
+  },
+  {
     id: "bat",
     name: "Бита",
     out: { id: "bat", n: 1 },

@@ -49,8 +49,10 @@ import {
   updateCombat,
   releaseBow,
   meleeAttack,
+  throwMolotov,
   respawn,
   screenToWorld,
+  screenToGround,
 } from "./systems/combat.js";
 import { weaponDef, WEAPONS } from "./data/weapons.js";
 import {
@@ -447,7 +449,7 @@ export async function boot() {
     questEvent("kill", { group: z?.questGroup, zombieType: z?.type });
     if (source === "ram") skillXp("driving", 10);
     else if (source === "melee") skillXp("melee", 15);
-    else if (source !== "npc") skillXp("archery", 15);
+    else if (source === "arrow") skillXp("archery", 15);
     audio.play("kill");
     if (z?.type === "boss") {
       addItem(inv, "meds", 3);
@@ -471,6 +473,11 @@ export async function boot() {
   };
   combat.onKnock = () => audio.play("knock");
   combat.onCarHit = () => audio.play("carHit");
+  combat.onExplode = (fire) => {
+    audio.play("glass");
+    audio.play("fire");
+    say(comic, fire.x, fire.y, "ВЖУХ!", "alert", 1.1);
+  };
   combat.onPractice = (weapon, target) => {
     questEvent("practice", { target: weapon });
     say(comic, target.x, target.y, "Есть!", "heal", 1);
@@ -744,6 +751,12 @@ export async function boot() {
 
   let zoom = 2; // старт в приближенном виде (по playtest пользователя)
   const mouse = { x: 0, y: 0 };
+  function aimPoint() {
+    const camS = w2s(cam.x, cam.y);
+    const project =
+      player.weapon === "molotov" ? screenToGround : screenToWorld;
+    return project(mouse.x, mouse.y, camS, W, H, zoom);
+  }
   cv.addEventListener("mousemove", (e) => {
     const r = cv.getBoundingClientRect();
     mouse.x = e.clientX - r.left;
@@ -759,6 +772,17 @@ export async function boot() {
       !campaign.dialogue.conversation
     ) {
       const w = weaponDef(player.weapon);
+      if (w.kind === "throwable") {
+        if (countItem(inv, "molotov") < 1) {
+          say(comic, player.x, player.y, "Нет коктейлей!", "alert", 1.4);
+          audio.play("empty");
+          return;
+        }
+        const camS = w2s(cam.x, cam.y);
+        const aim = screenToGround(mouse.x, mouse.y, camS, W, H, zoom);
+        if (throwMolotov(combat, player, aim, inv, city)) audio.play("swing");
+        return;
+      }
       if (w.kind === "melee") {
         const camS = w2s(cam.x, cam.y);
         const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
@@ -878,6 +902,7 @@ export async function boot() {
     if (e.code === "Digit1") equipWeapon("bow");
     if (e.code === "Digit2") equipWeapon("bat");
     if (e.code === "Digit3") equipWeapon("knife");
+    if (e.code === "Digit4") equipWeapon("molotov");
     if (e.code === "KeyM") {
       if (ui.isOpen()) ui.close();
       map.open();
@@ -1462,10 +1487,12 @@ export async function boot() {
         { key: 1, id: "bow" },
         { key: 2, id: "bat" },
         { key: 3, id: "knife" },
+        { key: 4, id: "molotov" },
       ].map((w) => ({
         ...w,
         name: WEAPONS[w.id].name,
         kind: WEAPONS[w.id].kind,
+        count: countItem(inv, w.id),
         owned: countItem(inv, w.id) > 0 || player.weapon === w.id,
         active: player.weapon === w.id,
       })),
@@ -1572,8 +1599,7 @@ export async function boot() {
     });
     reportGameplay(simulationPaused);
     if (simulationPaused) {
-      const camS0 = w2s(cam.x, cam.y);
-      const aim0 = screenToWorld(mouse.x, mouse.y, camS0, W, H, zoom);
+      const aim0 = aimPoint();
       renderWorld(renderPayload(aim0, night, t));
       hud.update(hudState());
       objectiveUI.update(objectiveState(quests, ALL_QUESTS, objectiveHint()));
@@ -1729,8 +1755,7 @@ export async function boot() {
       alertSayT = 8;
     }
     wasChased = chased;
-    const camS = w2s(cam.x, cam.y);
-    const aim = screenToWorld(mouse.x, mouse.y, camS, W, H, zoom);
+    const aim = aimPoint();
     updateCombat(
       combat,
       city,

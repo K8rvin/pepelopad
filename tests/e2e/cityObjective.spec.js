@@ -48,7 +48,7 @@ test("панель цели слева сверху; оружие с хотке�
   const box = await page.locator("#objective").boundingBox();
   expect(box.x).toBeLessThan(400);
   expect(box.y).toBeLessThan(300);
-  // панель оружия: хоткеи 1/2/3, нож пока не сделан
+  // панель оружия: хоткеи 1/2/3/4, нож и Молотов пока не созданы
   await expect(page.locator("#hudWeapons")).toContainText("Лук");
   await expect(
     page.locator("#hudWeapons .wep.off").filter({ hasText: "Нож" }),

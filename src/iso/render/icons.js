@@ -143,6 +143,20 @@ const DRAW = {
     px(6, 12, 3, 1, C.metalDark);
     px(7, 7, 1, 1, C.metalLight);
   },
+  molotov({ px }) {
+    // бутылка с топливом, тряпка и маленький фитиль
+    px(6, 5, 5, 10, C.outline);
+    px(7, 7, 3, 7, "#52634b");
+    px(7, 10, 3, 4, "#8a6a32");
+    px(7, 7, 1, 6, "#91a071");
+    px(7, 3, 3, 3, C.outline);
+    px(8, 2, 2, 2, C.metalDark);
+    px(9, 2, 4, 2, C.clothLight);
+    px(11, 3, 2, 2, C.cloth);
+    px(12, 1, 2, 2, C.flame);
+    px(13, 0, 1, 2, C.flameHot);
+    px(10, 12, 2, 2, "#3c4937");
+  },
   torch({ px }) {
     // рукоять
     for (let i = 0; i < 6; i++) px(5 + i, 13 - i, 2, 2, C.woodDark);
