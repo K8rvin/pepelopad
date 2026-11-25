@@ -148,8 +148,13 @@ import {
   toggleSurvivor,
   followingSurvivor,
 } from "./systems/survivors.js";
-import { isSimulationPaused, isTutorialCraft } from "./systems/pause.js";
+import {
+  createGameplayReporter,
+  isSimulationPaused,
+  isTutorialCraft,
+} from "./systems/pause.js";
 import { noiseProfile } from "./systems/stealth.js";
+import { chooseNewestSave, createYandexPlatform } from "./platform/yandex.js";
 import {
   createInteractions,
   nearestInteraction,
@@ -191,6 +196,7 @@ export async function boot() {
     await new Promise((r) => setTimeout(r, 0));
   };
 
+  const platformPromise = createYandexPlatform();
   // подсветка цели (F6): свечение силуэта — дефолт, уголки рамки — альтернатива
   let highlightVariant = "outline";
   const hlLab = createHighlightLab({ onPick: (id) => setHighlight(id) });
@@ -348,6 +354,8 @@ export async function boot() {
 
   // загрузка сохранения
   const wantNew = params.get("new") === "1";
+  const platform = await platformPromise;
+  if (wantNew) platform.clearCloud();
   await step(
     0.92,
     hasSave() && !wantNew
@@ -355,8 +363,11 @@ export async function boot() {
       : "Прячем консервы по тайникам…",
   );
   let loaded = false;
-  if (hasSave() && !wantNew) {
-    const data = loadGameData();
+  if (!wantNew) {
+    const data = chooseNewestSave(
+      hasSave() ? loadGameData() : null,
+      await platform.loadCloud(),
+    );
     if (data && data.seed === seed && data.nb === nb) {
       applySave(data, {
         city,
@@ -688,8 +699,8 @@ export async function boot() {
     onOpenMap: () => map.open(),
   });
 
-  const doSave = () =>
-    saveGame({
+  const doSave = () => {
+    const data = saveGame({
       city,
       player,
       combat,
@@ -706,6 +717,13 @@ export async function boot() {
       survivors,
       siege,
     });
+    platform.saveCloud(data);
+    return data;
+  };
+  const reportGameplay = createGameplayReporter({
+    onStart: () => platform.gameplayStart(),
+    onStop: () => platform.gameplayStop(),
+  });
 
   // смерть и возрождение с ценой (четверть стаков, сытость снижается)
   let deathShown = false;
@@ -1274,7 +1292,10 @@ export async function boot() {
   let saveT = 15;
   const frameState = { insideB: null, stairsNear: false, windowNear: null };
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) doSave();
+    if (document.hidden) {
+      platform.gameplayStop();
+      doSave();
+    }
   });
 
   // контекстная подсказка действия для первой незавершённой цели этапа
@@ -1543,14 +1564,14 @@ export async function boot() {
       if (night && !combat.dead)
         say(comic, player.x, player.y, "Тихо…", "think", 2.2);
     }
-    if (
-      isSimulationPaused({
-        paused,
-        menuOpen: menu.isOpen(),
-        dialogueOpen: !!campaign.dialogue.conversation,
-        tutorialModal: isTutorialCraft(quests) && ui.isOpen(),
-      })
-    ) {
+    const simulationPaused = isSimulationPaused({
+      paused,
+      menuOpen: menu.isOpen(),
+      dialogueOpen: !!campaign.dialogue.conversation,
+      tutorialModal: isTutorialCraft(quests) && ui.isOpen(),
+    });
+    reportGameplay(simulationPaused);
+    if (simulationPaused) {
       const camS0 = w2s(cam.x, cam.y);
       const aim0 = screenToWorld(mouse.x, mouse.y, camS0, W, H, zoom);
       renderWorld(renderPayload(aim0, night, t));
@@ -1628,6 +1649,7 @@ export async function boot() {
       campsNewDay(camps, survival.day);
       baseNewDay(base, survival.day);
       campaign.newDay();
+      platform.submitScores({ day: survival.day, kills: combat.kills });
     }
     if (survival.tod >= 21 && survival.tod < 21.1) {
       const n = baseRaid(base, city, survival.day);
@@ -1772,6 +1794,7 @@ export async function boot() {
     if (combat.dead && !deathShown) {
       deathShown = true;
       stats.deaths++;
+      platform.submitScores({ day: survival.day, kills: combat.kills });
       deathLost = deathPenalty(inv.slots);
       audio.play("death");
       audio.engineStop();
@@ -1828,6 +1851,7 @@ export async function boot() {
 
   await step(1, "Район проснулся. Удачи!");
   loading.done();
+  platform.loadingReady();
   requestAnimationFrame(frame);
 }
 
