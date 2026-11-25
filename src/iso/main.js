@@ -43,6 +43,7 @@ import {
   spawnZombie,
   alertNear,
 } from "./systems/actors.js";
+import { createBarks, updateBarks } from "./systems/barks.js";
 import {
   createCombat,
   initCombat,
@@ -312,6 +313,7 @@ export async function boot() {
   const stats = createStats();
   const levelFx = createLevelUp();
   const comic = createComic();
+  const barks = createBarks(seed);
   let lootOpen = null; // {c, taken:{id:n}} — сессия обыска для фидбека при закрытии
 
   // слой презентации: настройки, звук, HUD, карта, меню
@@ -1767,6 +1769,12 @@ export async function boot() {
       mods,
       survivors,
       npcs,
+    );
+    updateBarks(
+      barks,
+      comic,
+      { zombies: city.zombies, npcs, survivors, player },
+      dt,
     );
     frameState.insideB = playerInside(city, player);
     frameState.stairsNear = false;

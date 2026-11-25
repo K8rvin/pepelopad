@@ -1406,6 +1406,20 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function comicTextLines(ctx, text, maxWidth) {
+  const lines = [];
+  let line = "";
+  for (const word of text.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(next).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 // комикс-слой: всплывающая добыча «+N» и облачка-реплики над миром
 function drawComic(ctx, comic, toX, toY, zoom) {
   for (const f of comic.floats) {
@@ -1426,7 +1440,9 @@ function drawComic(ctx, comic, toX, toY, zoom) {
     ctx.textAlign = "left";
   }
   for (const b of comic.bubbles) {
-    const p = w2s(b.x, b.y, 2.3);
+    const height =
+      b.target?.type === "boss" ? 3.5 : b.target?.type === "brute" ? 2.8 : 2.3;
+    const p = w2s(b.x, b.y, height);
     const x = toX(p.x),
       y = toY(p.y);
     const k = b.t / b.ttl;
@@ -1434,9 +1450,11 @@ function drawComic(ctx, comic, toX, toY, zoom) {
     const pop = Math.min(1, b.t / 0.12);
     ctx.globalAlpha = Math.max(0, a);
     ctx.font = `bold ${13 * zoom}px monospace`;
-    const tw = ctx.measureText(b.text).width;
+    const lines = comicTextLines(ctx, b.text, 190 * zoom);
+    const tw = Math.max(...lines.map((line) => ctx.measureText(line).width));
+    const lineH = 15 * zoom;
     const w = (tw + 18 * zoom) * pop,
-      h = 24 * zoom * pop;
+      h = (24 * zoom + (lines.length - 1) * lineH) * pop;
     const bx = x - w / 2,
       by = y - h;
     const alert = b.kind === "alert";
@@ -1462,7 +1480,8 @@ function drawComic(ctx, comic, toX, toY, zoom) {
           ? "#5a5e50"
           : "#1a1712";
     ctx.textAlign = "center";
-    ctx.fillText(b.text, x, by + h / 2 + 4 * zoom);
+    const firstY = by + h / 2 - ((lines.length - 1) * lineH) / 2 + 4 * zoom;
+    lines.forEach((line, i) => ctx.fillText(line, x, firstY + i * lineH));
     ctx.textAlign = "left";
     ctx.globalAlpha = 1;
   }
