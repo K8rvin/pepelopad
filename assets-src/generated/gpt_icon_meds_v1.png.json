@@ -1,0 +1,26 @@
+{
+  "id": "icon_meds",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Винтажный рулон бинта с красным крестом.png",
+  "createdAt": "2026-11-26T10:35:11.269Z",
+  "sha256": "bc3c37e04abf3e310c8eb2864e944b4e651d51ca6628eec729fb1d2d620806e3",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_meds.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "street_shopping_cart",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Ржавый постапокалиптический магазинный trolley.png",
+  "createdAt": "2026-11-26T13:28:32.093Z",
+  "sha256": "a39fe4fa6ab9a8aa7cc6070d7754f8edf71d2606abe450257d56836c19b30266",
+  "originalSize": [
+    1323,
+    1189
+  ],
+  "runtime": "public/assets/gen/street_shopping_cart.png",
+  "runtimeSize": [
+    482,
+    512
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

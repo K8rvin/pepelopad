@@ -1,7 +1,19 @@
-// Иконки предметов: процедурный пиксель-арт 32×32 (сетка 16×16, «пиксель» 2 px).
-// Замена эмодзи в панелях; стиль — палитра игры. Кэш dataURL на сессию.
-// Позже могут быть заменены генерированными PNG без изменения панелей.
+// Иконки предметов: отобранные PNG + процедурный fallback для остальных ID.
 import { mkCanvas } from "../core/geo.js";
+
+const BASE = (import.meta.env && import.meta.env.BASE_URL) || "/";
+
+export const ICON_FILES = {
+  wood: "assets/gen/icon_wood.png",
+  scrap: "assets/gen/icon_scrap.png",
+  cloth: "assets/gen/icon_cloth.png",
+  can: "assets/gen/icon_can.png",
+  meds: "assets/gen/icon_meds.png",
+  arrow: "assets/gen/icon_arrow.png",
+  fuel: "assets/gen/icon_fuel.png",
+  part: "assets/gen/icon_part.png",
+  torch: "assets/gen/icon_torch.png",
+};
 
 const C = {
   outline: "#1a1712",
@@ -249,8 +261,7 @@ export function itemIcons() {
 
 // HTML иконки для панелей (img вместо эмодзи-span)
 export function iconHtml(id, size = 20) {
-  const icons = itemIcons();
-  const src = icons[id];
+  const src = ICON_FILES[id] ? BASE + ICON_FILES[id] : itemIcons()[id];
   if (!src) return "";
   return `<img class="ic" src="${src}" width="${size}" height="${size}" alt="" draggable="false">`;
 }

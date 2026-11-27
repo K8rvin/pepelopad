@@ -198,6 +198,41 @@ export function suburbInterior(b) {
     return false;
   }
 
+  function putOn(host, kind, offsetX = 0, offsetY = 0) {
+    const def = FURNITURE[kind];
+    furniture.push({
+      kind,
+      x: host.x + (host.w - def.w) / 2 + offsetX,
+      y: host.y + (host.h - def.d) / 2 + offsetY,
+      w: def.w,
+      h: def.d,
+      decorative: true,
+      baseH: FURNITURE[host.kind].h,
+      depthBias: 0.01,
+    });
+  }
+
+  function putDecor(room, kind, x, y, baseH = 0) {
+    const def = FURNITURE[kind];
+    if (
+      x < room.x1 + WALL_MARGIN ||
+      y < room.y1 + WALL_MARGIN ||
+      x + def.w > room.x2 - WALL_MARGIN ||
+      y + def.d > room.y2 - WALL_MARGIN
+    )
+      return;
+    furniture.push({
+      kind,
+      x,
+      y,
+      w: def.w,
+      h: def.d,
+      decorative: true,
+      baseH,
+      depthBias: 0.01,
+    });
+  }
+
   // Ассеты мебели лицевые (смотрят на юго-восток, в камеру). Ставим их спиной
   // к ВЕРХНИМ стенам: северной (y1, справа-вверху) и западной (x1, слева-вверху).
   // Южная (y2) и восточная (x2) стены — с окнами; держим их свободными для входа.
@@ -224,7 +259,16 @@ export function suburbInterior(b) {
     ),
   );
   const tableY = kitchen.y1 + 1.35; // центр кухни, не у южного окна
+  const tableItem = {
+    kind: "table",
+    x: tableX,
+    y: tableY,
+    w: table.w,
+    h: table.d,
+  };
   if (put(kitchen, "table", tableX, tableY)) {
+    putOn(tableItem, "table_lamp", -0.4);
+    putOn(tableItem, b.id % 2 ? "decor_dishes" : "decor_papers", 0.35, 0.08);
     putAny(kitchen, "chair", [
       [tableX - 0.72, tableY + 0.15],
       [tableX + table.w + 0.17, tableY + 0.15],
@@ -249,22 +293,43 @@ export function suburbInterior(b) {
     [living.x2 - FURNITURE.floor_lamp.w - 0.25, northY(living)],
     [westX(living), living.y1 + 3.0],
   ]);
+  putDecor(
+    living,
+    "decor_rug",
+    (living.x1 + living.x2 - FURNITURE.decor_rug.w) / 2,
+    living.y1 + 1.55,
+  );
+  putDecor(living, "decor_painting", living.x1 + 0.3, northY(living), 0.75);
+  putDecor(living, "decor_clock", living.x1 + 1.4, northY(living), 1.15);
+  putDecor(living, "decor_curtains", living.x2 - 1.75, northY(living), 0.35);
 
   function furnishBedroom(room, master) {
     const bedW = 1.55;
     const bedD = Math.min(1.7, room.y2 - room.y1 - 0.42);
     const bedX = startX(room); // изголовье к северу, спинка к западу
     const bedY = room.y1 + 0.21;
+    const bedItem = { kind: "bed", x: bedX, y: bedY, w: bedW, h: bedD };
     if (put(room, "bed", bedX, bedY, bedW, bedD)) {
-      put(
-        room,
-        "nightstand",
-        bedX + bedW + 0.08,
-        bedY,
-        FURNITURE.nightstand.w,
-        FURNITURE.nightstand.d,
-        true,
-      );
+      putOn(bedItem, b.id % 2 ? "decor_teddy" : "decor_clothes", -0.25, 0.15);
+      const standItem = {
+        kind: "nightstand",
+        x: bedX + bedW + 0.08,
+        y: bedY,
+        w: FURNITURE.nightstand.w,
+        h: FURNITURE.nightstand.d,
+      };
+      if (
+        put(
+          room,
+          "nightstand",
+          standItem.x,
+          standItem.y,
+          standItem.w,
+          standItem.h,
+          true,
+        )
+      )
+        putOn(standItem, "decor_books");
     }
     putAny(
       room,

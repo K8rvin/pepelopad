@@ -1,0 +1,26 @@
+{
+  "id": "icon_fuel",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Потёртая красная канистра с ржавчиной.png",
+  "createdAt": "2026-11-26T10:42:44.906Z",
+  "sha256": "cb52b0c937e82750822e1bc7d603c43c84678fa7c98368f5ecead01927ca36be",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_fuel.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

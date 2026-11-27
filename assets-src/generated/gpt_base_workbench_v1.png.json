@@ -1,0 +1,25 @@
+{
+  "id": "base_workbench",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Постапокалиптический верстак с инструментами.png",
+  "createdAt": "2026-11-25T19:19:00.531Z",
+  "sha256": "59d120828e0df6b0f226f8444d21eb5a0c770105453fef6872ec1d452acc6530",
+  "originalSize": [
+    1402,
+    1122
+  ],
+  "runtime": "public/assets/gen/base_workbench.png",
+  "runtimeSize": [
+    512,
+    413
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

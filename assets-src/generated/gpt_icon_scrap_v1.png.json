@@ -1,0 +1,26 @@
+{
+  "id": "icon_scrap",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Куча ржавого металлолома.png",
+  "createdAt": "2026-11-26T10:18:04.815Z",
+  "sha256": "b44ef321758be0aeff372bf41ce5e5e2b4a98e065a3c9375be8c5241342306ad",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_scrap.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

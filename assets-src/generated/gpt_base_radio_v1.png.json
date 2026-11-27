@@ -1,0 +1,25 @@
+{
+  "id": "base_radio",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Постапокалиптическая радиостанция на столе.png",
+  "createdAt": "2026-11-25T19:25:32.258Z",
+  "sha256": "2c70971c057d3f35f84e31aa68739987ba81ecf0fb3b83e8fd54eaa9f554e53c",
+  "originalSize": [
+    1312,
+    1199
+  ],
+  "runtime": "public/assets/gen/base_radio.png",
+  "runtimeSize": [
+    512,
+    489
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

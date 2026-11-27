@@ -1,0 +1,25 @@
+{
+  "id": "decor_clock",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Старинные часы с потёртой деревянной рамой.png",
+  "createdAt": "2026-11-22T21:01:38.091Z",
+  "sha256": "eee22ded26b0a01d5ba93159fa0e59605d66628b8159d5543a22c32a47cda413",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/decor_clock.png",
+  "runtimeSize": [
+    487,
+    512
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

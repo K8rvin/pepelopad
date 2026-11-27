@@ -1,0 +1,25 @@
+{
+  "id": "decor_papers",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Стопка состаренных пергаментных листов.png",
+  "createdAt": "2026-11-22T21:08:00.096Z",
+  "sha256": "0b6738583fb71b8e776892f88190f1a17aa719dee75dae8dccdb5f367adfd355",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/decor_papers.png",
+  "runtimeSize": [
+    512,
+    327
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

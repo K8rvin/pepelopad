@@ -18,6 +18,15 @@ const GENERATED_KINDS = [
   "armchair",
   "tv",
   "bookcase",
+  "decor_rug",
+  "decor_painting",
+  "decor_clock",
+  "decor_curtains",
+  "decor_books",
+  "decor_clothes",
+  "decor_dishes",
+  "decor_teddy",
+  "decor_papers",
 ];
 
 function reachableKeys(city, b, it) {
@@ -76,7 +85,7 @@ describe("одноэтажные пригородные дома", () => {
     }
     for (const kind of GENERATED_KINDS)
       expect(kinds.has(kind), kind).toBe(true);
-    for (const kind of ["chair", "floor_lamp", "washer", "dryer"])
+    for (const kind of ["chair", "floor_lamp", "table_lamp", "washer", "dryer"])
       expect(kinds.has(kind), kind).toBe(true);
   });
 
@@ -96,6 +105,7 @@ describe("одноэтажные пригородные дома", () => {
         for (let j = i + 1; j < it.furniture.length; j++) {
           const a = it.furniture[i];
           const c = it.furniture[j];
+          if (a.decorative || c.decorative) continue;
           const hit = !(
             a.x + a.w <= c.x ||
             c.x + c.w <= a.x ||

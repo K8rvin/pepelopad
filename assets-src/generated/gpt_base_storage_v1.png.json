@@ -1,0 +1,25 @@
+{
+  "id": "base_storage",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Постапокалиптический стеллаж с припасами.png",
+  "createdAt": "2026-11-25T19:22:26.681Z",
+  "sha256": "5d8c453bd0eaead641b50ec20679f7e9afab44d662c5183e2b79d7bf9dc9c1b9",
+  "originalSize": [
+    1402,
+    1122
+  ],
+  "runtime": "public/assets/gen/base_storage.png",
+  "runtimeSize": [
+    408,
+    512
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "tree_dead_split",
+  "source": "GPT",
+  "prompt": "Isometric old dead tree with a lightning-split trunk and twisted broken branches, transparent background, no leaves, ground, shadow or text.",
+  "originalImport": "tmp/Древо мертвых ветвей.png",
+  "createdAt": "2026-11-26T11:07:05.892Z",
+  "sha256": "8be2fbff7286817936e9ef99c4549e003aab5c08d8ab46e5e1f26515bf405832",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/tree_dead_split.png",
+  "runtimeSize": [
+    512,
+    768
+  ],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 768,
+    "pipeline": "scripts/process_tree_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Изолированное дерево; якорь низ-центр ствола, высота 768 как у tree_dead/tree_birch."
+}

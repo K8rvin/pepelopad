@@ -1,0 +1,20 @@
+{
+  "id": "tree_birch_sparse",
+  "source": "GPT",
+  "prompt": "Isometric 3/4 view of a slender young birch tree with a slightly curved white trunk and sparse faded ochre leaves. Full tree centered, transparent background, no ground, landscape, shadow or text.",
+  "originalImport": "tmp/Тонкая берёза с осенними листьями.png",
+  "createdAt": "2026-11-26T10:58:43.348Z",
+  "sha256": "2cae5d7b5c68e77df5aa594271cc99fe0c779d2b391d84339f1a9647eac88d44",
+  "originalSize": [1024, 1536],
+  "runtime": "public/assets/gen/tree_birch_sparse.png",
+  "runtimeSize": [416, 768],
+  "processing": {
+    "alphaBelow4Removed": true,
+    "alpha254PromotedTo255": true,
+    "cropThreshold": 16,
+    "padding": 24,
+    "height": 768,
+    "pipeline": "scripts/process_tree_frame.mjs (headless Chrome canvas, no Python on host)"
+  },
+  "notes": "Дополнительный вариант берёзы; якорь низ-центр ствола, высота 768 как у tree_dead/tree_birch."
+}

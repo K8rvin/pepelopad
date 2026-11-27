@@ -371,12 +371,20 @@ function bakeBuilding(b, seedKey) {
             base.x - minX - (f.dx === 1 ? 22 : 0),
             base.y - minY,
           );
-          g.drawImage(SPRTEX.win_intact, 0, -48, 45, 48);
+          g.drawImage(
+            b.playerBase && SPRTEX.base_window_barricade
+              ? SPRTEX.base_window_barricade
+              : SPRTEX.win_intact,
+            0,
+            -48,
+            45,
+            48,
+          );
           g.restore();
         } else {
           g.drawImage(winDay, base.x - 15, base.y - 46 + 4);
         }
-        if (h2(seedKey + fl, wi, 3) < 0.3)
+        if (!b.playerBase && h2(seedKey + fl, wi, 3) < 0.3)
           litSpots.push({ x: base.x, y: base.y, dx: f.dx });
         wi++;
       }
@@ -393,11 +401,12 @@ function bakeBuilding(b, seedKey) {
     g.fillRect(-2, -76, 3, 76);
     g.fillRect(35, -76, 3, 76);
     const lh = 70,
-      lw = Math.min(
-        30,
-        lh * (SPRTEX.door_entry.width / SPRTEX.door_entry.height),
-      );
-    g.drawImage(SPRTEX.door_entry, 3 + (30 - lw) / 2, -73, lw, lh);
+      doorImg =
+        b.playerBase && SPRTEX.base_door_barricade
+          ? SPRTEX.base_door_barricade
+          : SPRTEX.door_entry,
+      lw = Math.min(30, lh * (doorImg.width / doorImg.height));
+    g.drawImage(doorImg, 3 + (30 - lw) / 2, -73, lw, lh);
     g.fillStyle = "#6f6650";
     g.fillRect(-4, 0, 44, 4);
     g.restore();
@@ -444,7 +453,8 @@ function bakeLit(s) {
 }
 
 const spriteCache = new Map();
-const spriteKey = (b) => `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}`;
+const spriteKey = (b) =>
+  `${b.w}x${b.h}x${b.floors}x${b.style}x${b.doorU}xbase${b.playerBase ? 1 : 0}`;
 // фасад уже запечён? (рендер решает: рисовать спрайт или placeholder-коробку)
 export function hasBuildingSprite(b) {
   return spriteCache.has(spriteKey(b));

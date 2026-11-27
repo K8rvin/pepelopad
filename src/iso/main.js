@@ -657,9 +657,9 @@ export async function boot() {
     getBase: () => base,
     onBaseFound: () => {
       if (foundBase(base, city, player)) {
-        toast("База основана. Строй постройки и набирай жителей.");
+        toast("База основана в ближайшем доме. Строй и набирай жителей.");
         audio.play("craft");
-      } else toast("Нужен открытый газон вне зданий.");
+      } else toast("Нужен газон рядом с обычным жилым домом.");
     },
     onBaseBuild: (i) => {
       if (baseBuild(base, inv, i)) {
@@ -1011,9 +1011,9 @@ export async function boot() {
       if (ui.isOpen()) ui.close();
       else if (!base.founded) {
         if (foundBase(base, city, player)) {
-          toast("База основана. Строй постройки и набирай жителей.");
+          toast("База основана в ближайшем доме. Строй и набирай жителей.");
           audio.play("craft");
-        } else toast("Нужен открытый газон вне зданий.");
+        } else toast("Нужен газон рядом с обычным жилым домом.");
       } else {
         ui.openBase();
         audio.play("uiOpen");

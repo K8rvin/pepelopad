@@ -3,6 +3,7 @@
 import { mulberry32 } from "../core/rng.js";
 import { suburbInterior } from "./suburbInterior.js";
 import { storyInterior } from "./storyInteriors.js";
+import { baseInterior } from "./baseInterior.js";
 
 const cache = new Map(); // buildingId → interior
 
@@ -11,18 +12,20 @@ const CLEAR = 1.1;
 
 // сгенерировать планировку здания (детерминированно по id)
 export function getInterior(city, b) {
-  const key = `${b.id}f${b.floors}_${b.w}x${b.h}_${b.style}_${b.doorU}`;
+  const key = `${b.id}f${b.floors}_${b.w}x${b.h}_${b.style}_${b.doorU}_base${b.playerBase ? 1 : 0}`;
   let it = cache.get(key);
   if (!it) {
     const residential =
       !b.locationId &&
       (b.style === "house" || b.style === "brick") &&
       b.floors === 1;
-    it = b.locationId
-      ? storyInterior(b)
-      : residential
-        ? suburbInterior(b)
-        : corridorInterior(b);
+    it = b.playerBase
+      ? baseInterior(b)
+      : b.locationId
+        ? storyInterior(b)
+        : residential
+          ? suburbInterior(b)
+          : corridorInterior(b);
     cache.set(key, it);
   }
   return it;
@@ -257,6 +260,7 @@ export function solidInteriorAt(city, x, y, r, level = 0) {
           // мебель (AABB в локальных метрах)
           for (const f of it.furniture || [])
             if (
+              !f.decorative &&
               lx > f.x - r &&
               lx < f.x + f.w + r &&
               ly > f.y - r &&

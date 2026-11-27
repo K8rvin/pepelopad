@@ -8,12 +8,48 @@ test("база: основание V, постройка, склад, сейв �
   await page.goto("/?new=1&intro=0");
   await page.waitForFunction(() => window.__city?.base);
 
-  // базу можно основать только на траве: газон парка (старт теперь у АЗС)
-  await page.evaluate(() => window.__city.teleport(118, 118));
+  // основать базу на газоне рядом с обычным жилым домом
+  const baseSite = await page.evaluate(async () => {
+    const c = window.__city;
+    const { tileAt } = await import("/src/iso/world/cityGen.js");
+    const { T_GRASS } = await import("/src/iso/render/tiles.js");
+    for (const building of c.city.buildings) {
+      if (
+        building.locationId ||
+        building.floors !== 1 ||
+        !["house", "brick"].includes(building.style)
+      )
+        continue;
+      const candidates = [
+        { x: building.x - 0.75, y: building.y + 2 },
+        { x: building.x + building.w + 0.75, y: building.y + 2 },
+        { x: building.x + 2, y: building.y - 0.75 },
+        { x: building.x + 2, y: building.y + building.h + 0.75 },
+      ];
+      const spot = candidates.find((p) => tileAt(c.city, p.x, p.y) === T_GRASS);
+      if (spot) {
+        c.teleport(spot.x, spot.y);
+        return { buildingId: building.id };
+      }
+    }
+    return null;
+  });
+  expect(baseSite).toBeTruthy();
   await page.waitForTimeout(150);
   await page.keyboard.press("KeyV");
   const founded = await page.evaluate(() => window.__city.base.founded);
   expect(founded).toBe(true);
+  expect(await page.evaluate(() => window.__city.base.buildingId)).toBe(
+    baseSite.buildingId,
+  );
+  const interior = await page.evaluate(async () => {
+    const c = window.__city;
+    const { getInterior } = await import("/src/iso/world/interiors.js");
+    const building = c.city.buildings.find((b) => b.id === c.base.buildingId);
+    c.teleport(building.x + building.w / 2, building.y + building.h / 2);
+    return getInterior(c.city, building).layout;
+  });
+  expect(interior).toBe("base");
 
   // открыть панель базы
   await page.keyboard.press("KeyV");
@@ -49,10 +85,12 @@ test("база: основание V, постройка, склад, сейв �
   await page.waitForFunction(() => window.__city?.base);
   const after = await page.evaluate(() => ({
     founded: window.__city.base.founded,
+    buildingId: window.__city.base.buildingId,
     bar: window.__city.base.structures.includes("barricade"),
     can: window.__city.base.storage.slots.some((s) => s && s.id === "can"),
   }));
   expect(after.founded).toBe(true);
+  expect(after.buildingId).toBe(baseSite.buildingId);
   expect(after.bar).toBe(true);
   expect(after.can).toBe(true);
   expect(errors).toEqual([]);

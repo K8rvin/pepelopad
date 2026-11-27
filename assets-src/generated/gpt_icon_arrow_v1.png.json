@@ -1,0 +1,26 @@
+{
+  "id": "icon_arrow",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Кованая стрела с красным оперением.png",
+  "createdAt": "2026-11-26T10:40:00.888Z",
+  "sha256": "e756aa4c4f4a911a384e26659d35342b8e1aa1d8a1e4b4c1a2e0c4835dd8249e",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_arrow.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

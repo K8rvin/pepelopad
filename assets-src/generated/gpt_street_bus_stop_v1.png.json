@@ -1,0 +1,25 @@
+{
+  "id": "street_bus_stop",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Ржавый постапокалиптический автобусный павильон.png",
+  "createdAt": "2026-11-26T11:39:42.567Z",
+  "sha256": "0b9fedb57851b405e967d88e55d0952e68fdd4108e49b5af04ecd7e3ccaa363d",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/street_bus_stop.png",
+  "runtimeSize": [
+    512,
+    422
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

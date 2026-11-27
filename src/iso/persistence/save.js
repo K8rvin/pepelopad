@@ -1,6 +1,7 @@
 import { restoreSkills } from "../systems/skills.js";
 import { createStats } from "../systems/stats.js";
 import { createQuests } from "../systems/quests.js";
+import { syncBaseBuilding } from "../systems/base.js";
 import { PITCH } from "../world/cityGen.js";
 
 const SKEY = "pepelopad_city_v6";
@@ -281,6 +282,7 @@ export function applySave(
       slots: data.base.storage.slots,
       size: data.base.storage.size,
     };
+    syncBaseBuilding(base, city);
   }
   if (story && data.story) {
     story.flags = data.story.flags || {};

@@ -353,7 +353,7 @@ export function renderWorld({
         push(d, 1, () => drawWallSeg(ctx, b, s, toX, toY, zoom, player));
       }
       for (const f of it.furniture || []) {
-        const d = b.x + f.x + f.w + (b.y + f.y + f.h);
+        const d = b.x + f.x + f.w + (b.y + f.y + f.h) + (f.depthBias || 0);
         push(d, 1.5, () =>
           drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it),
         );
@@ -393,7 +393,15 @@ export function renderWorld({
   for (const t of city.trees) {
     if (!vis(t.x, t.y, 70, 120)) continue;
     const p = w2s(t.x, t.y);
-    const key = t.dead ? "tree_dead" : t.v === 1 ? "tree_birch" : "tree";
+    const key = t.dead
+      ? t.v === 2
+        ? "tree_dead_split"
+        : "tree_dead"
+      : t.v === 2
+        ? "tree_birch_sparse"
+        : t.v === 1
+          ? "tree_birch"
+          : "tree";
     const img = SPRTEX[key];
     const h = img ? 176 + t.v * 24 : 160;
     const w = img ? h * (img.width / img.height) : 128;
@@ -426,6 +434,128 @@ export function renderWorld({
         }
         R.drawCalls++;
       },
+    });
+  }
+  for (const [plants, sprite, h] of [
+    [city.bushes || [], "bush_dusty", 58],
+    [city.stumps || [], "stump_old", 44],
+    [city.branches || [], "branch_fallen", 28],
+  ])
+    for (const plant of plants) {
+      const img = SPRTEX[sprite];
+      if (!img || !vis(plant.x, plant.y, 60, 55)) continue;
+      const p = w2s(plant.x, plant.y);
+      const w = h * (img.width / img.height);
+      streetEntries.push({
+        base: plant.x + plant.y,
+        depth: actorDepth(city, plant),
+        bounds: {
+          left: p.x - w / 2,
+          top: p.y - h,
+          right: p.x + w / 2,
+          bottom: p.y + 5,
+        },
+        draw: () => {
+          ctx.drawImage(
+            img,
+            toX(p.x) - (w / 2) * zoom,
+            toY(p.y) - h * zoom,
+            w * zoom,
+            h * zoom,
+          );
+          R.drawCalls++;
+        },
+      });
+    }
+  for (const stop of city.busStops || []) {
+    const img = SPRTEX.street_bus_stop;
+    if (!img || !vis(stop.x, stop.y, 100, 100)) continue;
+    const p = w2s(stop.x, stop.y);
+    const h = 112 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, stop), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const box of city.mailboxes || []) {
+    const img = SPRTEX.street_mailbox;
+    if (box.dead || !img || !vis(box.x, box.y, 35, 65)) continue;
+    const p = w2s(box.x, box.y);
+    const h = 58 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, box), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const cart of city.shoppingCarts || []) {
+    const img = SPRTEX.street_shopping_cart;
+    if (cart.dead || !img || !vis(cart.x, cart.y, 45, 55)) continue;
+    const p = w2s(cart.x, cart.y);
+    const h = 48 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, cart), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const sign of city.roadSigns || []) {
+    const img = SPRTEX.street_road_sign;
+    if (sign.dead || !img || !vis(sign.x, sign.y, 35, 70)) continue;
+    const p = w2s(sign.x, sign.y);
+    const h = 64 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, sign), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const cabinet of city.electricCabinets || []) {
+    const img = SPRTEX.street_electric_cabinet;
+    if (cabinet.dead || !img || !vis(cabinet.x, cabinet.y, 45, 65)) continue;
+    const p = w2s(cabinet.x, cabinet.y);
+    const h = 55 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, cabinet), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const barrier of city.barriers || []) {
+    const img = SPRTEX.street_barrier;
+    if (!img || !vis(barrier.x, barrier.y, 50, 45)) continue;
+    const p = w2s(barrier.x, barrier.y);
+    const h = 36 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, barrier), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const pile of city.trashPiles || []) {
+    const img = SPRTEX.street_trash_pile;
+    if (pile.dead || !img || !vis(pile.x, pile.y, 45, 40)) continue;
+    const p = w2s(pile.x, pile.y);
+    const h = 30 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, pile), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
+    });
+  }
+  for (const board of city.billboards || []) {
+    const key = ["billboard_empty", "billboard_poster", "billboard_torn"][
+      board.v
+    ];
+    const img = SPRTEX[key];
+    if (!img || !vis(board.x, board.y, 110, 130)) continue;
+    const p = w2s(board.x, board.y);
+    const h = 130 * zoom;
+    const w = h * (img.width / img.height);
+    push(actorDepth(city, board), 1, () => {
+      ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
+      R.drawCalls++;
     });
   }
   for (const l of city.lamps) {
@@ -730,6 +860,16 @@ export function renderWorld({
           () => drawCampNpc(ctx, c, def, player, toX, toY, zoom),
           c.x + c.y + 2,
         );
+      for (const [i, key] of ["resident_man", "resident_woman"].entries()) {
+        const pos = { x: c.x - 0.8 + i * 3.8, y: c.y + 0.2, r: 0.35 };
+        if (!vis(pos.x, pos.y, 50, 65)) continue;
+        push(
+          actorDepth(city, pos),
+          2,
+          () => drawCampResident(ctx, pos, key, toX, toY, zoom),
+          pos.x + pos.y,
+        );
+      }
       // спасённые без NPC-двойника: именованный спрайт на слоте лагеря;
       // с двойником (Нина, Павел) рисует только npcs-проход
       for (const id of c.rescued || []) {
@@ -877,8 +1017,13 @@ export function renderWorld({
     }
   }
 
-  // база игрока: флаг, баррикады, жилые модули, грядки, склад, жители
-  if (base && base.founded && vis(base.x, base.y, 220, 180)) {
+  // база вне здания — только совместимость со старым состоянием до синхронизации
+  if (
+    base &&
+    base.founded &&
+    !base.buildingId &&
+    vis(base.x, base.y, 220, 180)
+  ) {
     const bx = base.x,
       by = base.y;
     push(bx + by, 1, () => drawFlag(ctx, bx, by, toX, toY, zoom), bx + by);
@@ -942,6 +1087,40 @@ export function renderWorld({
           ),
         tx + ty,
       );
+    }
+  }
+
+  if (base?.founded && base.buildingId) {
+    const building = city.buildings.find((b) => b.id === base.buildingId);
+    if (building) {
+      const gardens = base.structures.filter((id) => id === "garden").length;
+      for (let i = 0; i < gardens; i++) {
+        const x = building.x + building.doorU + 1.8 + i * 1.4;
+        const y = building.y + building.h + 1.3;
+        push(x + y, 0.5, () => drawGarden(ctx, x, y, toX, toY, zoom), x + y);
+      }
+      if (inside === building)
+        for (let i = 0; i < base.residents; i++) {
+          const pos = {
+            x: building.x + building.w / 2 - 0.8 + (i % 3) * 1.1,
+            y: building.y + building.h / 2 + Math.floor(i / 3) * 1.1,
+            r: 0.35,
+          };
+          push(
+            actorDepth(city, pos),
+            2,
+            () =>
+              drawCampResident(
+                ctx,
+                pos,
+                i % 2 ? "resident_woman" : "resident_man",
+                toX,
+                toY,
+                zoom,
+              ),
+            pos.x + pos.y,
+          );
+        }
     }
   }
 
@@ -1822,7 +2001,7 @@ function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
   if (fade) ctx.globalAlpha = 0.55;
   const hgt = st.h * 32 * zoom;
   // спрайт мебели (этап 18): якорь низ-центр по южному углу footprint
-  const img = SPRTEX["furn_" + f.kind];
+  const img = SPRTEX["furn_" + f.kind] || SPRTEX[f.kind];
   if (img) {
     const sp = w2s(b.x + f.x + f.w, b.y + f.y + f.h);
     // ширина по footprint; высоту ограничиваем физическим боксом
@@ -1834,7 +2013,8 @@ function drawFurnItem(ctx, b, f, toX, toY, zoom, player, loot, it) {
       dh = maxH;
       dw = dh * (img.width / img.height);
     }
-    ctx.drawImage(img, toX(sp.x) - dw / 2, toY(sp.y) - dh, dw, dh);
+    const baseH = (f.baseH || 0) * 32 * zoom;
+    ctx.drawImage(img, toX(sp.x) - dw / 2, toY(sp.y) - dh - baseH, dw, dh);
     const cont = it.containers.find(
       (c) => Math.abs(b.x + c.x - cx) < 1 && Math.abs(b.y + c.y - cy) < 1,
     );
@@ -2034,6 +2214,7 @@ function actorDepth(city, a) {
         d = Math.max(d, sd + 0.01);
     }
     for (const f of it.furniture || []) {
+      if (f.decorative) continue;
       const fd = ib.x + f.x + f.w + (ib.y + f.y + f.h);
       if (a.x + r > ib.x + f.x + f.w || a.y + r > ib.y + f.y + f.h)
         d = Math.max(d, fd + 0.01);
@@ -2720,6 +2901,19 @@ function drawStoryObject(ctx, object, nearest, toX, toY, zoom) {
     ctx.fillText(`${object.name} · E`, dx, dy - 23 * zoom);
     ctx.textAlign = "left";
   }
+}
+
+function drawCampResident(ctx, pos, key, toX, toY, zoom) {
+  const img = SPRTEX[key];
+  if (!img) return;
+  const p = w2s(pos.x, pos.y);
+  ctx.fillStyle = "rgba(16,20,26,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(toX(p.x), toY(p.y), 12 * zoom, 5 * zoom, 0, 0, 7);
+  ctx.fill();
+  const h = 74 * zoom;
+  const w = h * (img.width / img.height);
+  ctx.drawImage(img, toX(p.x) - w / 2, toY(p.y) - h, w, h);
 }
 
 function drawCampNpc(ctx, c, def, player, toX, toY, zoom) {

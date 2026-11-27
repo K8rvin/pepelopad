@@ -1,0 +1,25 @@
+{
+  "id": "stump_old",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Детализированный гнилой пень с корнями.png",
+  "createdAt": "2026-11-26T11:27:13.891Z",
+  "sha256": "37886524fa153de778841e604ed572a705de0c89a0d7881c8f587b41e92ad210",
+  "originalSize": [
+    1312,
+    1199
+  ],
+  "runtime": "public/assets/gen/stump_old.png",
+  "runtimeSize": [
+    512,
+    468
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

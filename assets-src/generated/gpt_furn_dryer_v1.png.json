@@ -1,0 +1,25 @@
+{
+  "id": "furn_dryer",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Старинная стиральная машина с потёртостями.png",
+  "createdAt": "2026-11-22T21:10:22.322Z",
+  "sha256": "b601fd7d3bdbec00079e84e83a03c18baff3820a460d64854cbedd19e1ea6c9b",
+  "originalSize": [
+    1199,
+    1312
+  ],
+  "runtime": "public/assets/gen/furn_dryer.png",
+  "runtimeSize": [
+    384,
+    512
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "icon_part",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Изношенный стальной болт с гайкой и шайбой.png",
+  "createdAt": "2026-11-26T10:51:36.952Z",
+  "sha256": "564db6a0f0bffabc59d8b79ced99c222596b3ddfc957ba72e3bae11786eef69a",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_part.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

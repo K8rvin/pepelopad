@@ -1,0 +1,25 @@
+{
+  "id": "furn_chair",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Старинный потёртый деревянный стул.png",
+  "createdAt": "2026-11-22T21:08:38.715Z",
+  "sha256": "359e77d8d5adf852ff3ddd38cb814dc808e7303b9a171ba592e4eb5c255f50d2",
+  "originalSize": [
+    1024,
+    1536
+  ],
+  "runtime": "public/assets/gen/furn_chair.png",
+  "runtimeSize": [
+    281,
+    512
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "icon_cloth",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Стопка поношенной одежды#+#+#+#+.png",
+  "createdAt": "2026-11-22T21:05:38.146Z",
+  "sha256": "bd6837a31520a90d86a8c299aca17b51b798e60c407cb40bac4fa3d4b79a002b",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/icon_cloth.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

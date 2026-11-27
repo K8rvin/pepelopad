@@ -1,0 +1,26 @@
+{
+  "id": "icon_can",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Винтажная банка тушёнки с ржавчиной.png",
+  "createdAt": "2026-11-26T10:28:05.327Z",
+  "sha256": "3eeb39c3930edde423cf5c408946d6362e6f180e2deb0e4802b5c0ff18b26a3c",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_can.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "decor_painting",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Старинная рама с туманным пейзажем.png",
+  "createdAt": "2026-11-22T21:00:38.330Z",
+  "sha256": "2c61fb659994cc1197730ae16c75527735f3514c9bdc10b82b65bfd4f2925c4c",
+  "originalSize": [
+    1448,
+    1086
+  ],
+  "runtime": "public/assets/gen/decor_painting.png",
+  "runtimeSize": [
+    512,
+    477
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

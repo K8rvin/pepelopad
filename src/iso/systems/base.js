@@ -1,6 +1,4 @@
-// База игрока с выжившими: владелец состояния (постройки, жители, склад, рейды).
-// Основание на открытом газоне; жители приходят сами при наличии места и еды;
-// постройки дают защиту/места/слоты/ежедневное производство; ночью — рейд.
+// База игрока в жилом доме: постройки, жители, склад и рейды.
 import { countItem, removeItem, addItem } from "./inventory.js";
 import { canAfford } from "./camps.js";
 import { tileAt } from "../world/cityGen.js";
@@ -38,23 +36,51 @@ export function baseDefense(b) {
   return b.structures.filter((id) => id === "barricade").length * 2;
 }
 
+export function nearestBaseBuilding(city, point, maxDistance = 12) {
+  let best = null;
+  let bestDistance = maxDistance;
+  for (const building of city.buildings) {
+    if (
+      building.locationId ||
+      building.floors !== 1 ||
+      !["house", "brick"].includes(building.style)
+    )
+      continue;
+    const nx = Math.max(building.x, Math.min(point.x, building.x + building.w));
+    const ny = Math.max(building.y, Math.min(point.y, building.y + building.h));
+    const distance = Math.hypot(point.x - nx, point.y - ny);
+    if (distance < bestDistance) {
+      best = building;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+export function syncBaseBuilding(b, city) {
+  if (!b.founded) return null;
+  let building = city.buildings.find((item) => item.id === b.buildingId);
+  if (!building) building = nearestBaseBuilding(city, b, Infinity);
+  if (!building) return null;
+  building.playerBase = true;
+  b.buildingId = building.id;
+  b.x = building.x + building.w / 2;
+  b.y = building.y + building.h / 2;
+  return building;
+}
+
 export function canFound(b, city, player) {
   if (b.founded) return false;
   if (tileAt(city, player.x, player.y) !== T_GRASS) return false;
-  return !city.buildings.some(
-    (bl) =>
-      player.x > bl.x - 1 &&
-      player.x < bl.x + bl.w + 1 &&
-      player.y > bl.y - 1 &&
-      player.y < bl.y + bl.h + 1,
-  );
+  return !!nearestBaseBuilding(city, player);
 }
 
 export function foundBase(b, city, player) {
-  if (!canFound(b, city, player)) return false;
+  const building = nearestBaseBuilding(city, player);
+  if (!canFound(b, city, player) || !building) return false;
   b.founded = true;
-  b.x = player.x;
-  b.y = player.y;
+  b.buildingId = building.id;
+  syncBaseBuilding(b, city);
   return true;
 }
 

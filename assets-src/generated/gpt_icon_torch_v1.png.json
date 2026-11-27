@@ -1,0 +1,26 @@
+{
+  "id": "icon_torch",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Пылающий факел с обмотанной рукоятью.png",
+  "createdAt": "2026-11-26T10:55:42.234Z",
+  "sha256": "3f9d45c0579c02c1b52e7568bb2a938b4cea251c0142fcb6cd4300f992165dc2",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_torch.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

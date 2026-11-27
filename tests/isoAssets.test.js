@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SPRITE_FILES, PORTRAIT_FILES } from "../src/iso/render/assets.js";
+import { ICON_FILES } from "../src/iso/render/icons.js";
 
 const GPT_KEYS = [
   "tree",
@@ -34,6 +35,30 @@ const GPT_KEYS = [
   "matka_walk_6",
   "matka_walk_7",
   "tree_birch",
+  "tree_birch_sparse",
+  "tree_dead_split",
+  "bush_dusty",
+  "stump_old",
+  "branch_fallen",
+  "street_bus_stop",
+  "street_mailbox",
+  "street_shopping_cart",
+  "street_road_sign",
+  "street_electric_cabinet",
+  "street_barrier",
+  "street_trash_pile",
+  "billboard_empty",
+  "billboard_poster",
+  "billboard_torn",
+  "resident_man",
+  "resident_woman",
+  "base_window_barricade",
+  "base_door_barricade",
+  "base_bed",
+  "base_medical",
+  "base_workbench",
+  "base_storage",
+  "base_radio",
   "win_intact",
   "win_broken",
   "win_lit",
@@ -55,6 +80,29 @@ const GPT_KEYS = [
   "furn_armchair",
   "furn_tv",
   "furn_bookcase",
+  "furn_floor_lamp",
+  "furn_table_lamp",
+  "furn_chair",
+  "furn_washer",
+  "furn_dryer",
+  "decor_rug",
+  "decor_painting",
+  "decor_clock",
+  "decor_curtains",
+  "decor_books",
+  "decor_clothes",
+  "decor_dishes",
+  "decor_teddy",
+  "decor_papers",
+  "icon_wood",
+  "icon_scrap",
+  "icon_cloth",
+  "icon_can",
+  "icon_meds",
+  "icon_arrow",
+  "icon_fuel",
+  "icon_part",
+  "icon_torch",
   "tent_olive",
   "tent_tan",
   "crate_wood",
@@ -72,7 +120,9 @@ const file = (path) => new URL(`../${path}`, import.meta.url);
 describe("GPT-ассеты и ссылки загрузчика", () => {
   it("все отобранные ID имеют runtime RGBA PNG, исходник и метаданные", () => {
     for (const key of GPT_KEYS) {
-      const runtime = SPRITE_FILES[key];
+      const runtime = key.startsWith("icon_")
+        ? ICON_FILES[key.slice(5)]
+        : SPRITE_FILES[key];
       expect(runtime, key).toBeTruthy();
       expect(runtime.startsWith("tmp/"), key).toBe(false);
       const png = readFileSync(file(`public/${runtime}`));
@@ -116,10 +166,12 @@ describe("GPT-ассеты и ссылки загрузчика", () => {
     expect(existsSync(file("scripts/process_portraits.mjs"))).toBe(true);
     expect(existsSync(file("scripts/process_gpt_assets.py"))).toBe(true);
     expect(existsSync(file("scripts/process_props.mjs"))).toBe(true);
+    expect(existsSync(file("scripts/process_icons.mjs"))).toBe(true);
     expect(existsSync(file("scripts/process_enemy_frames.mjs"))).toBe(true);
     for (const [key, path] of Object.entries({
       ...SPRITE_FILES,
       ...PORTRAIT_FILES,
+      ...ICON_FILES,
     }))
       expect(existsSync(file(`public/${path}`)), key).toBe(true);
   });

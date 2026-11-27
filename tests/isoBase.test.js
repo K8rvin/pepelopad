@@ -24,6 +24,9 @@ import { createSkills } from "../src/iso/systems/skills.js";
 import { createLoot } from "../src/iso/systems/loot.js";
 import { createSurvival } from "../src/iso/systems/survival.js";
 import { createCamps } from "../src/iso/systems/camps.js";
+import { getInterior } from "../src/iso/world/interiors.js";
+import { tileAt } from "../src/iso/world/cityGen.js";
+import { T_GRASS } from "../src/iso/render/tiles.js";
 
 function mockStorage() {
   const store = new Map();
@@ -37,23 +40,50 @@ function mockStorage() {
 
 const city = createCity(11, 9);
 
+function baseSpot(targetCity) {
+  for (const building of targetCity.buildings) {
+    if (
+      building.locationId ||
+      building.floors !== 1 ||
+      !["house", "brick"].includes(building.style)
+    )
+      continue;
+    const candidates = [
+      { x: building.x - 0.75, y: building.y + 2 },
+      { x: building.x + building.w + 0.75, y: building.y + 2 },
+      { x: building.x + 2, y: building.y - 0.75 },
+      { x: building.x + 2, y: building.y + building.h + 0.75 },
+    ];
+    const spot = candidates.find(
+      (p) => tileAt(targetCity, p.x, p.y) === T_GRASS,
+    );
+    if (spot) return { building, spot };
+  }
+  throw new Error("no base spot");
+}
+
+const spot = baseSpot(city).spot;
+
 describe("база: основание и постройки", () => {
-  it("основание только на открытом газоне вне зданий", () => {
+  it("основание на газоне рядом с жилым домом", () => {
     const b = createBase();
-    const grass = { x: 118, y: 118 }; // центр парка, газон
-    expect(canFound(b, city, grass)).toBe(true);
+    expect(canFound(b, city, spot)).toBe(true);
     const bld = city.buildings[0];
     expect(
       canFound(b, city, { x: bld.x + bld.w / 2, y: bld.y + bld.h / 2 }),
     ).toBe(false);
-    expect(foundBase(b, city, grass)).toBe(true);
+    expect(foundBase(b, city, spot)).toBe(true);
     expect(b.founded).toBe(true);
-    expect(foundBase(b, city, grass)).toBe(false); // уже основана
+    expect(b.buildingId).toBeDefined();
+    expect(
+      city.buildings.find((item) => item.id === b.buildingId)?.playerBase,
+    ).toBe(true);
+    expect(foundBase(b, city, spot)).toBe(false);
   });
 
   it("постройки списывают ресурсы, склад/места/защита растут", () => {
     const b = createBase();
-    foundBase(b, city, { x: 118, y: 118 });
+    foundBase(b, city, spot);
     const inv = createInventory(24);
     expect(buildStructure(b, inv, 0)).toBe(false); // нет ресурсов
     addItem(inv, "wood", 6);
@@ -70,12 +100,29 @@ describe("база: основание и постройки", () => {
     expect(buildStructure(b, inv, 2)).toBe(true); // склад
     expect(b.storage.size).toBe(slots0 + 8);
   });
+  it("дом получает оборудованный интерьер базы", () => {
+    const b = createBase();
+    const { building, spot: point } = baseSpot(city);
+    expect(foundBase(b, city, point)).toBe(true);
+    expect(b.buildingId).toBe(building.id);
+    const interior = getInterior(city, building);
+    expect(interior.layout).toBe("base");
+    expect(new Set(interior.furniture.map((f) => f.kind))).toEqual(
+      new Set([
+        "base_bed",
+        "base_medical",
+        "base_workbench",
+        "base_storage",
+        "base_radio",
+      ]),
+    );
+  });
 });
 
 describe("база: жители, производство, рейды", () => {
   it("житель приходит при месте и еде; постройки и жители производят", () => {
     const b = createBase();
-    foundBase(b, city, { x: 118, y: 118 });
+    foundBase(b, city, spot);
     addItem(b.storage, "can", 2);
     baseNewDay(b, 2);
     expect(b.residents).toBe(1);
@@ -92,13 +139,13 @@ describe("база: жители, производство, рейды", () => {
 
   it("рейд слабее с защитой и жителями; раз в день", () => {
     const b = createBase();
-    foundBase(b, city, { x: 118, y: 118 });
+    foundBase(b, city, spot);
     const c2 = createCity(11, 3);
     const n0 = baseRaid(b, c2, 1);
     expect(n0).toBeGreaterThan(0);
     expect(baseRaid(b, c2, 1)).toBe(0); // повторно в тот же день нет
     const b2 = createBase();
-    foundBase(b2, city, { x: 118, y: 118 });
+    foundBase(b2, city, spot);
     b2.structures = ["barricade", "barricade"];
     b2.residents = 2;
     const nDef = baseRaid(b2, createCity(11, 3), 1);
@@ -126,7 +173,7 @@ describe("база в сейве v6", () => {
 
   it("основание, постройки, жители и склад переживают перезагрузку", () => {
     const st = saveState();
-    foundBase(st.base, st.city, { x: 118, y: 118 });
+    foundBase(st.base, st.city, baseSpot(st.city).spot);
     st.base.structures = ["barricade"];
     st.base.residents = 1;
     addItem(st.base.storage, "can", 3);
@@ -134,8 +181,25 @@ describe("база в сейве v6", () => {
     const fresh = saveState();
     applySave(loadGameData(), fresh);
     expect(fresh.base.founded).toBe(true);
+    expect(fresh.base.buildingId).toBeDefined();
     expect(fresh.base.structures).toContain("barricade");
     expect(fresh.base.residents).toBe(1);
     expect(countItem(fresh.base.storage, "can")).toBe(3);
+  });
+
+  it("старая база на газоне автоматически привязывается к дому", () => {
+    const st = saveState();
+    const point = baseSpot(st.city).spot;
+    st.base.founded = true;
+    st.base.x = point.x;
+    st.base.y = point.y;
+    saveGame(st);
+    const fresh = saveState();
+    applySave(loadGameData(), fresh);
+    expect(fresh.base.buildingId).toBeDefined();
+    expect(
+      fresh.city.buildings.find((b) => b.id === fresh.base.buildingId)
+        ?.playerBase,
+    ).toBe(true);
   });
 });

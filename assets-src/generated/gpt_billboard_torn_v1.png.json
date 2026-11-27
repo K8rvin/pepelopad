@@ -1,0 +1,25 @@
+{
+  "id": "billboard_torn",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Потрёпанный постапокалиптический билборд.png",
+  "createdAt": "2026-11-22T20:56:22.128Z",
+  "sha256": "ff16553a08976851c0abbc9f582bd46f94ff131ee85250122a8ef10f4ff69797",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/billboard_torn.png",
+  "runtimeSize": [
+    512,
+    447
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}

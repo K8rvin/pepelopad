@@ -1,0 +1,26 @@
+{
+  "id": "icon_wood",
+  "source": "GPT",
+  "prompt": "Square isometric game inventory icon, single item, clear silhouette, transparent RGBA, no text, border, ground or shadow.",
+  "originalImport": "tmp/Состаренная стопка деревянных досок.png",
+  "createdAt": "2026-11-25T19:29:50.676Z",
+  "sha256": "d898a6751b6adc3ec3fb4357cb2ac4c05d70a5c5da39e47a11910446c2e889c4",
+  "originalSize": [
+    1254,
+    1254
+  ],
+  "runtime": "public/assets/gen/icon_wood.png",
+  "runtimeSize": [
+    256,
+    256
+  ],
+  "processing": {
+    "pipeline": "scripts/process_icons.mjs",
+    "cropThreshold": 16,
+    "contentMax": 224,
+    "canvas": [
+      256,
+      256
+    ]
+  }
+}

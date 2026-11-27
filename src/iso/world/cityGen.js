@@ -53,6 +53,17 @@ export function createCity(seed = 11, nb = 19) {
     gflag,
     buildings: [],
     trees: [],
+    bushes: [],
+    stumps: [],
+    branches: [],
+    busStops: [],
+    mailboxes: [],
+    shoppingCarts: [],
+    roadSigns: [],
+    electricCabinets: [],
+    barriers: [],
+    trashPiles: [],
+    billboards: [],
     lamps: [],
     benches: [],
     containers: [],
@@ -175,7 +186,169 @@ export function createCity(seed = 11, nb = 19) {
   // Сюжетный слой не участвует в seeded-спавне старого города.
   addStoryLocations(city, PITCH);
   addStoryVehicle(city);
+  const bushR = mulberry32(seed * 43 + 17);
+  for (const tree of city.trees) {
+    if (bushR() < 0.55) continue;
+    const angle = bushR() * Math.PI * 2;
+    const distance = 0.9 + bushR() * 1.2;
+    const x = tree.x + Math.cos(angle) * distance;
+    const y = tree.y + Math.sin(angle) * distance;
+    if (ground[(y | 0) * SIZE + (x | 0)] === T_GRASS && !buildingAt(city, x, y))
+      city.bushes.push({ x, y });
+  }
+  const stumpR = mulberry32(seed * 47 + 23);
+  for (const tree of city.trees) {
+    if (!tree.dead || stumpR() < 0.6) continue;
+    const angle = stumpR() * Math.PI * 2;
+    const distance = 0.8 + stumpR() * 1.1;
+    const x = tree.x + Math.cos(angle) * distance;
+    const y = tree.y + Math.sin(angle) * distance;
+    if (ground[(y | 0) * SIZE + (x | 0)] === T_GRASS && !buildingAt(city, x, y))
+      city.stumps.push({ x, y });
+  }
+  const branchR = mulberry32(seed * 53 + 29);
+  for (const tree of city.trees) {
+    if (branchR() < 0.75) continue;
+    const angle = branchR() * Math.PI * 2;
+    const distance = 1 + branchR() * 1.4;
+    const x = tree.x + Math.cos(angle) * distance;
+    const y = tree.y + Math.sin(angle) * distance;
+    if (ground[(y | 0) * SIZE + (x | 0)] === T_GRASS && !buildingAt(city, x, y))
+      city.branches.push({ x, y });
+  }
   buildBuildingGrid(city);
+  buildSolidIndex(city);
+  const busR = mulberry32(seed * 59 + 31);
+  const busTarget = Math.max(2, Math.floor(nb / 3));
+  for (
+    let attempt = 0;
+    city.busStops.length < busTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = busR() < 0.5;
+    const roadIndex = 1 + Math.floor(busR() * Math.max(1, nb - 1));
+    const along = 12 + busR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 1.4 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 1.4;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 1.5)) continue;
+    if (city.zombies.some((z) => !z.dead && Math.hypot(z.x - x, z.y - y) < 2))
+      continue;
+    city.busStops.push({ x, y });
+  }
+  const mailboxR = mulberry32(seed * 61 + 37);
+  const mailboxTarget = Math.max(3, Math.floor(nb / 2));
+  for (
+    let attempt = 0;
+    city.mailboxes.length < mailboxTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = mailboxR() < 0.5;
+    const roadIndex = 1 + Math.floor(mailboxR() * Math.max(1, nb - 1));
+    const along = 12 + mailboxR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 0.55)) continue;
+    city.mailboxes.push({ x, y });
+  }
+  const cartR = mulberry32(seed * 67 + 41);
+  const cartTarget = Math.max(2, Math.floor(nb / 3));
+  for (
+    let attempt = 0;
+    city.shoppingCarts.length < cartTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = cartR() < 0.5;
+    const roadIndex = 1 + Math.floor(cartR() * Math.max(1, nb - 1));
+    const along = 12 + cartR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2.2 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2.2;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 0.75)) continue;
+    city.shoppingCarts.push({ x, y });
+  }
+  const signR = mulberry32(seed * 71 + 43);
+  const signTarget = Math.max(3, Math.floor(nb / 2));
+  for (
+    let attempt = 0;
+    city.roadSigns.length < signTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = signR() < 0.5;
+    const roadIndex = 1 + Math.floor(signR() * Math.max(1, nb - 1));
+    const along = 12 + signR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2.1 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2.1;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 0.45)) continue;
+    city.roadSigns.push({ x, y });
+  }
+  const cabinetR = mulberry32(seed * 73 + 47);
+  const cabinetTarget = Math.max(2, Math.floor(nb / 3));
+  for (
+    let attempt = 0;
+    city.electricCabinets.length < cabinetTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = cabinetR() < 0.5;
+    const roadIndex = 1 + Math.floor(cabinetR() * Math.max(1, nb - 1));
+    const along = 12 + cabinetR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2.3 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2.3;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 0.75)) continue;
+    city.electricCabinets.push({ x, y });
+  }
+  const barrierR = mulberry32(seed * 79 + 53);
+  const barrierTarget = Math.max(2, Math.floor(nb / 4));
+  for (
+    let attempt = 0;
+    city.barriers.length < barrierTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = barrierR() < 0.5;
+    const roadIndex = 1 + Math.floor(barrierR() * Math.max(1, nb - 1));
+    const along = 12 + barrierR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2.4 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2.4;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 1)) continue;
+    city.barriers.push({ x, y });
+  }
+  const trashR = mulberry32(seed * 83 + 59);
+  const trashTarget = Math.max(3, Math.floor(nb / 2));
+  for (
+    let attempt = 0;
+    city.trashPiles.length < trashTarget && attempt < 200;
+    attempt++
+  ) {
+    const vertical = trashR() < 0.5;
+    const roadIndex = 1 + Math.floor(trashR() * Math.max(1, nb - 1));
+    const along = 12 + trashR() * (SIZE - 24);
+    const x = vertical ? roadIndex * PITCH + ROAD + 2.5 : along;
+    const y = vertical ? along : roadIndex * PITCH + ROAD + 2.5;
+    if (tileAt(city, x, y) !== T_SIDEWALK) continue;
+    if (solidRectAt(city, x, y, 0.6)) continue;
+    city.trashPiles.push({ x, y });
+  }
+  const billboardR = mulberry32(seed * 89 + 61);
+  const billboardTarget = Math.max(3, Math.floor(nb / 3));
+  for (
+    let attempt = 0;
+    city.billboards.length < billboardTarget && attempt < 240;
+    attempt++
+  ) {
+    const vertical = billboardR() < 0.5;
+    const roadIndex = 1 + Math.floor(billboardR() * Math.max(1, nb - 1));
+    const along = 12 + billboardR() * (SIZE - 24);
+    const edge = roadIndex * PITCH + ROAD + SW + 2;
+    const x = vertical ? edge : along;
+    const y = vertical ? along : edge;
+    if (tileAt(city, x, y) !== T_GRASS) continue;
+    if (solidRectAt(city, x, y, 2)) continue;
+    city.billboards.push({ x, y, v: city.billboards.length % 3 });
+  }
   buildSolidIndex(city);
   for (const z of city.zombies) {
     if (!solidRectAt(city, z.x, z.y, 0.5)) continue;
@@ -555,6 +728,43 @@ export function buildSolidIndex(city) {
     if (!p.dead) addSolid(city, p.x - 0.8, p.y - 0.3, 1.6, 0.6, "prop", p);
   for (const p of city.tires)
     if (!p.dead) addSolid(city, p.x - 0.4, p.y - 0.3, 0.8, 0.6, "prop", p);
+  for (const stop of city.busStops || [])
+    addSolid(city, stop.x - 1.3, stop.y - 0.5, 2.6, 1, "busStop", stop);
+  for (const box of city.mailboxes || [])
+    if (!box.dead)
+      addSolid(city, box.x - 0.25, box.y - 0.25, 0.5, 0.5, "prop", box);
+  for (const cart of city.shoppingCarts || [])
+    if (!cart.dead)
+      addSolid(city, cart.x - 0.35, cart.y - 0.3, 0.7, 0.6, "prop", cart);
+  for (const sign of city.roadSigns || [])
+    if (!sign.dead)
+      addSolid(city, sign.x - 0.15, sign.y - 0.15, 0.3, 0.3, "prop", sign);
+  for (const cabinet of city.electricCabinets || [])
+    if (!cabinet.dead)
+      addSolid(
+        city,
+        cabinet.x - 0.4,
+        cabinet.y - 0.3,
+        0.8,
+        0.6,
+        "prop",
+        cabinet,
+      );
+  for (const barrier of city.barriers || [])
+    addSolid(
+      city,
+      barrier.x - 0.8,
+      barrier.y - 0.3,
+      1.6,
+      0.6,
+      "barrier",
+      barrier,
+    );
+  for (const pile of city.trashPiles || [])
+    if (!pile.dead)
+      addSolid(city, pile.x - 0.35, pile.y - 0.25, 0.7, 0.5, "prop", pile);
+  for (const board of city.billboards || [])
+    addSolid(city, board.x - 1.2, board.y - 0.35, 2.4, 0.7, "billboard", board);
   const gate = city.siegeGate;
   if (gate?.active && gate.hp > 0)
     addSolid(city, gate.x, gate.y, gate.w, gate.h, "gate", gate);

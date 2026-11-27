@@ -8,7 +8,7 @@ import {
 } from "../src/iso/world/cityGen.js";
 import { occludesPlayer } from "../src/iso/render/renderer.js";
 import { tileAt } from "../src/iso/world/cityGen.js";
-import { T_GRASS } from "../src/iso/render/tiles.js";
+import { T_GRASS, T_SIDEWALK } from "../src/iso/render/tiles.js";
 import {
   saveGame,
   loadGameData,
@@ -67,9 +67,51 @@ describe("пригород: одноэтажная застройка без з�
     expect(inBlock.length).toBeGreaterThan(5);
   });
 
-  it("деревья только на траве, не на дорогах и тротуарах", () => {
+  it("деревья и кусты только на траве, не на дорогах и тротуарах", () => {
     for (const t of city.trees)
       expect(tileAt(city, t.x, t.y), `дерево ${t.x},${t.y}`).toBe(T_GRASS);
+    expect(city.bushes.length).toBeGreaterThan(0);
+    for (const b of city.bushes)
+      expect(tileAt(city, b.x, b.y), `куст ${b.x},${b.y}`).toBe(T_GRASS);
+    expect(city.stumps.length).toBeGreaterThan(0);
+    for (const s of city.stumps)
+      expect(tileAt(city, s.x, s.y), `пень ${s.x},${s.y}`).toBe(T_GRASS);
+    expect(city.branches.length).toBeGreaterThan(0);
+    for (const b of city.branches)
+      expect(tileAt(city, b.x, b.y), `ветка ${b.x},${b.y}`).toBe(T_GRASS);
+  });
+
+  it("остановки и почтовые ящики размещены на свободных тротуарах", () => {
+    expect(city.busStops.length).toBeGreaterThan(0);
+    for (const stop of city.busStops)
+      expect(tileAt(city, stop.x, stop.y)).toBe(T_SIDEWALK);
+    expect(city.mailboxes.length).toBeGreaterThan(0);
+    for (const box of city.mailboxes)
+      expect(tileAt(city, box.x, box.y)).toBe(T_SIDEWALK);
+    expect(city.shoppingCarts.length).toBeGreaterThan(0);
+    for (const cart of city.shoppingCarts)
+      expect(tileAt(city, cart.x, cart.y)).toBe(T_SIDEWALK);
+    expect(city.roadSigns.length).toBeGreaterThan(0);
+    for (const sign of city.roadSigns)
+      expect(tileAt(city, sign.x, sign.y)).toBe(T_SIDEWALK);
+    expect(city.electricCabinets.length).toBeGreaterThan(0);
+    for (const cabinet of city.electricCabinets)
+      expect(tileAt(city, cabinet.x, cabinet.y)).toBe(T_SIDEWALK);
+    expect(city.barriers.length).toBeGreaterThan(0);
+    for (const barrier of city.barriers)
+      expect(tileAt(city, barrier.x, barrier.y)).toBe(T_SIDEWALK);
+    expect(city.trashPiles.length).toBeGreaterThan(0);
+    for (const pile of city.trashPiles)
+      expect(tileAt(city, pile.x, pile.y)).toBe(T_SIDEWALK);
+  });
+
+  it("билборды стоят на траве и используют все состояния", () => {
+    expect(city.billboards.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(city.billboards.map((b) => b.v))).toEqual(
+      new Set([0, 1, 2]),
+    );
+    for (const board of city.billboards)
+      expect(tileAt(city, board.x, board.y)).toBe(T_GRASS);
   });
 
   it("детерминированность по сиду", () => {

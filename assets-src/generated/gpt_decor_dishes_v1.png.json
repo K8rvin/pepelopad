@@ -1,0 +1,25 @@
+{
+  "id": "decor_dishes",
+  "source": "GPT",
+  "prompt": "Single isometric furniture sprite, face-forward 3/4 view, transparent RGBA, alpha=0 background and gaps, no white fringe/pockets, no floor/shadow/text.",
+  "originalImport": "tmp/Винтажная эмалированная посуда с ложкой.png",
+  "createdAt": "2026-11-22T21:06:37.738Z",
+  "sha256": "289bf18926a955d43da929a19de413e0f1154ba33f15abce1604f350ef5532bf",
+  "originalSize": [
+    1536,
+    1024
+  ],
+  "runtime": "public/assets/gen/decor_dishes.png",
+  "runtimeSize": [
+    512,
+    278
+  ],
+  "processing": {
+    "pipeline": "scripts/process_furn_frame.mjs",
+    "alphaBelow4Removed": true,
+    "cropThreshold": 16,
+    "padding": 16,
+    "thumbnailMax": 512
+  },
+  "notes": "Лицевая мебель; якорь южного угла footprint задаёт рендер."
+}
